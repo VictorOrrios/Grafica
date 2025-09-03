@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+	<meta charset="UTF-8">
+	<title>WebGL2 Raytracer</title>
+	<style>
+		body {
+			margin: 0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			background: #111;
+			color: white;
+		}
+
+		canvas {
+			display: block;
+			border: 1px solid #333;
+			margin-top: 10px;
+		}
+
+		#controls {
+			margin: 10px;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="controls">
+		Resolution:
+		<select id="resolution">
+			<option value="1280x720" selected>1280x720</option>
+			<option value="1920x1080">1920x1080</option>
+			<option value="2560x1440">2560x1440</option>
+			<option value="3840x2160">3840x2160</option>
+		</select>
+
+		<button id="capture">Capture PNG</button>
+		
+		FPS:<span id="fps">0</span>
+	</div>
+	<canvas id="canvas" width="1280" height="720"></canvas>
+
+	<script type="module">
+		const canvas = document.getElementById('canvas');
+		const resolutionSelect = document.getElementById('resolution');
+
+		function setCanvasResolution(width, height) {
+			canvas.width = width;
+			canvas.height = height;
+			canvas.style.width = width + 'px';
+			canvas.style.height = height + 'px';
+			if (window.onCanvasResize) {
+				window.onCanvasResize(width, height);
+			}
+		}
+
+		setCanvasResolution(1280, 720);
+
+		resolutionSelect.addEventListener('change', () => {
+			const [w, h] = resolutionSelect.value.split('x').map(Number);
+			setCanvasResolution(w, h);
+		});
+
+	</script>
+	<script type="module" src="./dist/main.js"></script>
+</body>
+
+</html>
