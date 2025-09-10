@@ -4,12 +4,38 @@ import { Scene } from "./scene.js";
 const fpsDisplay = document.getElementById('fps');
 const captureBtn = document.getElementById('capture');
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+const mouse = document.getElementById('mouse');
 
 let needCapture:boolean = false;
 
 let lastFrameTime = performance.now();
 let frameCount = 0;
 let fps = 0;
+
+
+canvas.addEventListener('mousedown', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    updateInfo(x, y);
+    console.log(`Mouse down at (${x}, ${y})`);
+});
+canvas.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    updateInfo(x, y);
+});
+
+if(captureBtn){
+    captureBtn.addEventListener('click', () => { 
+        needCapture=true; 
+    });
+}
+
+function updateInfo(x:number, y:number) {
+    if(mouse) mouse.textContent = `Mouse Position: X: ${x}, Y: ${y}`;
+}
 
 function updateFPS(time:number) {
     if(!fpsDisplay) return;
@@ -24,11 +50,6 @@ function updateFPS(time:number) {
     }
 }
 
-if(captureBtn){
-    captureBtn.addEventListener('click', () => { 
-        needCapture=true; 
-    });
-}
 
 function saveScreenshot(){
     if (!canvas) return;
@@ -52,6 +73,7 @@ function saveScreenshot(){
     }, 'image/png');
 }
 
+// MAIN LOOP
 
 const gl = canvas.getContext("webgl2");
 if (!gl) throw new Error("WebGL2 not supported");

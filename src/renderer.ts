@@ -10,6 +10,8 @@ export class Renderer {
     private gl: WebGL2RenderingContext;
     private scene: Scene;
     private program!: WebGLProgram;
+    private vao!: WebGLVertexArrayObject;
+    private resLoc!: WebGLUniformLocation;
 
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
@@ -20,6 +22,7 @@ export class Renderer {
     public async initialize() {
         this.program = await this.initShaders();
         this.initQuad();
+        this.initBuffers();
     }
 
 
@@ -52,7 +55,6 @@ export class Renderer {
         return shader;
     }
 
-    private vao!: WebGLVertexArrayObject;
 
     private initQuad() {
         const gl = this.gl;
@@ -64,13 +66,51 @@ export class Renderer {
             -1, 1, 1, -1, 1, 1
         ]);
 
-        const buffer = gl.createBuffer()!;
+        const buffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-        const posLoc = gl.getAttribLocation(this.program, "a_position");
+        let posLoc = gl.getAttribLocation(this.program, "a_position");
         gl.enableVertexAttribArray(posLoc);
         gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+    }
+
+    private initBuffers() {
+        const gl = this.gl;
+
+        // Resolution uniform buffer
+        let location = gl.getUniformLocation(this.program, "u_resolution");
+        if(location) this.resLoc = location;
+
+        // Data struct uniform buffer
+        let data_ubo = gl.createBuffer();
+        gl.bindBuffer(gl.UNIFORM_BUFFER, data_ubo);
+        // std140 is 16 byte aligned => needs padding
+        let data = new Float32Array([
+            1, 0, 0, 1,   // vec4 u_vec
+            0.5, 0, 0, 0  // float u_float + 3 padding
+        ]);
+        gl.bufferData(gl.UNIFORM_BUFFER, data, gl.STATIC_DRAW);
+        // Link to binding point
+        let blockIndex = gl.getUniformBlockIndex(this.program, "Data");
+        gl.uniformBlockBinding(this.program, blockIndex, 0);
+        gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, data_ubo);
+
+        // Texture buffer
+        let values = new Float32Array(gl.canvas.width * gl.canvas.height);
+        for (let i = 0; i < values.length; i++) {
+            values[i] = Math.random();
+        }
+        let tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, gl.canvas.width, gl.canvas.height, 0, gl.RED, gl.FLOAT, values);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        location = gl.getUniformLocation(this.program, "u_dataTex");
+        gl.uniform1i(location, 0);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+
     }
 
     public render(time: number) {
@@ -82,9 +122,7 @@ export class Renderer {
         gl.useProgram(this.program);
         gl.bindVertexArray(this.vao);
 
-        const resLoc = gl.getUniformLocation(this.program, "u_resolution");
-        gl.uniform2f(resLoc, gl.canvas.width, gl.canvas.height);
-
+        gl.uniform2f(this.resLoc, gl.canvas.width, gl.canvas.height);
 
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
