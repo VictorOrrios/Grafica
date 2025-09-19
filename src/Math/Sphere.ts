@@ -4,7 +4,7 @@ export class Sphere{
     public center: Vector3; // UCS Point
     public axis: Vector3; // Direction from center
     public reference: Vector3;  // UCS Point
-    public ecuatorDirection: Vector3;
+    public ecuatorDirection: Vector3; // NORMALIZED ecuator direction
 
     // Pre: center and axis are UCS coordinates, axis is a direction
     constructor(center: Vector3, axis: Vector3, reference: Vector3){
