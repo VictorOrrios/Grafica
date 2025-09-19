@@ -9,12 +9,13 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "devDependencies": {
     "live-server": "^1.2.2",
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "gl-matrix": "^3.4.4",
     "vite": "^7.1.4"
   }
 }

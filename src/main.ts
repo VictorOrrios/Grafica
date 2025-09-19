@@ -1,12 +1,14 @@
-import { Renderer } from "./renderer.js";
-import { Scene } from "./scene.js";
+import { Renderer } from "./renderer";
+import { Scene } from "./scene";
+import { Sphere } from './Math/Sphere'
+import { vec3 } from "gl-matrix";
 
 const fpsDisplay = document.getElementById('fps');
 const captureBtn = document.getElementById('capture');
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const mouse = document.getElementById('mouse');
 
-let needCapture:boolean = false;
+let needCapture: boolean = false;
 
 let lastFrameTime = performance.now();
 let frameCount = 0;
@@ -27,18 +29,18 @@ canvas.addEventListener('mousemove', (event) => {
     updateInfo(x, y);
 });
 
-if(captureBtn){
-    captureBtn.addEventListener('click', () => { 
-        needCapture=true; 
+if (captureBtn) {
+    captureBtn.addEventListener('click', () => {
+        needCapture = true;
     });
 }
 
-function updateInfo(x:number, y:number) {
-    if(mouse) mouse.textContent = `Mouse Position: X: ${x}, Y: ${y}`;
+function updateInfo(x: number, y: number) {
+    if (mouse) mouse.textContent = `Mouse Position: X: ${x}, Y: ${y}`;
 }
 
-function updateFPS(time:number) {
-    if(!fpsDisplay) return;
+function updateFPS(time: number) {
+    if (!fpsDisplay) return;
 
     frameCount++;
 
@@ -51,7 +53,7 @@ function updateFPS(time:number) {
 }
 
 
-function saveScreenshot(){
+function saveScreenshot() {
     if (!canvas) return;
 
     canvas.toBlob((blob) => {
@@ -75,6 +77,35 @@ function saveScreenshot(){
 
 // MAIN LOOP
 
+// P1
+try {
+    const testPlanetBasic: Sphere = new Sphere(
+        vec3.fromValues(0.0, 0.0, 0.0),
+        vec3.fromValues(0.0, 0.0, 2.0),
+        vec3.fromValues(1.0, 1.0, 0.0),
+    );
+    console.log("Basic planet:", testPlanetBasic.toString());
+
+    const testPlanetEdge: Sphere = new Sphere(
+        vec3.fromValues(0.0, 0.0, 0.0),
+        vec3.fromValues(0.0, 0.0, 2.0),
+        vec3.fromValues(0.9999999, 0.0, 0.0),
+    );
+
+    console.log("Edge planet:", testPlanetEdge.toString());
+
+    const testPlanetIllegal: Sphere = new Sphere(
+        vec3.fromValues(0.0, 0.0, 0.0),
+        vec3.fromValues(0.0, 0.0, 2.0),
+        vec3.fromValues(0.99998, 0.0, 0.0),
+    );
+
+    console.log("Illegal planet:", testPlanetIllegal.toString());
+} catch (err: any) {
+    console.error(err);
+}
+
+
 const gl = canvas.getContext("webgl2");
 if (!gl) throw new Error("WebGL2 not supported");
 
@@ -83,7 +114,7 @@ const renderer = new Renderer(gl, scene);
 await renderer.initialize();
 function loop(time: number) {
     renderer.render(time);
-    if(needCapture){
+    if (needCapture) {
         saveScreenshot();
         needCapture = false;
     }
