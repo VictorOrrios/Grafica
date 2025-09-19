@@ -79,13 +79,10 @@ function saveScreenshot() {
 
 // P1
 try {
-    const test:Vector3 = new Vector3(1.1,2.0,3.0);
-    console.log(test)
-
     const testPlanetBasic: Sphere = new Sphere(
         new Vector3(0.0, 0.0, 0.0),
         new Vector3(0.0, 0.0, 2.0),
-        new Vector3(1.0, 1.0, 0.0),
+        new Vector3(0.70710678, 0.0, 0.70710678),
     );
     console.log("Basic planet:", testPlanetBasic.toString());
 
@@ -94,8 +91,6 @@ try {
         new Vector3(0.0, 0.0, 2.0),
         new Vector3(0.9999999, 0.0, 0.0),
     );
-    console.log(testPlanetEdge.reference)
-
     console.log("Edge planet:", testPlanetEdge.toString());
 
     const testPlanetIllegal: Sphere = new Sphere(
@@ -103,7 +98,6 @@ try {
         new Vector3(0.0, 0.0, 2.0),
         new Vector3(0.999998, 0.0, 0.0),
     );
-
     console.log("Illegal planet:", testPlanetIllegal.toString());
 } catch (err: any) {
     console.error(err);

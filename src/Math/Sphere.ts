@@ -15,11 +15,12 @@ export class Sphere{
         let centerToReference:Vector3 = reference.clone().subtract(center);
 
         // Assert: mod(axis)/2 ~= |reference - center| => error =< 10^-6
-        if (axis.len() / 2 - centerToReference.len() > 1e-6){
-            throw Error("Error while constructing sphere: Reference isn't at radius distance from the center " + center + ", " + axis + ", " + reference);
+        if (Math.abs(axis.len() / 2 - centerToReference.len())  > 1e-6){
+            throw Error("Error while constructing sphere: Reference isn't at radius distance from the center: "
+                        + center + ", " + axis + ", " + reference);
         }
 
-        this.ecuatorDirection = axis.clone().cross(centerToReference.cross(axis));
+        this.ecuatorDirection = axis.clone().cross(centerToReference.cross(axis)).normalize();
     };
     
     public toString() : string {
