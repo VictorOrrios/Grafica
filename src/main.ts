@@ -1,7 +1,7 @@
 import { Renderer } from "./renderer";
 import { Scene } from "./scene";
 import { Sphere } from './Math/Sphere'
-import { vec3 } from "gl-matrix";
+import { Vector3 } from "math.gl";
 
 const fpsDisplay = document.getElementById('fps');
 const captureBtn = document.getElementById('capture');
@@ -80,24 +80,24 @@ function saveScreenshot() {
 // P1
 try {
     const testPlanetBasic: Sphere = new Sphere(
-        vec3.fromValues(0.0, 0.0, 0.0),
-        vec3.fromValues(0.0, 0.0, 2.0),
-        vec3.fromValues(1.0, 1.0, 0.0),
+        new Vector3(0.0, 0.0, 0.0),
+        new Vector3(0.0, 0.0, 2.0),
+        new Vector3(1.0, 1.0, 0.0),
     );
     console.log("Basic planet:", testPlanetBasic.toString());
 
     const testPlanetEdge: Sphere = new Sphere(
-        vec3.fromValues(0.0, 0.0, 0.0),
-        vec3.fromValues(0.0, 0.0, 2.0),
-        vec3.fromValues(0.9999999, 0.0, 0.0),
+        new Vector3(0.0, 0.0, 0.0),
+        new Vector3(0.0, 0.0, 2.0),
+        new Vector3(0.9999999, 0.0, 0.0),
     );
 
     console.log("Edge planet:", testPlanetEdge.toString());
 
     const testPlanetIllegal: Sphere = new Sphere(
-        vec3.fromValues(0.0, 0.0, 0.0),
-        vec3.fromValues(0.0, 0.0, 2.0),
-        vec3.fromValues(0.99998, 0.0, 0.0),
+        new Vector3(0.0, 0.0, 0.0),
+        new Vector3(0.0, 0.0, 2.0),
+        new Vector3(0.999998, 0.0, 0.0),
     );
 
     console.log("Illegal planet:", testPlanetIllegal.toString());
