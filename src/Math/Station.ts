@@ -1,4 +1,4 @@
-import { Matrix4, Vector3 } from "math.gl";
+import { Matrix4, Vector3, Matrix3 } from "math.gl";
 import { Sphere } from "./Sphere";
 
 export class Station {
@@ -7,13 +7,18 @@ export class Station {
     public planet: Sphere; // Sphere where the station is located
 
     public UCS_pos: Vector3; // Position in UCS coordinates
+    public coord_sys: {
+        normal: Vector3,
+        long_tangent: Vector3,
+        lat_tangent: Vector3
+    }
 
     private calculate_UCS_pos(): Vector3 {
         // To calculate the UCS position:
-        // 1) Rotate (1, 0, 0) by azimuth around Z axis (Z axis = sphere axis)
-        let z_rotated = new Vector3(1, 0, 0).rotateZ({radians: this.azimuth});
-        // 2) Rotate z_rotated by polar around X axis (X axis = equator direction)
-        let UCS_0_0_0_std_base = z_rotated.rotateX({radians: this.polar});
+        // 1) Rotate (0, 0, 1) by polar around X axis (X axis = ecuator direction)
+        let x_rotated = new Vector3(0, 0, 1).rotateX({radians: this.polar});
+        // 2) Rotate x_rotated by azimuth around Z axis (Z axis = planet axis)
+        let UCS_0_0_0_std_base = x_rotated.rotateZ({radians: this.azimuth});
         // 3) Now, we perform the base change: from standard basis to (equatorDirection, normalizedOrtEquator, normalizedAxis)
         let normalizedAxis = this.planet.axis.clone().normalize();
         // We are multiplying two unit vectors, so the result is already normalized
@@ -25,7 +30,35 @@ export class Station {
                 this.planet.ecuatorDirection.z, normalizedOrtEquator.z, normalizedAxis.z, this.planet.center.z,
                 0, 0, 0, 1
         )
+        console.log(UCS_0_0_0_std_base.toString());
         return UCS_0_0_0_std_base.transform(m);
+    }
+
+    // Pre: this.UCS_pos is already calculated
+    // Post: returns normalized basis for the current station
+    private calculate_station_basis(): {
+        normal: Vector3,
+        long_tangent: Vector3,
+        lat_tangent: Vector3
+    } {
+        // 1) To calculate the station basis:, we can first calculate the normal vector (which points from
+        // the sphere/planet center to the station coordinates)
+        let normal = this.UCS_pos.clone().subtract(this.planet.center);
+        normal.normalize();
+        // 2) Now, to calculate the longitude tangent vector, since we know it has to be
+        // perpendicular to both the normal vector and the planet's axis, we compute the cross
+        // product between these two
+        // Thumb rule: normal = index finger, axis = middle finger, thumb will point to the positive increase of the azimuth
+        let long_tangent = normal.clone().cross(this.planet.axis);
+        long_tangent.normalize();
+        // 3) Finally, to calculate the latitude tangent vector, we compute the cross product
+        // between the normal and the long_tangent (no need to normalize again since both are already normalized)
+        let lat_tangent = normal.clone().cross(long_tangent);
+        // 3.1) Now, lat_tangent will point to the positive increase of the polar; we have to change its orientation
+        lat_tangent.scale(-1);
+        return {
+            normal, long_tangent, lat_tangent
+        };
     }
 
     constructor(polar: number, azimuth: number, planet: Sphere){
@@ -35,5 +68,13 @@ export class Station {
 
         // To calculate the position
         this.UCS_pos = this.calculate_UCS_pos();
+        this.coord_sys = this.calculate_station_basis();
+    }
+
+    public toString() : string {
+        return 'UCS_position: '+this.UCS_pos.toString() + 
+                ' coord_sys.normal: '+this.coord_sys.normal.toString() +
+                ' coord_sys.long_tangent: '+this.coord_sys.long_tangent.toString() +
+                ' coord_sys.lat_tangent: '+this.coord_sys.lat_tangent.toString();
     }
 }

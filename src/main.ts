@@ -2,6 +2,7 @@ import { Renderer } from "./renderer";
 import { Scene } from "./scene";
 import { Sphere } from './Math/Sphere'
 import { Vector3 } from "math.gl";
+import { Station } from "./Math/Station";
 
 const fpsDisplay = document.getElementById('fps');
 const captureBtn = document.getElementById('capture');
@@ -77,7 +78,9 @@ function saveScreenshot() {
 
 // MAIN LOOP
 
-// P1
+console.log("HOLA?????")
+
+// P1, planets
 try {
     const testPlanetBasic: Sphere = new Sphere(
         new Vector3(0.0, 0.0, 0.0),
@@ -99,7 +102,29 @@ try {
         new Vector3(0.999998, 0.0, 0.0),
     );
     console.log("Illegal planet:", testPlanetIllegal.toString());
+
 } catch (err: any) {
+    console.error(err);
+}
+
+// P1, stations
+try {
+    // Station testing
+    const testPlanetStation: Sphere = new Sphere(
+        new Vector3(0.0, 0.0, 0.0),
+        new Vector3(0.0, 0.0, 2.0),
+        new Vector3(0.0, 0.70710678, 0.70710678)
+    );
+
+    const testStation: Station = new Station(
+        Math.PI / 4, // 45 degrees
+        Math.PI / 4,  // 45 degrees
+        testPlanetStation
+    );
+
+    console.log('Test station planet:', testPlanetStation.toString());
+    console.log('Test station:', testStation.toString());
+} catch(err: any) {
     console.error(err);
 }
 
