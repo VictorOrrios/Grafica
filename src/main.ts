@@ -110,20 +110,36 @@ try {
 // P1, stations
 try {
     // Station testing
-    const testPlanetStation: Sphere = new Sphere(
+    const testPlanetStation1: Sphere = new Sphere(
         new Vector3(0.0, 0.0, 0.0),
         new Vector3(0.0, 0.0, 2.0),
         new Vector3(0.0, 0.70710678, 0.70710678)
     );
 
-    const testStation: Station = new Station(
+    const testStation1: Station = new Station(
         Math.PI / 4, // 45 degrees
         Math.PI / 4,  // 45 degrees
-        testPlanetStation
+        testPlanetStation1
     );
 
-    console.log('Test station planet:', testPlanetStation.toString());
-    console.log('Test station:', testStation.toString());
+    console.log('Test station planet (1):', testPlanetStation1.toString());
+    console.log('Test station (1):', testStation1.toString());
+
+    // Station testing
+    const testPlanetStation2: Sphere = new Sphere(
+        new Vector3(0.0, 0.0, 0.0),
+        new Vector3(0.0, 0.0, 4.0),
+        new Vector3(0.0, 0.70710678 * 2, 0.70710678 * 2)
+    );
+
+    const testStation2: Station = new Station(
+        Math.PI / 4, // 45 degrees
+        Math.PI / 4,  // 45 degrees
+        testPlanetStation2
+    );
+
+    console.log('Test station planet (2):', testPlanetStation2.toString());
+    console.log('Test station (2):', testStation2.toString());
 } catch(err: any) {
     console.error(err);
 }
