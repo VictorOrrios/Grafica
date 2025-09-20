@@ -16,7 +16,7 @@ export class Station {
     private calculate_UCS_pos(): Vector3 {
         // To calculate the UCS position:
         // 1) Rotate (0, 0, 1) by polar around X axis (X axis = ecuator direction)
-        let x_rotated = new Vector3(0, 0, 1).rotateX({radians: this.polar});
+        let x_rotated = new Vector3(0, 0, this.planet.radius).rotateX({radians: this.polar});
         // 2) Rotate x_rotated by azimuth around Z axis (Z axis = planet axis)
         let UCS_0_0_0_std_base = x_rotated.rotateZ({radians: this.azimuth});
         // 3) Now, we perform the base change: from standard basis to (equatorDirection, normalizedOrtEquator, normalizedAxis)
