@@ -48,14 +48,12 @@ export class Station {
         // 2) Now, to calculate the longitude tangent vector, since we know it has to be
         // perpendicular to both the normal vector and the planet's axis, we compute the cross
         // product between these two
-        // Thumb rule: normal = index finger, axis = middle finger, thumb will point to the positive increase of the azimuth
-        let long_tangent = normal.clone().cross(this.planet.axis);
+        // Thumb rule: axis = index finger, normal = middle finger, thumb will point to the positive increase of the azimuth
+        let long_tangent = this.planet.axis.clone().cross(normal);
         long_tangent.normalize();
         // 3) Finally, to calculate the latitude tangent vector, we compute the cross product
         // between the normal and the long_tangent (no need to normalize again since both are already normalized)
         let lat_tangent = normal.clone().cross(long_tangent);
-        // 3.1) Now, lat_tangent will point to the positive increase of the polar; we have to change its orientation
-        lat_tangent.scale(-1);
         return {
             normal, long_tangent, lat_tangent
         };
