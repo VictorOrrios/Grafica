@@ -78,8 +78,6 @@ function saveScreenshot() {
 
 // MAIN LOOP
 
-console.log("HOLA?????")
-
 // P1, planets
 try {
     const testPlanetBasic: Sphere = new Sphere(
@@ -117,29 +115,32 @@ try {
     );
 
     const testStation1: Station = new Station(
-        Math.PI / 4, // 45 degrees
-        Math.PI / 4,  // 45 degrees
+        Math.PI/4,  // 45 degrees
+        Math.PI/4,  // 45 degrees
         testPlanetStation1
     );
+    
 
     console.log('Test station planet (1):', testPlanetStation1.toString());
     console.log('Test station (1):', testStation1.toString());
 
     // Station testing
     const testPlanetStation2: Sphere = new Sphere(
-        new Vector3(0.0, 0.0, 0.0),
+        new Vector3(0.0, 10.0, 0.0),
         new Vector3(0.0, 0.0, 4.0),
-        new Vector3(0.0, 0.70710678 * 2, 0.70710678 * 2)
+        new Vector3(2.0, 10.0, 0.0)
     );
 
     const testStation2: Station = new Station(
-        Math.PI / 4, // 45 degrees
-        Math.PI / 4,  // 45 degrees
+        0,
+        -Math.PI/2,  // -90 degrees
         testPlanetStation2
     );
 
     console.log('Test station planet (2):', testPlanetStation2.toString());
     console.log('Test station (2):', testStation2.toString());
+
+    testStation1.establishLink(testStation2);
 } catch(err: any) {
     console.error(err);
 }

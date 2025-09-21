@@ -7,7 +7,7 @@ export class Sphere{
     public ecuatorDirection: Vector3; // NORMALIZED ecuator direction
     public radius: number; // Sphere radius
 
-    // Pre: center and axis are UCS coordinates, axis is a direction
+    // Pre: center and axis are UCS coordinates, axis is a direction. Reference can't be on the north pole
     constructor(center: Vector3, axis: Vector3, reference: Vector3){
         this.center = center;
         this.axis = axis;
