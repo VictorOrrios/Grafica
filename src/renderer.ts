@@ -12,6 +12,8 @@ export class Renderer {
     private program!: WebGLProgram;
     private vao!: WebGLVertexArrayObject;
     private resLoc!: WebGLUniformLocation;
+    private vertexShader!:WebGLShader;
+    private fragmentShader!:WebGLShader;
 
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
@@ -30,12 +32,12 @@ export class Renderer {
         const vertexSource = await loadShaderSource("./shaders/vertex.glsl");
         const fragmentSource = await loadShaderSource("./shaders/fragment.glsl");
 
-        const vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexSource);
-        const fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentSource);
+        this.vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexSource);
+        this.fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentSource);
 
         const program = this.gl.createProgram()!;
-        this.gl.attachShader(program, vertexShader);
-        this.gl.attachShader(program, fragmentShader);
+        this.gl.attachShader(program, this.vertexShader);
+        this.gl.attachShader(program, this.fragmentShader);
         this.gl.linkProgram(program);
 
         if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
@@ -77,6 +79,7 @@ export class Renderer {
 
     private initBuffers() {
         const gl = this.gl;
+        gl.useProgram(this.program);
 
         // Resolution uniform buffer
         let location = gl.getUniformLocation(this.program, "u_resolution");
@@ -107,6 +110,7 @@ export class Renderer {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         location = gl.getUniformLocation(this.program, "u_dataTex");
+        if(!location) console.warn("getUniformLocation returned null at u_dataTex");
         gl.uniform1i(location, 0);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -125,5 +129,11 @@ export class Renderer {
         gl.uniform2f(this.resLoc, gl.canvas.width, gl.canvas.height);
 
         gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    public getInfo(){
+        console.log(this.gl.getProgramInfoLog(this.program));
+        console.log(this.gl.getShaderInfoLog(this.vertexShader));
+        console.log(this.gl.getShaderInfoLog(this.fragmentShader));
     }
 }
