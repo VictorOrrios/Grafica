@@ -13,7 +13,8 @@ layout(std140) uniform Data {
 };
 
 // Texture data
-uniform sampler2D u_dataTex;
+
+uniform sampler2D texture_buffer;
 
 void main() {
     vec2 uv = gl_FragCoord.xy / u_resolution;
@@ -22,9 +23,13 @@ void main() {
 
     //outColor = vec4(u_vec);
 
-    vec4 uv_pixel = texture(u_dataTex, uv);
-    outColor = uv_pixel;
+    //vec4 uv_pixel = texture(u_dataTex, uv);
+    //outColor = uv_pixel;
 
-    int i = 0;
-    if(uv.x <= 0.5) outColor = texelFetch(u_dataTex, ivec2(i,0), 0);;
+    //int i = 0;
+    //if(uv.x <= 0.5) outColor = texelFetch(u_dataTex, ivec2(i,0), 0);
+
+    vec4 texture_pixel = texture(texture_buffer, uv);
+
+    outColor = texture_pixel;
 }

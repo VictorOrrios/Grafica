@@ -24,7 +24,7 @@ export class Renderer {
     public async initialize() {
         this.program = await this.initShaders();
         this.initQuad();
-        this.initBuffers();
+        await this.initBuffers();
     }
 
 
@@ -77,7 +77,7 @@ export class Renderer {
         gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
     }
 
-    private initBuffers() {
+    private async initBuffers() {
         const gl = this.gl;
         gl.useProgram(this.program);
 
@@ -100,17 +100,18 @@ export class Renderer {
         gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, data_ubo);
 
         // Texture buffer
-        let values = new Float32Array(gl.canvas.width * gl.canvas.height);
+        //console.log(await loadImage())
+        let values = new Float32Array(gl.canvas.width * gl.canvas.height * 4);
         for (let i = 0; i < values.length; i++) {
             values[i] = Math.random();
         }
         let tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, gl.canvas.width, gl.canvas.height, 0, gl.RED, gl.FLOAT, values);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, gl.canvas.width, gl.canvas.height, 0, gl.RGBA, gl.FLOAT, values);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        location = gl.getUniformLocation(this.program, "u_dataTex");
-        if(!location) console.warn("getUniformLocation returned null at u_dataTex");
+        location = gl.getUniformLocation(this.program, "texture_buffer");
+        if(!location) console.warn("getUniformLocation returned null at texture_buffer");
         gl.uniform1i(location, 0);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
