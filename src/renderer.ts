@@ -1,3 +1,4 @@
+import { loadEXRImage } from "./loader";
 import { Scene } from "./scene";
 
 async function loadShaderSource(url: string): Promise<string> {
@@ -100,14 +101,18 @@ export class Renderer {
         gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, data_ubo);
 
         // Texture buffer
-        //console.log(await loadImage())
+        /*
         let values = new Float32Array(gl.canvas.width * gl.canvas.height * 4);
         for (let i = 0; i < values.length; i++) {
             values[i] = Math.random();
         }
+        */
+
+        const image = await loadEXRImage("outdoor_chapel_2k.exr",1.0)
+
         let tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, gl.canvas.width, gl.canvas.height, 0, gl.RGBA, gl.FLOAT, values);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, image.width, image.height, 0, gl.RGBA, gl.FLOAT, image.data);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         location = gl.getUniformLocation(this.program, "texture_buffer");
@@ -138,3 +143,4 @@ export class Renderer {
         console.log(this.gl.getShaderInfoLog(this.fragmentShader));
     }
 }
+

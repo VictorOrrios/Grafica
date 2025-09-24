@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "math.gl": "^4.1.0",
+    "parse-exr": "^1.0.2",
     "vite": "^7.1.4"
   }
 }

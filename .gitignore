@@ -33,3 +33,9 @@ Thumbs.db
 
 # Misc
 coverage/
+
+# Static files
+*.png
+*.jpeg
+*.hdr
+*.exr
