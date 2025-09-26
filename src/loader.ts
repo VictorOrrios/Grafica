@@ -118,7 +118,7 @@ Promise<{ data: Uint8Array; width: number; height: number; }>{
         acesFilm(realData);
         clamp(realData);
     */    
-    reinhard(realData)
+    reinhard(realData, 0.78)
     clamp(realData);
     correctGamma(realData, 1/2.2);
 
