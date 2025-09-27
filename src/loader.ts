@@ -47,6 +47,8 @@ function acesFilm(data:Float32Array){
     data.forEach((v,i) => data[i] = (v*(a*v+b))/(v*(c*v+d)+e));
 }
 
+// Computes relative luminance (CIE Y) from linear RGB
+// http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
 function computeLuminance(data:Float32Array):Float32Array {
   const N = data.length / 3;
   const L = new Float32Array(N);
@@ -64,12 +66,13 @@ function reinhard(data: Float32Array, key_value: number = 0.18) {
     // 1) Compute log-average luminance
     const N = data.length/3;
     const delta = 1e-5;
+    const epsilon = 1e-8;
     const L = computeLuminance(data);
-    const sum = L.reduce((prev,curr,i,arr) => prev + Math.max(Math.log(curr),delta), 0);
-    console.log("sum:",sum)
-    const log_avg_luminance = Math.exp(sum / N);
-    
-    console.log("log_avg_luminance:", log_avg_luminance)
+    let sum = 0;
+    for (let i = 0; i < L.length; i++) {
+        sum += Math.log(delta + L[i]);
+    }
+    const log_avg_luminance = Math.exp(sum / L.length);
 
     // 2) Compute scaled luminance
     const scaled_luminance = L.map((v,i) => (key_value/log_avg_luminance) * v);
@@ -79,9 +82,10 @@ function reinhard(data: Float32Array, key_value: number = 0.18) {
 
     // 4) Apply computed luminance
     for(let i = 0; i<Ld.length; i++){
-        data[i*3] *= Ld[i]
-        data[i*3 + 1] *= Ld[i]
-        data[i*3 + 2] *= Ld[i]
+        const scale = Ld[i] / (L[i] + epsilon);
+        data[i*3] *= scale
+        data[i*3 + 1] *= scale
+        data[i*3 + 2] *= scale
     }
 }
 
@@ -112,13 +116,10 @@ Promise<{ data: Uint8Array; width: number; height: number; }>{
     const maxV = getMaxValue(realData)
     console.log("=== MAX VALUE:", maxV)
 
-    //equalize(data, maxV);
+    //equalizeAndClamp(data, maxV);
     //equalizeAndClamp(realData, 5);
-    /*
-        acesFilm(realData);
-        clamp(realData);
-    */    
-    reinhard(realData, 0.78)
+    //acesFilm(realData);
+    reinhard(realData, 0.18)
     clamp(realData);
     correctGamma(realData, 1/2.2);
 

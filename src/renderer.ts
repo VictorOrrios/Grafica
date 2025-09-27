@@ -101,14 +101,17 @@ export class Renderer {
         gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, data_ubo);
 
         // Texture buffer
+        
         /*
+        // Random values for testing
         let values = new Float32Array(gl.canvas.width * gl.canvas.height * 4);
         for (let i = 0; i < values.length; i++) {
             values[i] = Math.random();
         }
         */
 
-        const image = await loadEXRImage("pisztyk_2k.exr",1.0)
+        // Image download: https://polyhaven.com/a/little_paris_eiffel_tower
+        const image = await loadEXRImage("little_paris_eiffel_tower_4k.exr",1.0)
 
         let tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
