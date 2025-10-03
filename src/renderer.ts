@@ -111,7 +111,12 @@ export class Renderer {
         */
 
         // Image download: https://polyhaven.com/a/little_paris_eiffel_tower
-        const image = await loadEXRImage("little_paris_eiffel_tower_4k.exr",1.0)
+        //const image = await loadEXRImage("pisztyk_2k.exr",1.0)
+        const image = {
+            data:new Uint8Array(),
+            width:0,
+            height:0
+        }
 
         let tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -123,6 +128,32 @@ export class Renderer {
         gl.uniform1i(location, 0);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
+
+        const sphereVec = gl.createTexture();
+        const sphereData = this.scene.serializeSphereVec();
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, sphereVec);
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,                        
+            gl.R32F,    
+            sphereData.length, 1,     // width = n, height = 1
+            0,                        
+            gl.RED,                  
+            gl.FLOAT,                 
+            sphereData                
+        );
+
+        location = gl.getUniformLocation(this.program, "sphere_vector");
+        if(!location) console.warn("sphere_vector location returned null");
+        gl.uniform1i(location, 1);
+
 
     }
 

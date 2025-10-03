@@ -1,6 +1,6 @@
 import { Renderer } from "./renderer";
 import { Scene } from "./scene";
-import { Sphere } from './Math/Sphere'
+import { Planet } from './Math/Planet'
 import { Vector3 } from "math.gl";
 import { Station } from "./Math/Station";
 
@@ -78,23 +78,24 @@ function saveScreenshot() {
 
 // MAIN LOOP
 
+/*
 // P1, planets
 try {
-    const testPlanetBasic: Sphere = new Sphere(
+    const testPlanetBasic: Planet = new Planet(
         new Vector3(0.0, 0.0, 0.0),
         new Vector3(0.0, 0.0, 2.0),
         new Vector3(0.70710678, 0.0, 0.70710678),
     );
     console.log("Basic planet:", testPlanetBasic.toString());
 
-    const testPlanetEdge: Sphere = new Sphere(
+    const testPlanetEdge: Planet = new Planet(
         new Vector3(0.0, 0.0, 0.0),
         new Vector3(0.0, 0.0, 2.0),
         new Vector3(0.9999999, 0.0, 0.0),
     );
     console.log("Edge planet:", testPlanetEdge.toString());
 
-    const testPlanetIllegal: Sphere = new Sphere(
+    const testPlanetIllegal: Planet = new Planet(
         new Vector3(0.0, 0.0, 0.0),
         new Vector3(0.0, 0.0, 2.0),
         new Vector3(0.999998, 0.0, 0.0),
@@ -108,7 +109,7 @@ try {
 // P1, stations
 try {
     // Station testing
-    const testPlanetStation1: Sphere = new Sphere(
+    const testPlanetStation1: Planet = new Planet(
         new Vector3(0.0, 0.0, 0.0),
         new Vector3(0.0, 0.0, 2.0),
         new Vector3(0.0, 0.70710678, 0.70710678)
@@ -125,7 +126,7 @@ try {
     console.log('Test station (1):', testStation1.toString());
 
     // Station testing
-    const testPlanetStation2: Sphere = new Sphere(
+    const testPlanetStation2: Planet = new Planet(
         new Vector3(0.0, 10.0, 0.0),
         new Vector3(0.0, 0.0, 4.0),
         new Vector3(2.0, 10.0, 0.0)
@@ -144,10 +145,12 @@ try {
 } catch(err: any) {
     console.error(err);
 }
-
+*/
 
 const gl = canvas.getContext("webgl2");
 if (!gl) throw new Error("WebGL2 not supported");
+const ext = gl.getExtension('EXT_color_buffer_float');
+if (!ext) throw new Error('EXT_color_buffer_float not supported');
 
 const scene = new Scene();
 const renderer = new Renderer(gl, scene);

@@ -1,5 +1,5 @@
 import { Matrix4, Vector3, Matrix3 } from "math.gl";
-import { Sphere } from "./Sphere";
+import { Planet } from "./Planet";
 import { createBaseMatrix, printMatrix4 } from "./Bases";
 
 export type coordinate_system = {
@@ -13,7 +13,7 @@ export class Station {
     // 0º polar and 0º azymuth is +X (ecuator), +Polar goes to +Z (North Pole) and +Azymuth to +Y (East)
     public polar: number; // Angle in radians
     public azimuth: number; // Angle in radians
-    public planet: Sphere; // Sphere where the station is located
+    public planet: Planet; // Sphere where the station is located
 
     public UCS_pos: Vector3; // Position in UCS coordinates
     public coord_sys:coordinate_system 
@@ -55,7 +55,7 @@ export class Station {
         };
     }
 
-    constructor(polar: number, azimuth: number, planet: Sphere){
+    constructor(polar: number, azimuth: number, planet: Planet){
         this.polar = polar;
         this.azimuth = azimuth;
         this.planet = planet;
