@@ -8,23 +8,29 @@ async function loadShaderSource(url: string): Promise<string> {
     return await response.text();
 }
 
+type buffer_locations = {
+    time:WebGLUniformLocation,
+    resolution:WebGLUniformLocation,
+}
+
 export class Renderer {
     private gl: WebGL2RenderingContext;
     private scene: Scene;
     private program!: WebGLProgram;
     private vao!: WebGLVertexArrayObject;
-    private resLoc!: WebGLUniformLocation;
     private vertexShader!:WebGLShader;
     private fragmentShader!:WebGLShader;
-
+    private buffLoc:buffer_locations;
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
         this.gl = gl;
         this.scene = scene;
+        this.buffLoc = {} as buffer_locations;
     }
 
     public async initialize() {
         this.program = await this.initShaders();
+        this.gl.useProgram(this.program);
         this.initQuad();
         await this.initBuffers();
     }
@@ -80,81 +86,9 @@ export class Renderer {
     }
 
     private async initBuffers() {
-        const gl = this.gl;
-        gl.useProgram(this.program);
-
-        // Resolution uniform buffer
-        let location = gl.getUniformLocation(this.program, "u_resolution");
-        if(location) this.resLoc = location;
-
-        // Data struct uniform buffer
-        let data_ubo = gl.createBuffer();
-        gl.bindBuffer(gl.UNIFORM_BUFFER, data_ubo);
-        // std140 is 16 byte aligned => needs padding
-        let data = new Float32Array([
-            1, 0, 0, 1,   // vec4 u_vec
-            0.5, 0, 0, 0  // float u_float + 3 padding
-        ]);
-        gl.bufferData(gl.UNIFORM_BUFFER, data, gl.STATIC_DRAW);
-        // Link to binding point
-        let blockIndex = gl.getUniformBlockIndex(this.program, "Data");
-        gl.uniformBlockBinding(this.program, blockIndex, 0);
-        gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, data_ubo);
-
-        // Texture buffer
-        
-        /*
-        // Random values for testing
-        let values = new Float32Array(gl.canvas.width * gl.canvas.height * 4);
-        for (let i = 0; i < values.length; i++) {
-            values[i] = Math.random();
-        }
-        */
-
-        // Image download: https://polyhaven.com/a/little_paris_eiffel_tower
-        //const image = await loadEXRImage("pisztyk_2k.exr",1.0)
-        const image = {
-            data:new Uint8Array(),
-            width:0,
-            height:0
-        }
-
-        let tex = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, image.width, image.height, 0, gl.RGB, gl.UNSIGNED_BYTE, image.data);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        location = gl.getUniformLocation(this.program, "texture_buffer");
-        if(!location) console.warn("getUniformLocation returned null at texture_buffer");
-        gl.uniform1i(location, 0);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-
-        
         this.initCamera();
-
+        this.initUniforms();
         this.initSphereVector();
-
-    }
-
-    public render(time: number) {
-        const gl = this.gl;
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        gl.clearColor(0, 0, 0, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        gl.useProgram(this.program);
-        gl.bindVertexArray(this.vao);
-
-        gl.uniform2f(this.resLoc, gl.canvas.width, gl.canvas.height);
-
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-    }
-
-    public getInfo(){
-        console.log(this.gl.getProgramInfoLog(this.program));
-        console.log(this.gl.getShaderInfoLog(this.vertexShader));
-        console.log(this.gl.getShaderInfoLog(this.fragmentShader));
     }
 
     private initCamera(){
@@ -162,16 +96,41 @@ export class Renderer {
         let camera_ubo = gl.createBuffer();
         gl.bindBuffer(gl.UNIFORM_BUFFER, camera_ubo);
         // std140 is 16 BYTE aligned
-        let data = new Float32Array(24);
+        let data = new Float32Array(20);
         data.set(this.scene.camera.view_inv,0);
         data.set(this.scene.camera.position,16);
-        data[20] = this.scene.camera.fov;
+        data[19] = this.scene.camera.tan_fov;
+        console.log("DATA",data)
         gl.bufferData(gl.UNIFORM_BUFFER, data, gl.STATIC_DRAW);
         // Link to binding point
         let blockIndex = gl.getUniformBlockIndex(this.program, "Camera");
         gl.uniformBlockBinding(this.program, blockIndex, 0);
         gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, camera_ubo);
+        const blockSize = gl.getActiveUniformBlockParameter(
+            this.program, blockIndex, gl.UNIFORM_BLOCK_DATA_SIZE
+        );
+        console.log("Camera UBO size:", blockSize);
     }
+
+    private initUniforms(){
+        const gl = this.gl;
+
+        let location;
+
+        // Current time uniform
+        location = gl.getUniformLocation(this.program, "time");
+        if(location) this.buffLoc.time = location;
+
+        // Resolution uniform buffer
+        location = gl.getUniformLocation(this.program, "resolution");
+        if(location) this.buffLoc.resolution = location;
+
+
+        // Shape counts uniform buffers
+        location = gl.getUniformLocation(this.program, "sphere_num");
+        gl.uniform1f(location, this.scene.sphereVec.length);
+        
+    }    
 
     private initSphereVector(){
         const gl = this.gl;
@@ -199,6 +158,53 @@ export class Renderer {
         let location = gl.getUniformLocation(this.program, "sphere_vector");
         if(!location) console.warn("sphere_vector location returned null");
         gl.uniform1i(location, 1);
+    }
+
+    // Used in P2, look at for reference in future upgrades
+    private initImageBuffer(){
+        const gl = this.gl;
+        // Image download: https://polyhaven.com/a/little_paris_eiffel_tower
+        //const image = await loadEXRImage("pisztyk_2k.exr",1.0)
+        const image = {
+            data:new Uint8Array(),
+            width:0,
+            height:0
+        }
+
+        let tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, image.width, image.height, 0, gl.RGB, gl.UNSIGNED_BYTE, image.data);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        let location = gl.getUniformLocation(this.program, "texture_buffer");
+        if(!location) console.warn("getUniformLocation returned null at texture_buffer");
+        gl.uniform1i(location, 0);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+    }
+
+    private updateBuffers(time: number){
+        const gl = this.gl;
+
+        // Time buffer
+        gl.uniform1f(this.buffLoc.time, time);
+
+        // Resolution buffer
+        gl.uniform2f(this.buffLoc.resolution, gl.canvas.width, gl.canvas.height);
+    }
+
+    public render(time: number) {
+        const gl = this.gl;
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.useProgram(this.program);
+        gl.bindVertexArray(this.vao);
+
+        this.updateBuffers(time);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 }
 

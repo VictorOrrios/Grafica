@@ -1,8 +1,15 @@
 #version 300 es
 precision highp float;
 
+//===========================
+// Global constants
+//===========================
 #define ray_min_distance 0.0001
 #define ray_max_distance 10000.0
+
+//===========================
+// Type definitions
+//===========================
 
 #define Sphere_size  4;
 struct Sphere {
@@ -16,29 +23,40 @@ struct Ray {
 };
 
 
+//===========================
+// External variable definitions
+//===========================
 out vec4 outColor;
 
 layout(std140) uniform Camera {
-    mat4 cam_view_inv;
-    vec3 cam_position;
-    float cam_fov;
-};
+    mat4 view_inv;
+    vec4 position_fov;
+} cam;
 
-// Normal uniform
-uniform vec2 u_resolution;
-
-// Block uniform
-layout(std140) uniform Data {
-    vec4 u_vec;
-    float u_float;
-};
-
-// Texture data
-
-uniform sampler2D texture_buffer;
+uniform float time;
+uniform vec2 resolution;
+uniform vec2 sphere_num;
 
 uniform sampler2D sphere_vector;
 
+
+//===========================
+// Sphere definitions
+//===========================
+
+// Sphere vector parser
+Sphere getSphere(int index){
+    int n_index = index*Sphere_size;
+    Sphere ret = Sphere(
+        vec3(
+            texelFetch(sphere_vector, ivec2(n_index,0), 0).r,
+            texelFetch(sphere_vector, ivec2(n_index+1,0), 0).r,
+            texelFetch(sphere_vector, ivec2(n_index+2,0), 0).r
+        ), 
+        texelFetch(sphere_vector, ivec2(n_index+3,0), 0).r
+    );
+    return ret;
+}
 
 // PRE r.dir is already normalized
 float hit_sphere(const Sphere s, const Ray r){
@@ -63,36 +81,33 @@ float hit_sphere(const Sphere s, const Ray r){
 }
 
 
-Sphere getSphere(int index){
-    int n_index = index*Sphere_size;
-    Sphere ret = Sphere(
-        vec3(
-            texelFetch(sphere_vector, ivec2(n_index,0), 0).r,
-            texelFetch(sphere_vector, ivec2(n_index+1,0), 0).r,
-            texelFetch(sphere_vector, ivec2(n_index+2,0), 0).r
-        ), 
-        texelFetch(sphere_vector, ivec2(n_index+3,0), 0).r
-    );
-    return ret;
-}
 
+//===========================
+// Ray functions
+//===========================
+
+// Generates a ray pointing to the pixel this thread is assigned with
 Ray get_ray(){
-    vec2 pixelCoordsOffset = gl_FragCoord.xy;
+    // TODO: Add half pixel square offset
+    vec2 uv = gl_FragCoord.xy / resolution;
 
-    float ndcX = 2.0 * pixelCoordsOffset.x / u_resolution.x - 1.0;
-    float ndcY = 1.0 - 2.0 * pixelCoordsOffset.y / u_resolution.y;
-    float aspectRatio = float(u_resolution.x)/float(u_resolution.y);
+    // Calculate offsets
+    float ndcX = 2.0 * uv.x - 1.0;
+    float ndcY = 2.0 * uv.y - 1.0;
+    float aspectRatio = float(resolution.x)/float(resolution.y);
 
+    // Ray from 0,0,0 to +z + offsets
     vec3 rayDirCameraSpace = normalize(vec3(
-        ndcX * aspectRatio * cam_fov,
-        ndcY * cam_fov,
+        ndcX * aspectRatio * cam.position_fov.a,
+        ndcY * cam.position_fov.a,
         -1.0
     ));
 
-    vec3 rayDir = normalize(vec3(cam_view_inv * vec4(rayDirCameraSpace, 0.0)));
+    // Tranformed to camera base
+    vec3 rayDir = normalize(vec3(cam.view_inv * vec4(rayDirCameraSpace, 0.0)));
 
     Ray ray;
-    ray.orig = cam_position;
+    ray.orig = cam.position_fov.xyz;
     ray.dir = rayDir;
 
     return ray;
@@ -102,24 +117,13 @@ Ray get_ray(){
 
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / u_resolution;
-
-    //outColor = vec4(uv.x, 0.5, 1.0 - uv.y, 1.0);
-
-    //outColor = vec4(u_vec);
-
-    //vec4 uv_pixel = texture(u_dataTex, uv);
-    //outColor = uv_pixel;
-
-    //int i = 0;
-    //if(uv.x <= 0.5) outColor = texelFetch(u_dataTex, ivec2(i,0), 0);
-
-    //vec4 texture_pixel = texture(texture_buffer, uv);
+    // TODO: Initialize the seed of the random system
 
     Sphere s1 = getSphere(0);
-    Ray r = Ray(vec3(0.0,0.0,0.0),vec3(0.0,0.0,1.0));
-    r = get_ray();
+    Ray r = get_ray();
     float t = hit_sphere(s1,r);
+
+    // TODO: Display shape pure albedo instead of error codes
     if(t < 0.0){
         if(t <= -3.0){
             // Boundary
@@ -135,6 +139,4 @@ void main() {
         outColor = vec4(0.07f, 1.0f, 0.0f, 1.0f);
     }
 
-    outColor = vec4(r.dir,1.0);
-    //outColor = vec4(s1.center,1.0);
 }
