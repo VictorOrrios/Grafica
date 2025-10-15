@@ -1,3 +1,4 @@
+import { Matrix4, Vector3 } from "math.gl";
 import { loadEXRImage } from "./loader";
 import { Scene } from "./scene";
 
@@ -129,31 +130,10 @@ export class Renderer {
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
 
-        const sphereVec = gl.createTexture();
-        const sphereData = this.scene.serializeSphereVec();
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, sphereVec);
+        
+        this.initCamera();
 
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        gl.texImage2D(
-            gl.TEXTURE_2D,
-            0,                        
-            gl.R32F,    
-            sphereData.length, 1,     // width = n, height = 1
-            0,                        
-            gl.RED,                  
-            gl.FLOAT,                 
-            sphereData                
-        );
-
-        location = gl.getUniformLocation(this.program, "sphere_vector");
-        if(!location) console.warn("sphere_vector location returned null");
-        gl.uniform1i(location, 1);
-
+        this.initSphereVector();
 
     }
 
@@ -175,6 +155,50 @@ export class Renderer {
         console.log(this.gl.getProgramInfoLog(this.program));
         console.log(this.gl.getShaderInfoLog(this.vertexShader));
         console.log(this.gl.getShaderInfoLog(this.fragmentShader));
+    }
+
+    private initCamera(){
+        const gl = this.gl;
+        let camera_ubo = gl.createBuffer();
+        gl.bindBuffer(gl.UNIFORM_BUFFER, camera_ubo);
+        // std140 is 16 BYTE aligned
+        let data = new Float32Array(24);
+        data.set(this.scene.camera.view_inv,0);
+        data.set(this.scene.camera.position,16);
+        data[20] = this.scene.camera.fov;
+        gl.bufferData(gl.UNIFORM_BUFFER, data, gl.STATIC_DRAW);
+        // Link to binding point
+        let blockIndex = gl.getUniformBlockIndex(this.program, "Camera");
+        gl.uniformBlockBinding(this.program, blockIndex, 0);
+        gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, camera_ubo);
+    }
+
+    private initSphereVector(){
+        const gl = this.gl;
+        const sphereVec = gl.createTexture();
+        const sphereData = this.scene.serializeSphereVec();
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, sphereVec);
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,                        
+            gl.R32F,    
+            sphereData.length, 1,     // width = n, height = 1
+            0,                        
+            gl.RED,                  
+            gl.FLOAT,                 
+            sphereData                
+        );
+
+        let location = gl.getUniformLocation(this.program, "sphere_vector");
+        if(!location) console.warn("sphere_vector location returned null");
+        gl.uniform1i(location, 1);
     }
 }
 

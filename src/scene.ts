@@ -1,11 +1,13 @@
 import { Vector3 } from "math.gl";
 import { Sphere } from "./Math/Sphere"
+import { Camera } from "./camera";
 
 export class Scene {
     public sphereVec:Sphere[] = [];
-
+    public camera:Camera;
 
     constructor() {
+        this.camera = new Camera(new Vector3(0.0,0.0,-10.0));
         this.scene1();
     }
 
@@ -15,7 +17,7 @@ export class Scene {
 
     private scene1(){
         const s1:Sphere = new Sphere(
-            new Vector3(5.0,0.0,1.0),
+            new Vector3(0.0,0.0,0.0),
             1.0);
         this.addSphere(s1);
 

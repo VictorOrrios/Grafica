@@ -15,7 +15,14 @@ struct Ray {
     vec3 dir;
 };
 
+
 out vec4 outColor;
+
+layout(std140) uniform Camera {
+    mat4 cam_view_inv;
+    vec3 cam_position;
+    float cam_fov;
+};
 
 // Normal uniform
 uniform vec2 u_resolution;
@@ -31,6 +38,7 @@ layout(std140) uniform Data {
 uniform sampler2D texture_buffer;
 
 uniform sampler2D sphere_vector;
+
 
 // PRE r.dir is already normalized
 float hit_sphere(const Sphere s, const Ray r){
@@ -68,6 +76,31 @@ Sphere getSphere(int index){
     return ret;
 }
 
+Ray get_ray(){
+    vec2 pixelCoordsOffset = gl_FragCoord.xy;
+
+    float ndcX = 2.0 * pixelCoordsOffset.x / u_resolution.x - 1.0;
+    float ndcY = 1.0 - 2.0 * pixelCoordsOffset.y / u_resolution.y;
+    float aspectRatio = float(u_resolution.x)/float(u_resolution.y);
+
+    vec3 rayDirCameraSpace = normalize(vec3(
+        ndcX * aspectRatio * cam_fov,
+        ndcY * cam_fov,
+        -1.0
+    ));
+
+    vec3 rayDir = normalize(vec3(cam_view_inv * vec4(rayDirCameraSpace, 0.0)));
+
+    Ray ray;
+    ray.orig = cam_position;
+    ray.dir = rayDir;
+
+    return ray;
+}
+
+
+
+
 void main() {
     vec2 uv = gl_FragCoord.xy / u_resolution;
 
@@ -85,6 +118,7 @@ void main() {
 
     Sphere s1 = getSphere(0);
     Ray r = Ray(vec3(0.0,0.0,0.0),vec3(0.0,0.0,1.0));
+    r = get_ray();
     float t = hit_sphere(s1,r);
     if(t < 0.0){
         if(t <= -3.0){
@@ -101,5 +135,6 @@ void main() {
         outColor = vec4(0.07f, 1.0f, 0.0f, 1.0f);
     }
 
+    outColor = vec4(r.dir,1.0);
     //outColor = vec4(s1.center,1.0);
 }
