@@ -20,4 +20,8 @@ export class Camera {
         let v:Vector3 = u.clone().cross(w).normalize();
         return createBaseMatrix(u,v,w,this.position).invert();
     }
+
+    private updateViewMatrix(){
+        this.view_inv= this.createViewMatrix();
+    }
 }

@@ -4,6 +4,7 @@ precision highp float;
 //===========================
 // Global constants
 //===========================
+// TODO: Fine tune to float precision limit when system is more advanced
 #define ray_min_distance 0.0001
 #define ray_max_distance 10000.0
 
@@ -22,6 +23,15 @@ struct Ray {
     vec3 dir;
 };
 
+// Hit information record
+struct Hit{
+    vec3 p;             // Where it happend
+    vec3 normal;        // The normal where it hit
+    int mat;            // Material index of the object it hit
+    float t;            // The distance from the ray origin to the hit
+    bool front_face;    // True if hit is to a front facing surface
+};
+
 
 //===========================
 // External variable definitions
@@ -34,10 +44,32 @@ layout(std140) uniform Camera {
 } cam;
 
 uniform float time;
-uniform vec2 resolution;
-uniform vec2 sphere_num;
+uniform float spp;              // samples per pixel
+uniform vec3 resolution;        // x,y,z = width,height,aspect_ratio
 
+uniform int sphere_num;
 uniform sampler2D sphere_vector;
+
+
+//===========================
+// Postprocesing
+//===========================
+vec3 aces_film(vec3 color){
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return color*(a*color+b)/(color*(c*color+d)+e);
+}
+
+vec3 clamp_color(vec3 color){
+    return clamp(color,0.0,1.0);
+}
+
+vec3 gamma_correct(vec3 color){
+    return pow(color, vec3(1.0/2.2));
+}
 
 
 //===========================
@@ -45,7 +77,7 @@ uniform sampler2D sphere_vector;
 //===========================
 
 // Sphere vector parser
-Sphere getSphere(int index){
+Sphere get_sphere(int index){
     int n_index = index*Sphere_size;
     Sphere ret = Sphere(
         vec3(
@@ -58,8 +90,8 @@ Sphere getSphere(int index){
     return ret;
 }
 
-// PRE r.dir is already normalized
-float hit_sphere(const Sphere s, const Ray r){
+// PRE: r.dir is already normalized
+bool hit_sphere(const Sphere s, const Ray r, out Hit h){
     vec3 oc =  r.orig - s.center;
     
     float a = 1.0;
@@ -68,37 +100,56 @@ float hit_sphere(const Sphere s, const Ray r){
 
     float discriminant = half_b*half_b - a*c;
     // If < 0.0 then no solution exists
-    if(discriminant < 0.0) return -1.0;
+    if(discriminant < 0.0) return false;
 
     float sq_disc = sqrt(discriminant);
     float d = (-half_b - sq_disc)/a;
     if (d < ray_min_distance || d > ray_max_distance){
         d = (-half_b + sq_disc)/a;
         if (d < ray_min_distance || d > ray_max_distance)
-            return -3.0;
+            return false;
     }
-    return d;
+
+    // TODO: Fill out the rest of the hit record
+    h.t = d;
+    return true;
 }
 
 
+//===========================
+// Main functions
+//===========================
 
-//===========================
-// Ray functions
-//===========================
+// Cast the given ray and returns the computed color
+vec3 cast_ray(Ray r){
+    Hit h;
+
+    for(int s_i = 0; s_i < sphere_num; s_i++){
+        Sphere s = get_sphere(s_i);
+        // TODO: Display shape pure albedo instead of debug colors
+        if(hit_sphere(s,r,h)){
+            return vec3(1.0, 0.0, 0.0);
+        }
+    }
+
+
+    // TODO: Return sky color, either black/Blue-Grey gradient/HDRI
+    // No hit
+    return vec3(0.0, 0.0, 1.0);
+}
 
 // Generates a ray pointing to the pixel this thread is assigned with
 Ray get_ray(){
     // TODO: Add half pixel square offset
-    vec2 uv = gl_FragCoord.xy / resolution;
+    vec2 uv = gl_FragCoord.xy / resolution.xy;
 
     // Calculate offsets
     float ndcX = 2.0 * uv.x - 1.0;
     float ndcY = 2.0 * uv.y - 1.0;
-    float aspectRatio = float(resolution.x)/float(resolution.y);
 
     // Ray from 0,0,0 to +z + offsets
     vec3 rayDirCameraSpace = normalize(vec3(
-        ndcX * aspectRatio * cam.position_fov.a,
+        ndcX * resolution.z * cam.position_fov.a,
         ndcY * cam.position_fov.a,
         -1.0
     ));
@@ -114,29 +165,17 @@ Ray get_ray(){
 }
 
 
-
-
 void main() {
     // TODO: Initialize the seed of the random system
 
-    Sphere s1 = getSphere(0);
-    Ray r = get_ray();
-    float t = hit_sphere(s1,r);
-
-    // TODO: Display shape pure albedo instead of error codes
-    if(t < 0.0){
-        if(t <= -3.0){
-            // Boundary
-            outColor = vec4(1.0,0.0,0.0,1.0);
-        }else if(t <= -2.0){
-            // Negative t
-            outColor = vec4(1.0,0.5,0.0,1.0);
-        }else{
-            // No hit
-            outColor = vec4(0.05f, 0.0f, 1.0f, 1.0f);
-        }
-    } else {
-        outColor = vec4(0.07f, 1.0f, 0.0f, 1.0f);
+    // Calculate mean color of pixel
+    for(int i = 0; i<int(spp); i++){
+        Ray r = get_ray();
+        outColor += vec4(cast_ray(r),0.0);
     }
+    outColor /= spp;
 
+    // Postprocessing and alpha channel correction
+    outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
+    outColor.a = 1.0; 
 }

@@ -11,6 +11,7 @@ async function loadShaderSource(url: string): Promise<string> {
 type buffer_locations = {
     time:WebGLUniformLocation,
     resolution:WebGLUniformLocation,
+    spp:WebGLUniformLocation,
 }
 
 export class Renderer {
@@ -20,6 +21,7 @@ export class Renderer {
     private vao!: WebGLVertexArrayObject;
     private vertexShader!:WebGLShader;
     private fragmentShader!:WebGLShader;
+    private camera_ubo!:WebGLBuffer;
     private buffLoc:buffer_locations;
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
@@ -93,23 +95,21 @@ export class Renderer {
 
     private initCamera(){
         const gl = this.gl;
-        let camera_ubo = gl.createBuffer();
-        gl.bindBuffer(gl.UNIFORM_BUFFER, camera_ubo);
+        this.camera_ubo = gl.createBuffer();
+        gl.bindBuffer(gl.UNIFORM_BUFFER, this.camera_ubo);
         // std140 is 16 BYTE aligned
         let data = new Float32Array(20);
         data.set(this.scene.camera.view_inv,0);
         data.set(this.scene.camera.position,16);
         data[19] = this.scene.camera.tan_fov;
-        console.log("DATA",data)
         gl.bufferData(gl.UNIFORM_BUFFER, data, gl.STATIC_DRAW);
         // Link to binding point
         let blockIndex = gl.getUniformBlockIndex(this.program, "Camera");
         gl.uniformBlockBinding(this.program, blockIndex, 0);
-        gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, camera_ubo);
+        gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, this.camera_ubo);
         const blockSize = gl.getActiveUniformBlockParameter(
             this.program, blockIndex, gl.UNIFORM_BLOCK_DATA_SIZE
         );
-        console.log("Camera UBO size:", blockSize);
     }
 
     private initUniforms(){
@@ -125,10 +125,13 @@ export class Renderer {
         location = gl.getUniformLocation(this.program, "resolution");
         if(location) this.buffLoc.resolution = location;
 
+        // Sample per pixel uniform buffer
+        location = gl.getUniformLocation(this.program, "spp");
+        if(location) this.buffLoc.spp = location;
 
         // Shape counts uniform buffers
         location = gl.getUniformLocation(this.program, "sphere_num");
-        gl.uniform1f(location, this.scene.sphereVec.length);
+        gl.uniform1i(location, this.scene.sphereVec.length);
         
     }    
 
@@ -190,7 +193,24 @@ export class Renderer {
         gl.uniform1f(this.buffLoc.time, time);
 
         // Resolution buffer
-        gl.uniform2f(this.buffLoc.resolution, gl.canvas.width, gl.canvas.height);
+        gl.uniform3f(this.buffLoc.resolution, gl.canvas.width, gl.canvas.height, gl.canvas.width/gl.canvas.height);
+
+        // Sample per pixel uniform buffer
+        // TODO: Implement user controled parameter
+        gl.uniform1f(this.buffLoc.spp, 1.0);
+
+    }
+
+    private updateCameraUBO(){
+        const gl = this.gl;
+
+        let data = new Float32Array(20);
+        data.set(this.scene.camera.view_inv, 0);
+        data.set(this.scene.camera.position, 16);
+        data[19] = this.scene.camera.tan_fov;
+
+        gl.bindBuffer(gl.UNIFORM_BUFFER, this.camera_ubo);
+        gl.bufferSubData(gl.UNIFORM_BUFFER, 0, data);
     }
 
     public render(time: number) {
