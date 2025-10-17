@@ -9,6 +9,15 @@ export function createBaseMatrix(u:Vector3, v:Vector3, w:Vector3, o:Vector3):Mat
     );
 }
 
+export function createViewMatrix(u:Vector3, v:Vector3, w:Vector3, o:Vector3):Matrix4 {
+    return new Matrix4().set(
+        u.x, u.y, u.z, o.x,
+        v.x, v.y, v.z, o.y,
+        w.x, w.y, w.z, o.z,
+        0, 0, 0, 1
+    );
+}
+
 // May move this later
 export function printMatrix4(m: Matrix4) {
     const a = m.toArray();

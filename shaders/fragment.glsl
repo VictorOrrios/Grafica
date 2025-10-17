@@ -12,10 +12,17 @@ precision highp float;
 // Type definitions
 //===========================
 
-#define Sphere_size  4;
+#define Material_size 3
+struct Material {
+    vec3 albedo;    // RGB Albedo
+};
+
+// Center coords (3) + radius (1) + material index (1)
+#define Sphere_size 5
 struct Sphere {
     vec3 center;
     float radius;
+    int mat;
 };
 
 struct Ray {
@@ -47,6 +54,8 @@ uniform float time;
 uniform float spp;              // samples per pixel
 uniform vec3 resolution;        // x,y,z = width,height,aspect_ratio
 
+uniform sampler2D material_vector;
+
 uniform int sphere_num;
 uniform sampler2D sphere_vector;
 
@@ -73,7 +82,20 @@ vec3 gamma_correct(vec3 color){
 
 
 //===========================
-// Sphere definitions
+// Material functions
+//===========================
+// Material vector parser
+Material get_material(int mat_index){
+    int n_index = mat_index * Material_size;
+    return Material(vec3(
+        texelFetch(material_vector, ivec2(n_index,0), 0).r,
+        texelFetch(material_vector, ivec2(n_index+1,0), 0).r,
+        texelFetch(material_vector, ivec2(n_index+2,0), 0).r
+    ));
+}
+
+//===========================
+// Sphere functions
 //===========================
 
 // Sphere vector parser
@@ -85,7 +107,8 @@ Sphere get_sphere(int index){
             texelFetch(sphere_vector, ivec2(n_index+1,0), 0).r,
             texelFetch(sphere_vector, ivec2(n_index+2,0), 0).r
         ), 
-        texelFetch(sphere_vector, ivec2(n_index+3,0), 0).r
+        texelFetch(sphere_vector, ivec2(n_index+3,0), 0).r,
+        int(texelFetch(sphere_vector, ivec2(n_index+4,0), 0).r)
     );
     return ret;
 }
@@ -112,6 +135,9 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
 
     // TODO: Fill out the rest of the hit record
     h.t = d;
+    h.p = r.orig+r.dir*d;
+    h.normal = (h.p-s.center)/s.radius;
+    h.mat = s.mat;
     return true;
 }
 
@@ -122,16 +148,23 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
 
 // Cast the given ray and returns the computed color
 vec3 cast_ray(Ray r){
-    Hit h;
+    bool has_hit = false;
+    Hit h, h_aux;
+    h.t = ray_max_distance;
 
     for(int s_i = 0; s_i < sphere_num; s_i++){
         Sphere s = get_sphere(s_i);
         // TODO: Display shape pure albedo instead of debug colors
-        if(hit_sphere(s,r,h)){
-            return vec3(1.0, 0.0, 0.0);
+        if(hit_sphere(s,r,h_aux)){
+            if(h_aux.t<h.t){
+                h=h_aux;
+            }
+            has_hit = true;
         }
     }
 
+    //if(has_hit) return h.normal;
+    if(has_hit) return get_material(h.mat).albedo;
 
     // TODO: Return sky color, either black/Blue-Grey gradient/HDRI
     // No hit
@@ -176,6 +209,6 @@ void main() {
     outColor /= spp;
 
     // Postprocessing and alpha channel correction
-    outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
+    //outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
     outColor.a = 1.0; 
 }

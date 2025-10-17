@@ -90,6 +90,7 @@ export class Renderer {
     private async initBuffers() {
         this.initCamera();
         this.initUniforms();
+        this.initMaterialVector();
         this.initSphereVector();
     }
 
@@ -134,12 +135,41 @@ export class Renderer {
         gl.uniform1i(location, this.scene.sphereVec.length);
         
     }    
+    
+    private initMaterialVector(){
+        const gl = this.gl;
+        const materialVec = gl.createTexture();
+        const materialData = this.scene.serializeMaterialVec();
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, materialVec);
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,                        
+            gl.R32F,    
+            materialData.length, 1,     // width = n, height = 1
+            0,                        
+            gl.RED,                  
+            gl.FLOAT,                 
+            materialData                
+        );
+
+        let location = gl.getUniformLocation(this.program, "material_vector");
+        if(!location) console.warn("material_vector location returned null");
+        gl.uniform1i(location, 1);
+    }
 
     private initSphereVector(){
         const gl = this.gl;
         const sphereVec = gl.createTexture();
         const sphereData = this.scene.serializeSphereVec();
-        gl.activeTexture(gl.TEXTURE1);
+        console.log("SPHERE DATA",sphereData);
+        gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, sphereVec);
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -160,7 +190,7 @@ export class Renderer {
 
         let location = gl.getUniformLocation(this.program, "sphere_vector");
         if(!location) console.warn("sphere_vector location returned null");
-        gl.uniform1i(location, 1);
+        gl.uniform1i(location, 2);
     }
 
     // Used in P2, look at for reference in future upgrades
@@ -223,6 +253,7 @@ export class Renderer {
         gl.bindVertexArray(this.vao);
 
         this.updateBuffers(time);
+        this.updateCameraUBO();
 
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }

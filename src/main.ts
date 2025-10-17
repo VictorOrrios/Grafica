@@ -1,7 +1,7 @@
 import { Renderer } from "./renderer";
 import { Scene } from "./scene";
 import { Planet } from './Math/Planet'
-import { Vector3 } from "math.gl";
+import { clamp, Vector3 } from "math.gl";
 import { Station } from "./Math/Station";
 
 const fpsDisplay = document.getElementById('fps');
@@ -15,18 +15,30 @@ let lastFrameTime = performance.now();
 let frameCount = 0;
 let fps = 0;
 
-
 canvas.addEventListener('mousedown', (event) => {
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     updateInfo(x, y);
     console.log(`Mouse down at (${x}, ${y})`);
+    scene.camera.printViewMatrix();
 });
-canvas.addEventListener('mousemove', (event) => {
+canvas.addEventListener('mouseup', (event) => {
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+    updateInfo(x, y);
+    console.log(`Mouse up at (${x}, ${y})`);
+});
+canvas.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (event.clientX - rect.left)/canvas.width;
+    const y = clamp((event.clientY - rect.top)/canvas.height,0.05,0.95);
+    let azymuth = 2*x*Math.PI;
+    let polar = y*Math.PI;
+    //polar = Math.PI/2.0;
+    //azymuth = 0;
+    scene.camera.moveTo(azymuth,polar);
     updateInfo(x, y);
 });
 
@@ -37,7 +49,7 @@ if (captureBtn) {
 }
 
 function updateInfo(x: number, y: number) {
-    if (mouse) mouse.textContent = `Mouse Position: X: ${x}, Y: ${y}`;
+    if (mouse) mouse.textContent = `Mouse Position: X: ${x}, Y: ${y}. Cam Position: ${scene.camera.position.x},${scene.camera.position.y},${scene.camera.position.z}`;
 }
 
 function updateFPS(time: number) {
