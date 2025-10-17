@@ -17,11 +17,6 @@ export class Camera {
 
     public moveTo(azymuth:number,polar:number){
         this.position.set(
-            this.radius*Math.sin(polar)*Math.cos(azymuth),
-            this.radius*Math.sin(polar)*Math.sin(azymuth),
-            this.radius*Math.cos(polar)
-        );
-        this.position.set(
             -this.radius*Math.sin(polar)*Math.sin(azymuth),
             this.radius*Math.cos(polar),
             this.radius*Math.sin(polar)*Math.cos(azymuth),

@@ -2,11 +2,13 @@ import { Vector3 } from "math.gl";
 import { Sphere } from "./Primitives/Sphere"
 import { Camera } from "./camera";
 import { Material } from "./Primitives/Material";
+import { Plane } from "./Primitives/Plane";
 
 export class Scene {
     public camera:Camera;
     public materialVec:Material[] = [];
     public sphereVec:{sphere:Sphere,materialIndex:number}[] = [];
+    public planeVec:{plane:any,materialIndex:number}[] = [];
 
     constructor() {
         this.camera = new Camera(new Vector3(0.0,0.0,10.0));
@@ -24,6 +26,12 @@ export class Scene {
         return this.materialVec.length-1;
     }
 
+    private addPlane(plane:any, materialIndex:number) {
+        this.planeVec.push({
+            plane,materialIndex
+        });
+    }
+
     private scene1(){
         const m1 = this.addMaterial(new Material(
             new Vector3(1.0,0.0,0.0)
@@ -33,15 +41,25 @@ export class Scene {
             new Vector3(0.0,1.0,0.0)
         ));
 
+        const m3 = this.addMaterial(new Material(
+            new Vector3(0.0,0.5,1.0)
+        ));
+
         const s1:Sphere = new Sphere(
             new Vector3(0.0,0.0,0.0),
             1.0);
         this.addSphere(s1,m1);
 
         const s2 = new Sphere(
-            new Vector3(4.0,0.0,3.0),
+            new Vector3(4.0,1.0,3.0),
             2.0);
         this.addSphere(s2,m2);
+
+        const p1:Plane = new Plane(
+            new Vector3(0.0,-1.0,0.0),
+            new Vector3(0.0,1.0,0.0)
+        );
+        this.addPlane(p1,m3);
     }
     
     public serializeMaterialVec():Float32Array {
@@ -63,6 +81,18 @@ export class Scene {
             arr.push(...(s.sphere.serialize()),s.materialIndex);
         });
         console.log("Serialized sphere vector length:", arr.length);
+        const ret: Float32Array = new Float32Array(arr);
+        
+        return ret;
+    }
+
+    public serializePlaneVec():Float32Array {
+        let arr: number[] = [];
+        this.planeVec.forEach(p => {
+            // Spread serialized plane and material index onto the arr
+            arr.push(...(p.plane.serialize()),p.materialIndex);
+        });
+        console.log("Serialized plane vector length:", arr.length);
         const ret: Float32Array = new Float32Array(arr);
         
         return ret;

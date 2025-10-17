@@ -10,6 +10,7 @@ async function loadShaderSource(url: string): Promise<string> {
 
 type buffer_locations = {
     time:WebGLUniformLocation,
+    frame_count:WebGLUniformLocation,
     resolution:WebGLUniformLocation,
     spp:WebGLUniformLocation,
 }
@@ -23,6 +24,8 @@ export class Renderer {
     private fragmentShader!:WebGLShader;
     private camera_ubo!:WebGLBuffer;
     private buffLoc:buffer_locations;
+
+    private num_frames_rendered:number = 0;
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
         this.gl = gl;
@@ -90,8 +93,7 @@ export class Renderer {
     private async initBuffers() {
         this.initCamera();
         this.initUniforms();
-        this.initMaterialVector();
-        this.initSphereVector();
+        this.initStorageBuffers();
     }
 
     private initCamera(){
@@ -122,6 +124,10 @@ export class Renderer {
         location = gl.getUniformLocation(this.program, "time");
         if(location) this.buffLoc.time = location;
 
+        // Frame count uniform
+        location = gl.getUniformLocation(this.program, "frame_count");
+        if(location) this.buffLoc.frame_count = location;
+
         // Resolution uniform buffer
         location = gl.getUniformLocation(this.program, "resolution");
         if(location) this.buffLoc.resolution = location;
@@ -130,47 +136,30 @@ export class Renderer {
         location = gl.getUniformLocation(this.program, "spp");
         if(location) this.buffLoc.spp = location;
 
-        // Shape counts uniform buffers
+        // Sphere counts uniform buffers
         location = gl.getUniformLocation(this.program, "sphere_num");
         gl.uniform1i(location, this.scene.sphereVec.length);
+
+        // Plane counts uniform buffers
+        location = gl.getUniformLocation(this.program, "plane_num");
+        gl.uniform1i(location, this.scene.planeVec.length);
         
     }    
-    
-    private initMaterialVector(){
-        const gl = this.gl;
-        const materialVec = gl.createTexture();
-        const materialData = this.scene.serializeMaterialVec();
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, materialVec);
 
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        gl.texImage2D(
-            gl.TEXTURE_2D,
-            0,                        
-            gl.R32F,    
-            materialData.length, 1,     // width = n, height = 1
-            0,                        
-            gl.RED,                  
-            gl.FLOAT,                 
-            materialData                
-        );
-
-        let location = gl.getUniformLocation(this.program, "material_vector");
-        if(!location) console.warn("material_vector location returned null");
-        gl.uniform1i(location, 1);
+    private initStorageBuffers(){
+        
+        this.initStorageBuffer("material_vector",this.scene.serializeMaterialVec(),0);
+        this.initStorageBuffer("sphere_vector",this.scene.serializeSphereVec(),1);
+        this.initStorageBuffer("plane_vector",this.scene.serializePlaneVec(),2);
+        
     }
 
-    private initSphereVector(){
+    private initStorageBuffer(name:string,data:Float32Array,index:number) {
         const gl = this.gl;
-        const sphereVec = gl.createTexture();
-        const sphereData = this.scene.serializeSphereVec();
-        console.log("SPHERE DATA",sphereData);
-        gl.activeTexture(gl.TEXTURE2);
-        gl.bindTexture(gl.TEXTURE_2D, sphereVec);
+        const storageVec = gl.createTexture();
+        console.log(`Initializing storage buffer for ${name}:`,data);
+        gl.activeTexture(gl.TEXTURE0+index);
+        gl.bindTexture(gl.TEXTURE_2D, storageVec);
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -181,16 +170,16 @@ export class Renderer {
             gl.TEXTURE_2D,
             0,                        
             gl.R32F,    
-            sphereData.length, 1,     // width = n, height = 1
+            data.length, 1,     // width = n, height = 1
             0,                        
             gl.RED,                  
             gl.FLOAT,                 
-            sphereData                
+            data                
         );
 
-        let location = gl.getUniformLocation(this.program, "sphere_vector");
-        if(!location) console.warn("sphere_vector location returned null");
-        gl.uniform1i(location, 2);
+        let location = gl.getUniformLocation(this.program, name);
+        if(!location) console.warn(name,"location returned null");
+        gl.uniform1i(location, index);
     }
 
     // Used in P2, look at for reference in future upgrades
@@ -222,12 +211,15 @@ export class Renderer {
         // Time buffer
         gl.uniform1f(this.buffLoc.time, time);
 
+        // Frame count buffer
+        gl.uniform1ui(this.buffLoc.frame_count, this.num_frames_rendered);
+
         // Resolution buffer
         gl.uniform3f(this.buffLoc.resolution, gl.canvas.width, gl.canvas.height, gl.canvas.width/gl.canvas.height);
 
         // Sample per pixel uniform buffer
         // TODO: Implement user controled parameter
-        gl.uniform1f(this.buffLoc.spp, 1.0);
+        gl.uniform1f(this.buffLoc.spp, 20.0);
 
     }
 
@@ -256,6 +248,7 @@ export class Renderer {
         this.updateCameraUBO();
 
         gl.drawArrays(gl.TRIANGLES, 0, 6);
+        this.num_frames_rendered++;
     }
 }
 

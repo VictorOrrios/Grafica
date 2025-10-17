@@ -49,7 +49,7 @@ if (captureBtn) {
 }
 
 function updateInfo(x: number, y: number) {
-    if (mouse) mouse.textContent = `Mouse Position: X: ${x}, Y: ${y}. Cam Position: ${scene.camera.position.x},${scene.camera.position.y},${scene.camera.position.z}`;
+    if (mouse) mouse.textContent = `Mouse Position: X: ${x}, Y: ${y}.`;
 }
 
 function updateFPS(time: number) {

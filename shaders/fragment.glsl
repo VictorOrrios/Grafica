@@ -25,6 +25,21 @@ struct Sphere {
     int mat;
 };
 
+#define Plane_size 7
+struct Plane {
+    vec3 point;     // A point on the plane
+    vec3 normal;    // The normal of the plane
+    int mat;        // Material index
+};
+
+#define Triangle_size 10
+struct Triangle {
+    vec3 v0;        // Vertex 0
+    vec3 v1;        // Vertex 1
+    vec3 v2;        // Vertex 2
+    int mat;        // Material index
+};
+
 struct Ray {
     vec3 orig;
     vec3 dir;
@@ -41,6 +56,12 @@ struct Hit{
 
 
 //===========================
+// Global variables
+//===========================
+uint seed;
+
+
+//===========================
 // External variable definitions
 //===========================
 out vec4 outColor;
@@ -51,6 +72,7 @@ layout(std140) uniform Camera {
 } cam;
 
 uniform float time;
+uniform uint frame_count;
 uniform float spp;              // samples per pixel
 uniform vec3 resolution;        // x,y,z = width,height,aspect_ratio
 
@@ -58,6 +80,40 @@ uniform sampler2D material_vector;
 
 uniform int sphere_num;
 uniform sampler2D sphere_vector;
+
+uniform int plane_num;
+uniform sampler2D plane_vector;
+
+uniform int triangle_num;
+uniform sampler2D triangle_vector;
+
+
+//===========================
+// RNG Functions
+//===========================
+uint hash(uint x) {
+    x ^= x >> 16;
+    x *= 0x7feb352dU;
+    x ^= x >> 15;
+    x *= 0x846ca68bU;
+    x ^= x >> 16;
+    return x;
+}
+
+uint xorshift(inout uint state) {
+    state ^= state << 13;
+    state ^= state >> 17;
+    state ^= state << 5;
+    return state;
+}
+
+float random(){
+    return float(xorshift(seed)) / 4294967295.0;
+}
+
+vec2 sample_square(){
+    return vec2(random()-0.5,random()-0.5);
+}
 
 
 //===========================
@@ -141,6 +197,64 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
     return true;
 }
 
+//===========================
+// Plane functions
+//===========================
+Plane get_plane(int index){
+    int n_index = index*Plane_size;
+    Plane ret = Plane(
+        vec3(
+            texelFetch(plane_vector, ivec2(n_index,0), 0).r,
+            texelFetch(plane_vector, ivec2(n_index+1,0), 0).r,
+            texelFetch(plane_vector, ivec2(n_index+2,0), 0).r
+        ), 
+        vec3(
+            texelFetch(plane_vector, ivec2(n_index+3,0), 0).r,
+            texelFetch(plane_vector, ivec2(n_index+4,0), 0).r,
+            texelFetch(plane_vector, ivec2(n_index+5,0), 0).r
+        ),
+        int(texelFetch(plane_vector, ivec2(n_index+6,0), 0).r)
+    );
+    return ret;
+}
+
+bool hit_plane(const Plane p, const Ray r, out Hit h){
+    float denom = dot(p.normal, r.dir);
+    if(abs(denom) > 0.0001){
+        float t = dot(p.point - r.orig, p.normal) / denom;
+        if(t >= ray_min_distance && t <= ray_max_distance){
+            h.t = t;
+            h.p = r.orig + r.dir * t;
+            h.normal = p.normal;
+            h.mat = p.mat;
+            return true;
+        }
+    }
+    return false;
+}
+
+//===========================
+// Triangle functions
+//===========================
+
+//===========================
+// Skybox functions
+//===========================
+vec3 skybox_color_day(Ray r) {
+    const vec3 horizon_color = vec3(0.231, 0.756, 0.945);
+    const vec3 zenith_color = vec3(1.0);
+
+    vec3 dir_unit = normalize(r.dir);
+    float a = 0.5 * (dir_unit.y + 1.0); 
+    vec3 sky_gradient = mix(horizon_color, zenith_color, a);
+
+
+    return sky_gradient;
+}
+
+vec3 skybox_color(Ray r){
+    return skybox_color_day(r);
+}
 
 //===========================
 // Main functions
@@ -152,10 +266,21 @@ vec3 cast_ray(Ray r){
     Hit h, h_aux;
     h.t = ray_max_distance;
 
+    // Check for sphere hits
     for(int s_i = 0; s_i < sphere_num; s_i++){
         Sphere s = get_sphere(s_i);
-        // TODO: Display shape pure albedo instead of debug colors
         if(hit_sphere(s,r,h_aux)){
+            if(h_aux.t<h.t){
+                h=h_aux;
+            }
+            has_hit = true;
+        }
+    }
+
+    // Check for plane hits
+    for(int p_i = 0; p_i < plane_num; p_i++) {
+        Plane p = get_plane(p_i);
+        if(hit_plane(p,r,h_aux)){
             if(h_aux.t<h.t){
                 h=h_aux;
             }
@@ -168,13 +293,12 @@ vec3 cast_ray(Ray r){
 
     // TODO: Return sky color, either black/Blue-Grey gradient/HDRI
     // No hit
-    return vec3(0.0, 0.0, 1.0);
+    return skybox_color(r);
 }
 
 // Generates a ray pointing to the pixel this thread is assigned with
 Ray get_ray(){
-    // TODO: Add half pixel square offset
-    vec2 uv = gl_FragCoord.xy / resolution.xy;
+    vec2 uv = (gl_FragCoord.xy + sample_square())/resolution.xy;
 
     // Calculate offsets
     float ndcX = 2.0 * uv.x - 1.0;
@@ -199,7 +323,10 @@ Ray get_ray(){
 
 
 void main() {
-    // TODO: Initialize the seed of the random system
+    // Generate a random enough seed
+    seed = hash(uint(time)*1920U) 
+        ^ hash(frame_count)
+        ^ hash(uint(int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1920));
 
     // Calculate mean color of pixel
     for(int i = 0; i<int(spp); i++){
@@ -208,7 +335,9 @@ void main() {
     }
     outColor /= spp;
 
-    // Postprocessing and alpha channel correction
+    // Postprocessing
     //outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
+    // Alpha channel correction
     outColor.a = 1.0; 
+    //outColor.rgb = vec3(random(),random(),random()); // Random test
 }
