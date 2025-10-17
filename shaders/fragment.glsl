@@ -284,7 +284,7 @@ bool hit_triangle(const Triangle tri, const Ray r, out Hit h){
     if(v < 0.0 || u + v > 1.0) return false;
 
     float t = f * dot(edge2, q_vec);
-    if(t < ray_min_distance || t > ray_max_distance) return false;
+    if(t < ray_min_distance || t > ray_max_distance) return false; // Boundary check
 
     h.t = t;
     h.p = r.orig + r.dir * t;
