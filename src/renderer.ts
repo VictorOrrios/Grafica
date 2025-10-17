@@ -116,41 +116,38 @@ export class Renderer {
     }
 
     private initUniforms(){
-        const gl = this.gl;
 
-        let location;
+        this.buffLoc.time = this.initUniform("time")
+        this.buffLoc.frame_count = this.initUniform("frame_count")
+        this.buffLoc.resolution = this.initUniform("resolution")
+        this.buffLoc.spp = this.initUniform("spp")
 
-        // Current time uniform
-        location = gl.getUniformLocation(this.program, "time");
-        if(location) this.buffLoc.time = location;
-
-        // Frame count uniform
-        location = gl.getUniformLocation(this.program, "frame_count");
-        if(location) this.buffLoc.frame_count = location;
-
-        // Resolution uniform buffer
-        location = gl.getUniformLocation(this.program, "resolution");
-        if(location) this.buffLoc.resolution = location;
-
-        // Sample per pixel uniform buffer
-        location = gl.getUniformLocation(this.program, "spp");
-        if(location) this.buffLoc.spp = location;
-
-        // Sphere counts uniform buffers
-        location = gl.getUniformLocation(this.program, "sphere_num");
-        gl.uniform1i(location, this.scene.sphereVec.length);
-
-        // Plane counts uniform buffers
-        location = gl.getUniformLocation(this.program, "plane_num");
-        gl.uniform1i(location, this.scene.planeVec.length);
-        
+        this.initUniform("sphere_num",this.scene.sphereVec.length,0);
+        this.initUniform("plane_num",this.scene.planeVec.length,0);
+        this.initUniform("triangle_num",this.scene.triangleVec.length,0);;
+            
     }    
+
+    private initUniform(name:string, value:any = 0, type:number = 0):WebGLUniformLocation{
+        let location = this.gl.getUniformLocation(this.program, name);
+        if(!location){
+            console.warn(name,"location returned null");
+            return 0 as WebGLUniformLocation;
+        }
+        switch(type){
+            default:
+                this.gl.uniform1i(location, value);
+                break;
+        }
+        return location
+    }
 
     private initStorageBuffers(){
         
         this.initStorageBuffer("material_vector",this.scene.serializeMaterialVec(),0);
         this.initStorageBuffer("sphere_vector",this.scene.serializeSphereVec(),1);
         this.initStorageBuffer("plane_vector",this.scene.serializePlaneVec(),2);
+        this.initStorageBuffer("triangle_vector",this.scene.serializeTriangleVec(),3);
         
     }
 

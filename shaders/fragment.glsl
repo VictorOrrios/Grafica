@@ -32,11 +32,12 @@ struct Plane {
     int mat;        // Material index
 };
 
-#define Triangle_size 10
+#define Triangle_size 13
 struct Triangle {
     vec3 v0;        // Vertex 0
     vec3 v1;        // Vertex 1
     vec3 v2;        // Vertex 2
+    vec3 normal;    // The normal of the triangle
     int mat;        // Material index
 };
 
@@ -236,6 +237,61 @@ bool hit_plane(const Plane p, const Ray r, out Hit h){
 //===========================
 // Triangle functions
 //===========================
+Triangle get_triangle(int index){
+    int n_index = index*Triangle_size;
+    Triangle ret = Triangle(
+        vec3(
+            texelFetch(triangle_vector, ivec2(n_index,0), 0).r,
+            texelFetch(triangle_vector, ivec2(n_index+1,0), 0).r,
+            texelFetch(triangle_vector, ivec2(n_index+2,0), 0).r
+        ), 
+        vec3(
+            texelFetch(triangle_vector, ivec2(n_index+3,0), 0).r,
+            texelFetch(triangle_vector, ivec2(n_index+4,0), 0).r,
+            texelFetch(triangle_vector, ivec2(n_index+5,0), 0).r
+        ),
+        vec3(
+            texelFetch(triangle_vector, ivec2(n_index+6,0), 0).r,
+            texelFetch(triangle_vector, ivec2(n_index+7,0), 0).r,
+            texelFetch(triangle_vector, ivec2(n_index+8,0), 0).r
+        ),
+        vec3(
+            texelFetch(triangle_vector, ivec2(n_index+9,0), 0).r,
+            texelFetch(triangle_vector, ivec2(n_index+10,0), 0).r,
+            texelFetch(triangle_vector, ivec2(n_index+11,0), 0).r
+        ),
+        int(texelFetch(triangle_vector, ivec2(n_index+12,0), 0).r)
+    );
+    return ret;
+}
+
+bool hit_triangle(const Triangle tri, const Ray r, out Hit h){
+    // Moller-Trumbore algorithm
+    vec3 edge1 = tri.v1 - tri.v0;
+    vec3 edge2 = tri.v2 - tri.v0;
+    vec3 h_vec = cross(r.dir, edge2);
+
+    float a = dot(edge1, h_vec);
+    if(abs(a) < 0.0001) return false; // Ray parallel to triangle
+
+    float f = 1.0 / a;
+    vec3 s = r.orig - tri.v0;
+    float u = f * dot(s, h_vec);
+    if(u < 0.0 || u > 1.0) return false;
+
+    vec3 q_vec = cross(s, edge1);
+    float v = f * dot(r.dir, q_vec);
+    if(v < 0.0 || u + v > 1.0) return false;
+
+    float t = f * dot(edge2, q_vec);
+    if(t < ray_min_distance || t > ray_max_distance) return false;
+
+    h.t = t;
+    h.p = r.orig + r.dir * t;
+    h.normal = normalize(tri.normal);
+    h.mat = tri.mat;
+    return true;
+}
 
 //===========================
 // Skybox functions
@@ -281,6 +337,16 @@ vec3 cast_ray(Ray r){
     for(int p_i = 0; p_i < plane_num; p_i++) {
         Plane p = get_plane(p_i);
         if(hit_plane(p,r,h_aux)){
+            if(h_aux.t<h.t){
+                h=h_aux;
+            }
+            has_hit = true;
+        }
+    }
+
+    for(int t_i = 0; t_i < triangle_num; t_i++) {
+        Triangle tri = get_triangle(t_i);
+        if(hit_triangle(tri,r,h_aux)){
             if(h_aux.t<h.t){
                 h=h_aux;
             }
