@@ -7,6 +7,8 @@ precision highp float;
 // TODO: Fine tune to float precision limit when system is more advanced
 #define ray_min_distance 0.0001
 #define ray_max_distance 10000.0
+#define bounce_hard_limit 5
+#define PI 3.14159265359
 
 //===========================
 // Type definitions
@@ -74,7 +76,7 @@ layout(std140) uniform Camera {
 
 uniform float time;
 uniform uint frame_count;
-uniform float spp;              // samples per pixel
+uniform uint spp;               // samples per pixel
 uniform vec3 resolution;        // x,y,z = width,height,aspect_ratio
 
 uniform sampler2D material_vector;
@@ -114,6 +116,26 @@ float random(){
 
 vec2 sample_square(){
     return vec2(random()-0.5,random()-0.5);
+}
+
+vec3 random_unit_vec(){
+    float phi = 2.0 * PI * random();
+    float theta = acos(2.0 * random() - 1.0);
+    float sin_theta = sin(theta);
+    return vec3(
+        sin_theta * cos(phi),
+        sin_theta * sin(phi),
+        cos(theta)
+    );
+}
+
+vec3 random_vec_on_hemisphere(vec3 normal){
+    vec3 rvec = random_unit_vec();
+    if(dot(rvec,normal) > 0.0){
+        return rvec;
+    }else{
+        return -rvec;
+    }
 }
 
 //===========================
@@ -327,10 +349,9 @@ vec3 skybox_color(Ray r){
 // Main functions
 //===========================
 
-// Cast the given ray and returns the computed color
-vec3 cast_ray(Ray r){
+bool hit_scene(Ray r, out Hit h){
     bool has_hit = false;
-    Hit h, h_aux;
+    Hit h_aux;
     h.t = ray_max_distance;
 
     // Check for sphere hits
@@ -365,12 +386,27 @@ vec3 cast_ray(Ray r){
         }
     }
 
-    //if(has_hit) return h.normal;
-    if(has_hit) return get_material(h.mat).albedo;
+    return has_hit;
+}
 
-    // TODO: Return sky color, either black/Blue-Grey gradient/HDRI
-    // No hit
-    return skybox_color(r);
+// Cast the given ray and returns the computed color
+vec3 cast_ray(Ray r){
+    Hit h;
+
+    vec3 atenuation = vec3(1.0);
+
+    for(int bounce_count = 0; bounce_count < bounce_hard_limit; bounce_count++){
+        if(hit_scene(r,h)){
+            vec3 albedo = get_material(h.mat).albedo;
+            atenuation *= albedo;
+            r.dir = random_vec_on_hemisphere(h.normal);
+            r.orig = h.p;
+        }else{
+            return skybox_color(r)*atenuation; 
+        }
+    }
+
+    return vec3(0.0);
 }
 
 // Generates a ray pointing to the pixel this thread is assigned with
@@ -410,7 +446,7 @@ void main() {
         Ray r = get_ray();
         outColor += vec4(cast_ray(r),0.0);
     }
-    outColor /= spp;
+    outColor /= float(spp);
 
     // Postprocessing
     //outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));

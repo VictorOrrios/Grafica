@@ -216,7 +216,7 @@ export class Renderer {
 
         // Sample per pixel uniform buffer
         // TODO: Implement user controled parameter
-        gl.uniform1f(this.buffLoc.spp, 20.0);
+        gl.uniform1ui(this.buffLoc.spp, 10);
 
     }
 
