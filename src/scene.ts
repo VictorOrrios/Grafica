@@ -76,8 +76,8 @@ export class Scene {
         this.addTriangle(t1,m4);
 
         const p1:Plane = new Plane(
-            new Vector3(0.0,-1.0,0.0),
-            new Vector3(0.0,1.0,0.0)
+            new Vector3(0.0,1.0,0.0),
+            1.0
         );
         this.addPlane(p1,m3);
     }
@@ -106,32 +106,32 @@ export class Scene {
         ));
 
         const floor:Plane = new Plane(
-            new Vector3(0.0,-1.0,0.0),
-            new Vector3(0.0,1.0,0.0)
+            new Vector3(0.0,1.0,0.0),
+            1.0
         );
         this.addPlane(floor,white);
 
         const back:Plane = new Plane(
-            new Vector3(0.0,0.0,1.0),
-            new Vector3(0.0,0.0,-1.0)
+            new Vector3(0.0,0.0,-1.0),
+            1.0
         );
         this.addPlane(back,white);
 
         const ceiling:Plane = new Plane(
-            new Vector3(0.0,1.0,0.0),
-            new Vector3(0.0,-1.0,0.0)
+            new Vector3(0.0,-1.0,0.0),
+            1.0
         );
         this.addPlane(ceiling,white);
 
         const left:Plane = new Plane(
-            new Vector3(-1.0,0.0,0.0),
-            new Vector3(1.0,0.0,0.0)
+            new Vector3(1.0,0.0,0.0),
+            1.0
         );
         this.addPlane(left,red);
 
         const right:Plane = new Plane(
-            new Vector3(1.0,0.0,0.0),
-            new Vector3(-1.0,0.0,0.0)
+            new Vector3(-1.0,0.0,0.0),
+            1.0
         );
         this.addPlane(right,green);
 

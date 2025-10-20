@@ -35,7 +35,7 @@ canvas.addEventListener('mouseup', (event) => {
 });
 canvas.addEventListener('wheel', (event) => {
     scene.camera.radius += event.deltaY/1000;
-    if(scene.camera.radius <= 0) scene.camera.radius = 0.0;
+    if(scene.camera.radius <= 0) scene.camera.radius = 0.01;
     scene.camera.tick();
 });
 canvas.addEventListener('mousemove', (event) => {

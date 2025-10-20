@@ -25,10 +25,10 @@ struct Sphere {
     int mat;
 };
 
-#define Plane_size 7
+#define Plane_size 5
 struct Plane {
-    vec3 point;     // A point on the plane
     vec3 normal;    // The normal of the plane
+    float distance; // Distance from 0,0,0
     int mat;        // Material index
 };
 
@@ -223,12 +223,8 @@ Plane get_plane(int index){
             texelFetch(plane_vector, ivec2(n_index+1,0), 0).r,
             texelFetch(plane_vector, ivec2(n_index+2,0), 0).r
         ), 
-        vec3(
-            texelFetch(plane_vector, ivec2(n_index+3,0), 0).r,
-            texelFetch(plane_vector, ivec2(n_index+4,0), 0).r,
-            texelFetch(plane_vector, ivec2(n_index+5,0), 0).r
-        ),
-        int(texelFetch(plane_vector, ivec2(n_index+6,0), 0).r)
+        float(texelFetch(plane_vector, ivec2(n_index+3,0), 0).r),
+        int(texelFetch(plane_vector, ivec2(n_index+4,0), 0).r)
     );
     return ret;
 }
@@ -236,7 +232,7 @@ Plane get_plane(int index){
 bool hit_plane(const Plane p, const Ray r, out Hit h){
     float denom = dot(p.normal, r.dir);
     if(abs(denom) > 0.0001){
-        float t = dot(p.point - r.orig, p.normal) / denom;
+        float t = dot((p.normal*-p.distance) - r.orig, p.normal) / denom;
         if(t >= ray_min_distance && t <= ray_max_distance){
             h.t = t;
             h.p = r.orig + r.dir * t;
