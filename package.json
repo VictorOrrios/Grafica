@@ -1,5 +1,5 @@
 {
-	"name": "graficasvelte",
+	"name": "grafica",
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
@@ -22,7 +22,8 @@
 		"svelte-check": "^4.3.2",
 		"tailwindcss": "^4.1.13",
 		"typescript": "^5.9.2",
-		"vite": "^7.1.7"
+		"vite": "^7.1.7",
+		"vite-plugin-string": "^1.2.3"
 	},
 	"dependencies": {
 		"math.gl": "^4.1.0",

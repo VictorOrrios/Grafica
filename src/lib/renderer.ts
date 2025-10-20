@@ -1,8 +1,8 @@
 import { Matrix4, Vector3 } from "math.gl";
 import { loadEXRImage } from "./loader";
 import { Scene } from "./scene";
-import vertexSource from "$lib/shaders/vertex.glsl?raw"
-import fragmentSource from "$lib/shaders/fragment.glsl?raw"
+import vertexSource from "$lib/shaders/vertex.glsl"
+import fragmentSource from "$lib/shaders/fragment.glsl"
 
 
 type buffer_locations = {
