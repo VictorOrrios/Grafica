@@ -1,12 +1,9 @@
 import { Matrix4, Vector3 } from "math.gl";
 import { loadEXRImage } from "./loader";
 import { Scene } from "./scene";
+import vertexSource from "$lib/shaders/vertex.glsl?raw"
+import fragmentSource from "$lib/shaders/fragment.glsl?raw"
 
-async function loadShaderSource(url: string): Promise<string> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Could not load shader: " + url);
-    return await response.text();
-}
 
 type buffer_locations = {
     time:WebGLUniformLocation,
@@ -42,8 +39,6 @@ export class Renderer {
 
 
     public async initShaders(): Promise<WebGLProgram> {
-        const vertexSource = await loadShaderSource("./shaders/vertex.glsl");
-        const fragmentSource = await loadShaderSource("./shaders/fragment.glsl");
 
         this.vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexSource);
         this.fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentSource);
@@ -117,26 +112,38 @@ export class Renderer {
 
     private initUniforms(){
 
-        this.buffLoc.time = this.initUniform("time")
-        this.buffLoc.frame_count = this.initUniform("frame_count")
-        this.buffLoc.resolution = this.initUniform("resolution")
-        this.buffLoc.spp = this.initUniform("spp")
+        this.buffLoc.time = this.initUniform("time",1)
+        this.buffLoc.frame_count = this.initUniform("frame_count",2)
+        this.buffLoc.resolution = this.initUniform("resolution",3)
+        this.buffLoc.spp = this.initUniform("spp",2)
 
-        this.initUniform("sphere_num",this.scene.sphereVec.length,0);
-        this.initUniform("plane_num",this.scene.planeVec.length,0);
-        this.initUniform("triangle_num",this.scene.triangleVec.length,0);;
+        this.initUniform("sphere_num",0,[this.scene.sphereVec.length]);
+        this.initUniform("plane_num",0,[this.scene.planeVec.length]);
+        this.initUniform("triangle_num",0,[this.scene.triangleVec.length]);
             
     }    
 
-    private initUniform(name:string, value:any = 0, type:number = 0):WebGLUniformLocation{
+    private initUniform(name:string,type:number, value:any[] = [0]):WebGLUniformLocation{
         let location = this.gl.getUniformLocation(this.program, name);
         if(!location){
             console.warn(name,"location returned null");
             return 0 as WebGLUniformLocation;
         }
         switch(type){
-            default:
-                this.gl.uniform1i(location, value);
+            case 0: // int
+                this.gl.uniform1i(location, value[0]);
+                break;
+            case 1: //float
+                this.gl.uniform1f(location, value[0]);
+                break;
+            case 2: //uint
+                this.gl.uniform1ui(location, value[0]);
+                break;
+            case 3: //vec3
+                this.gl.uniform3f(location, value[0], value[1], value[2]);
+                break;
+            default: // int
+                this.gl.uniform1i(location, value[0]);
                 break;
         }
         return location
@@ -152,6 +159,7 @@ export class Renderer {
     }
 
     private initStorageBuffer(name:string,data:Float32Array,index:number) {
+        if(data.length === 0) return;
         const gl = this.gl;
         const storageVec = gl.createTexture();
         console.log(`Initializing storage buffer for ${name}:`,data);

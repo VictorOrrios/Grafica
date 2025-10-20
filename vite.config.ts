@@ -1,16 +1,7 @@
-import { defineConfig } from 'vite'
+import tailwindcss from '@tailwindcss/vite';
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
-  resolve: {
-    extensions: ['.ts', '.js', '.json']
-  },
-  esbuild: {
-    target: 'esnext'
-  },
-  server: {
-    hmr: true,
-    watch: {
-      usePolling: true
-    }
-  }
-})
+	plugins: [tailwindcss(), sveltekit()]
+});
