@@ -116,6 +116,18 @@ vec2 sample_square(){
     return vec2(random()-0.5,random()-0.5);
 }
 
+//===========================
+// Tools and macros
+//===========================
+void set_front_face(vec3 normal, vec3 dir, inout Hit h){
+    if(dot(normal,dir) > 0.0){
+        h.normal = -normal;
+        h.front_face = false;
+    }else{
+        h.normal = normal;
+        h.front_face = true;
+    }
+}
 
 //===========================
 // Postprocesing
@@ -193,8 +205,10 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
     // TODO: Fill out the rest of the hit record
     h.t = d;
     h.p = r.orig+r.dir*d;
-    h.normal = (h.p-s.center)/s.radius;
     h.mat = s.mat;
+    vec3 s_normal = (h.p-s.center)/s.radius;
+    set_front_face(s_normal,r.dir,h);
+    
     return true;
 }
 
@@ -226,8 +240,8 @@ bool hit_plane(const Plane p, const Ray r, out Hit h){
         if(t >= ray_min_distance && t <= ray_max_distance){
             h.t = t;
             h.p = r.orig + r.dir * t;
-            h.normal = p.normal;
             h.mat = p.mat;
+            set_front_face(p.normal,r.dir,h);
             return true;
         }
     }
@@ -290,6 +304,7 @@ bool hit_triangle(const Triangle tri, const Ray r, out Hit h){
     h.p = r.orig + r.dir * t;
     h.normal = normalize(tri.normal);
     h.mat = tri.mat;
+    set_front_face(tri.normal,r.dir,h);
     return true;
 }
 
