@@ -5,7 +5,7 @@ export class Camera {
     public view_inv:Matrix4;
     public position:Vector3;
     public tan_fov:number;
-    private radius:number;
+    public radius:number;
 
     constructor(position:Vector3 = new Vector3(0.0,0.0,-1.0), fov:number = 45){
         if(position.len() <= 0.0) console.error("Camera origin can't be 0,0,0");
@@ -34,6 +34,11 @@ export class Camera {
         let u:Vector3 = w.clone().cross(up).normalize();
         let v:Vector3 = u.clone().cross(w).normalize();
         return createViewMatrix(u,v,w,this.position);
+    }
+
+    public tick(){
+        this.position = this.position.multiplyByScalar(this.radius/this.position.len());
+        this.view_inv = this.generateViewMatrix();
     }
 
     public printViewMatrix(){

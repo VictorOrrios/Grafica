@@ -11,6 +11,8 @@ const mouse = document.getElementById('mouse');
 
 let needCapture: boolean = false;
 
+let listenToMove: boolean = true;
+
 let lastFrameTime = performance.now();
 let frameCount = 0;
 let fps = 0;
@@ -22,6 +24,7 @@ canvas.addEventListener('mousedown', (event) => {
     updateInfo(x, y);
     console.log(`Mouse down at (${x}, ${y})`);
     scene.camera.printViewMatrix();
+    listenToMove = !listenToMove;
 });
 canvas.addEventListener('mouseup', (event) => {
     const rect = canvas.getBoundingClientRect();
@@ -30,11 +33,17 @@ canvas.addEventListener('mouseup', (event) => {
     updateInfo(x, y);
     console.log(`Mouse up at (${x}, ${y})`);
 });
+canvas.addEventListener('wheel', (event) => {
+    scene.camera.radius += event.deltaY/1000;
+    if(scene.camera.radius <= 0) scene.camera.radius = 0.0;
+    scene.camera.tick();
+});
 canvas.addEventListener('mousemove', (event) => {
+    if(!listenToMove) return;
     const rect = canvas.getBoundingClientRect();
     const x = (event.clientX - rect.left)/canvas.width;
     const y = clamp((event.clientY - rect.top)/canvas.height,0.05,0.95);
-    let azymuth = 2*x*Math.PI;
+    let azymuth = 4*x*Math.PI;
     let polar = y*Math.PI;
     //polar = Math.PI/2.0;
     //azymuth = 0;

@@ -6,15 +6,14 @@ import { Plane } from "./Primitives/Plane";
 import { Triangle } from "./Primitives/Triangle";
 
 export class Scene {
-    public camera:Camera;
+    public camera:Camera = new Camera();
     public materialVec:Material[] = [];
     public sphereVec:{sphere:Sphere,materialIndex:number}[] = [];
     public planeVec:{plane:Plane,materialIndex:number}[] = [];
     public triangleVec:{tri:Triangle,materialIndex:number}[] = [];
 
     constructor() {
-        this.camera = new Camera(new Vector3(0.0,0.0,10.0));
-        this.scene1();
+        this.scene2();
     }
 
     private addMaterial(material:Material):number{
@@ -41,6 +40,8 @@ export class Scene {
     }
 
     private scene1(){
+        this.camera = new Camera(new Vector3(0.0,0.0,10.0));
+
         const m1 = this.addMaterial(new Material(
             new Vector3(1.0,0.0,0.0)
         ));
@@ -79,6 +80,71 @@ export class Scene {
             new Vector3(0.0,1.0,0.0)
         );
         this.addPlane(p1,m3);
+    }
+
+    private scene2(){
+        this.camera = new Camera(new Vector3(0.0,0.0,3.5));
+
+        const red = this.addMaterial(new Material(
+            new Vector3(1.0,0.0,0.0)
+        ));
+
+        const green = this.addMaterial(new Material(
+            new Vector3(0.0,1.0,0.0)
+        ));
+
+        const blue = this.addMaterial(new Material(
+            new Vector3(0.0,0.0,1.0)
+        ));
+
+        const white = this.addMaterial(new Material(
+            new Vector3(1.0,1.0,1.0)
+        ));
+
+        const yellow = this.addMaterial(new Material(
+            new Vector3(1.0,1.0,0.0)
+        ));
+
+        const floor:Plane = new Plane(
+            new Vector3(0.0,-1.0,0.0),
+            new Vector3(0.0,1.0,0.0)
+        );
+        this.addPlane(floor,white);
+
+        const back:Plane = new Plane(
+            new Vector3(0.0,0.0,1.0),
+            new Vector3(0.0,0.0,-1.0)
+        );
+        this.addPlane(back,white);
+
+        const ceiling:Plane = new Plane(
+            new Vector3(0.0,1.0,0.0),
+            new Vector3(0.0,-1.0,0.0)
+        );
+        this.addPlane(ceiling,white);
+
+        const left:Plane = new Plane(
+            new Vector3(-1.0,0.0,0.0),
+            new Vector3(1.0,0.0,0.0)
+        );
+        this.addPlane(left,red);
+
+        const right:Plane = new Plane(
+            new Vector3(1.0,0.0,0.0),
+            new Vector3(-1.0,0.0,0.0)
+        );
+        this.addPlane(right,green);
+
+        const s1:Sphere = new Sphere(
+            new Vector3(0.5,-0.7,-0.25),
+            0.3);
+        this.addSphere(s1,yellow);
+
+        const s2:Sphere = new Sphere(
+            new Vector3(-0.5,-0.7,0.25),
+            0.3);
+        this.addSphere(s2,blue);
+
     }
     
     public serializeMaterialVec():Float32Array {
