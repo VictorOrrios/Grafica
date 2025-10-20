@@ -28,7 +28,7 @@ export class Triangle {
         ]);
     }
 
-    public getNormal(): Vector3 {
+    private getNormal(): Vector3 {
         const edge1 = new Vector3(this.v1).subtract(this.v0);
         const edge2 = new Vector3(this.v2).subtract(this.v0);
         return edge1.cross(edge2).normalize();

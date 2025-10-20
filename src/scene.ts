@@ -4,6 +4,7 @@ import { Camera } from "./camera";
 import { Material } from "./Primitives/Material";
 import { Plane } from "./Primitives/Plane";
 import { Triangle } from "./Primitives/Triangle";
+import { Quad } from "./Primitives/Quad";
 
 export class Scene {
     public camera:Camera = new Camera();
@@ -11,9 +12,10 @@ export class Scene {
     public sphereVec:{sphere:Sphere,materialIndex:number}[] = [];
     public planeVec:{plane:Plane,materialIndex:number}[] = [];
     public triangleVec:{tri:Triangle,materialIndex:number}[] = [];
+    public quadVec:{quad:Quad,materialIndex:number}[] = [];
 
     constructor() {
-        this.scene2();
+        this.scene1();
     }
 
     private addMaterial(material:Material):number{
@@ -37,6 +39,11 @@ export class Scene {
         this.triangleVec.push({
             tri,materialIndex
         });
+    }
+    
+    private addQuad(quad:Quad, materialIndex:number){
+        this.addTriangle(quad.t1,materialIndex);
+        this.addTriangle(quad.t2,materialIndex);
     }
 
     private scene1(){
@@ -105,35 +112,45 @@ export class Scene {
             new Vector3(1.0,1.0,0.0)
         ));
 
-        const floor:Plane = new Plane(
-            new Vector3(0.0,1.0,0.0),
-            1.0
+        const floor:Quad = new Quad(
+            new Vector3(-1.0,-1.0,-1.0),
+            new Vector3(-1.0,-1.0,1.0),
+            new Vector3(1.0,-1.0,1.0),
+            new Vector3(1.0,-1.0,-1.0),
         );
-        this.addPlane(floor,white);
+        this.addQuad(floor,white);
 
-        const back:Plane = new Plane(
-            new Vector3(0.0,0.0,-1.0),
-            1.0
+        const back:Quad = new Quad(
+            new Vector3(-1.0,-1.0,-1.0),
+            new Vector3(-1.0,1.0,-1.0),
+            new Vector3(1.0,1.0,-1.0),
+            new Vector3(1.0,-1.0,-1.0),
         );
-        this.addPlane(back,white);
+        this.addQuad(back,white);
 
-        const ceiling:Plane = new Plane(
-            new Vector3(0.0,-1.0,0.0),
-            1.0
+        const ceiling:Quad = new Quad(
+            new Vector3(-1.0,1.0,-1.0),
+            new Vector3(-1.0,1.0,1.0),
+            new Vector3(1.0,1.0,1.0),
+            new Vector3(1.0,1.0,-1.0),
         );
-        this.addPlane(ceiling,white);
+        this.addQuad(ceiling,white);
 
-        const left:Plane = new Plane(
-            new Vector3(1.0,0.0,0.0),
-            1.0
+        const left:Quad = new Quad(
+            new Vector3(-1.0,-1.0,1.0),
+            new Vector3(-1.0,1.0,1.0),
+            new Vector3(-1.0,1.0,-1.0),
+            new Vector3(-1.0,-1.0,-1.0),
         );
-        this.addPlane(left,red);
+        this.addQuad(left,red);
 
-        const right:Plane = new Plane(
-            new Vector3(-1.0,0.0,0.0),
-            1.0
+        const right:Quad = new Quad(
+            new Vector3(1.0,-1.0,1.0),
+            new Vector3(1.0,1.0,1.0),
+            new Vector3(1.0,1.0,-1.0),
+            new Vector3(1.0,-1.0,-1.0),
         );
-        this.addPlane(right,green);
+        this.addQuad(right,green);
 
         const s1:Sphere = new Sphere(
             new Vector3(0.5,-0.7,-0.25),
