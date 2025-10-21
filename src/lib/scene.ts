@@ -15,7 +15,7 @@ export class Scene {
     public quadVec:{quad:Quad,materialIndex:number}[] = [];
 
     constructor() {
-        this.scene2();
+        this.scene1();
     }
 
     private addMaterial(material:Material):number{

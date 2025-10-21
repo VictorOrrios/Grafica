@@ -79,6 +79,9 @@ uniform uint frame_count;
 uniform uint spp;               // samples per pixel
 uniform vec3 resolution;        // x,y,z = width,height,aspect_ratio
 
+uniform uint frames_acummulated;
+uniform sampler2D last_frame_buffer;
+
 uniform sampler2D material_vector;
 
 uniform int sphere_num;
@@ -410,9 +413,7 @@ vec3 cast_ray(Ray r){
 }
 
 // Generates a ray pointing to the pixel this thread is assigned with
-Ray get_ray(){
-    vec2 uv = (gl_FragCoord.xy + sample_square())/resolution.xy;
-
+Ray get_ray(vec2 uv){
     // Calculate offsets
     float ndcX = 2.0 * uv.x - 1.0;
     float ndcY = 2.0 * uv.y - 1.0;
@@ -442,15 +443,26 @@ void main() {
         ^ hash(uint(int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1920));
 
     // Calculate mean color of pixel
+    vec2 uv = (gl_FragCoord.xy + sample_square())/resolution.xy;
     for(int i = 0; i<int(spp); i++){
-        Ray r = get_ray();
+        Ray r = get_ray(uv);
         outColor += vec4(cast_ray(r),0.0);
     }
     outColor /= float(spp);
 
     // Postprocessing
     //outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
+
     // Alpha channel correction
     outColor.a = 1.0; 
-    //outColor.rgb = vec3(random(),random(),random()); // Random test
+
+    // Frame acummulation
+    if (frames_acummulated > 0u) {
+        vec3 last_color = texture(last_frame_buffer, uv).rgb;
+        float f = float(frames_acummulated);
+        outColor.rgb = (last_color * (f - 1.0) + outColor.rgb) / f;
+    }
+
+    // Random test
+    //outColor.rgb = vec3(random(),random(),random()); 
 }

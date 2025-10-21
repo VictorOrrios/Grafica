@@ -5,8 +5,10 @@
     import { clamp, Vector3 } from "math.gl";
     import { Station } from "$lib/Math/Station";
     import { onMount } from "svelte";
+    import { render } from "svelte/server";
 
     const scene = new Scene();
+    let renderer:Renderer;
 
     let canvas !: HTMLCanvasElement;
 
@@ -32,6 +34,7 @@
         scene.camera.radius += event.deltaY/1000;
         if(scene.camera.radius <= 0) scene.camera.radius = 0.01;
         scene.camera.tick();
+        renderer.resetFrameAcummulation();
     }
 
     function mousemove(event:any){
@@ -44,6 +47,7 @@
         //polar = Math.PI/2.0;
         //azymuth = 0;
         scene.camera.moveTo(azymuth,polar);
+        renderer.resetFrameAcummulation();
     }
 
     function updateFPS(time: number) {
@@ -88,7 +92,7 @@
         if (!gl) throw new Error("WebGL2 not supported");
         const ext = gl.getExtension('EXT_color_buffer_float');
         if (!ext) throw new Error('EXT_color_buffer_float not supported');
-        const renderer = new Renderer(gl, scene);
+        renderer = new Renderer(gl, scene);
 
         await renderer.initialize();
         function loop(time: number) {

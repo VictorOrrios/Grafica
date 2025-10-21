@@ -15,6 +15,9 @@ export class Renderer {
     private attachments:Map<string,WebGLUniformLocation> = new Map();
 
     private num_frames_rendered:number = 0;
+    
+    private num_frames_acummulated:number = 0;
+    private last_frame!:WebGLTexture;
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
         this.gl = gl;
@@ -27,7 +30,6 @@ export class Renderer {
         this.initQuad();
         await this.initBuffers();
     }
-
 
     public async initShaders(): Promise<WebGLProgram> {
 
@@ -45,6 +47,10 @@ export class Renderer {
         return program;
     }
 
+    public resetFrameAcummulation(){
+        this.num_frames_acummulated = 0;
+        console.log("RESET");
+    }
 
     private createShader(type: number, source: string): WebGLShader {
         const shader = this.gl.createShader(type)!;
@@ -79,6 +85,7 @@ export class Renderer {
     private async initBuffers() {
         this.initCamera();
         this.initUniforms();
+        this.initFrameAcummulation();
         this.initStorageBuffers();
     }
 
@@ -107,6 +114,7 @@ export class Renderer {
         this.attachments.set("frame_count",this.initUniform("frame_count",2))
         this.attachments.set("resolution",this.initUniform("resolution",3))
         this.attachments.set("spp",this.initUniform("spp",2))
+        this.attachments.set("frames_acummulated",this.initUniform("frames_acummulated",2));
 
         this.initUniform("sphere_num",0,[this.scene.sphereVec.length]);
         this.initUniform("plane_num",0,[this.scene.planeVec.length]);
@@ -142,10 +150,10 @@ export class Renderer {
 
     private initStorageBuffers(){
         
-        this.initStorageBuffer("material_vector",this.scene.serializeMaterialVec(),0);
-        this.initStorageBuffer("sphere_vector",this.scene.serializeSphereVec(),1);
-        this.initStorageBuffer("plane_vector",this.scene.serializePlaneVec(),2);
-        this.initStorageBuffer("triangle_vector",this.scene.serializeTriangleVec(),3);
+        this.initStorageBuffer("material_vector",this.scene.serializeMaterialVec(),1);
+        this.initStorageBuffer("sphere_vector",this.scene.serializeSphereVec(),2);
+        this.initStorageBuffer("plane_vector",this.scene.serializePlaneVec(),3);
+        this.initStorageBuffer("triangle_vector",this.scene.serializeTriangleVec(),4);
         
     }
 
@@ -176,6 +184,24 @@ export class Renderer {
         let location = gl.getUniformLocation(this.program, name);
         if(!location) console.warn(name,"location returned null");
         gl.uniform1i(location, index);
+    }
+
+    private initFrameAcummulation(){
+        const gl = this.gl;
+
+        this.last_frame = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.last_frame);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB16F, gl.canvas.width, gl.canvas.height, 0, gl.RGB, gl.FLOAT, null);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+
+        const loc = this.gl.getUniformLocation(this.program,"last_frame_buffer")
+        if(loc){
+            this.attachments.set("last_frame_buffer",loc)
+        }else{
+            throw new Error("Error while trying to find last_frame_buffer");
+        }
     }
 
     // Used in P2, look at for reference in future upgrades
@@ -223,7 +249,10 @@ export class Renderer {
 
         // Sample per pixel uniform buffer
         // TODO: Implement user controled parameter
-        gl.uniform1ui(this.getLocation("spp"), 10);
+        gl.uniform1ui(this.getLocation("spp"), 5);
+
+        // Frame acummulation count buffer
+        gl.uniform1ui(this.getLocation("frames_acummulated"), this.num_frames_acummulated);
 
     }
 
@@ -239,8 +268,18 @@ export class Renderer {
         gl.bufferSubData(gl.UNIFORM_BUFFER, 0, data);
     }
 
+    private updateFrameBuffer(){
+        const gl = this.gl;
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.last_frame);
+        gl.uniform1i(this.getLocation("last_frame_buffer"), 0);
+
+    }
+
     public render(time: number) {
         const gl = this.gl;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
@@ -250,9 +289,25 @@ export class Renderer {
 
         this.updateBuffers(time);
         this.updateCameraUBO();
+        this.updateFrameBuffer();
+
 
         gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+        gl.bindTexture(gl.TEXTURE_2D, this.last_frame);
+        gl.copyTexSubImage2D(
+            gl.TEXTURE_2D,
+            0,       // nivel mipmap
+            0, 0,    // destino dentro de la textura
+            0, 0,    // origen en el framebuffer
+            this.gl.canvas.width,
+            this.gl.canvas.height
+        );
+        gl.bindTexture(gl.TEXTURE_2D, null);
+
+
         this.num_frames_rendered++;
+        this.num_frames_acummulated++;
     }
 }
 
