@@ -16,7 +16,9 @@
 
     let lastFrameTime = performance.now();
     let frameCount = 0;
-    let fps = 0;
+    let fps = $state(0);
+
+    let stopRendering:boolean = $state(false);
 
     function mousedown(event:any){
         const rect = canvas.getBoundingClientRect();
@@ -90,6 +92,7 @@
 
         await renderer.initialize();
         function loop(time: number) {
+            if(stopRendering) return;
             renderer.render(time);
             if (needCapture) {
                 saveScreenshot();
@@ -106,7 +109,8 @@
 <div class="main w-screem h-screen">
 	<div id="controls">
 
-		<button id="capture" onclick={() => {needCapture = true;}}>Capture PNG</button>
+		<button onclick={() => {needCapture = true;}}>Capture PNG</button>
+		<button onclick={() => {stopRendering = true;}}>STOP</button>
 		FPS: {fps}
 	</div>
 	<canvas id="canvas" width="854" height="480" bind:this={canvas}></canvas>

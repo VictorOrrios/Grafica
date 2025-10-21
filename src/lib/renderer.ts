@@ -4,14 +4,6 @@ import { Scene } from "./scene";
 import vertexSource from "$lib/shaders/vertex.glsl"
 import fragmentSource from "$lib/shaders/fragment.glsl"
 
-
-type buffer_locations = {
-    time:WebGLUniformLocation,
-    frame_count:WebGLUniformLocation,
-    resolution:WebGLUniformLocation,
-    spp:WebGLUniformLocation,
-}
-
 export class Renderer {
     private gl: WebGL2RenderingContext;
     private scene: Scene;
@@ -20,14 +12,13 @@ export class Renderer {
     private vertexShader!:WebGLShader;
     private fragmentShader!:WebGLShader;
     private camera_ubo!:WebGLBuffer;
-    private buffLoc:buffer_locations;
+    private attachments:Map<string,WebGLUniformLocation> = new Map();
 
     private num_frames_rendered:number = 0;
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
         this.gl = gl;
         this.scene = scene;
-        this.buffLoc = {} as buffer_locations;
     }
 
     public async initialize() {
@@ -112,10 +103,10 @@ export class Renderer {
 
     private initUniforms(){
 
-        this.buffLoc.time = this.initUniform("time",1)
-        this.buffLoc.frame_count = this.initUniform("frame_count",2)
-        this.buffLoc.resolution = this.initUniform("resolution",3)
-        this.buffLoc.spp = this.initUniform("spp",2)
+        this.attachments.set("time",this.initUniform("time",1))
+        this.attachments.set("frame_count",this.initUniform("frame_count",2))
+        this.attachments.set("resolution",this.initUniform("resolution",3))
+        this.attachments.set("spp",this.initUniform("spp",2))
 
         this.initUniform("sphere_num",0,[this.scene.sphereVec.length]);
         this.initUniform("plane_num",0,[this.scene.planeVec.length]);
@@ -210,21 +201,29 @@ export class Renderer {
         gl.bindTexture(gl.TEXTURE_2D, tex);
     }
 
+    private getLocation(name:string):WebGLUniformLocation{
+        const r = this.attachments.get(name);
+        if(r) return r;
+        else{
+            throw new Error("Error while getting "+name+" attachment location")
+        }
+    }
+
     private updateBuffers(time: number){
         const gl = this.gl;
 
         // Time buffer
-        gl.uniform1f(this.buffLoc.time, time);
+        gl.uniform1f(this.getLocation("time"), time);
 
         // Frame count buffer
-        gl.uniform1ui(this.buffLoc.frame_count, this.num_frames_rendered);
+        gl.uniform1ui(this.getLocation("frame_count"), this.num_frames_rendered);
 
         // Resolution buffer
-        gl.uniform3f(this.buffLoc.resolution, gl.canvas.width, gl.canvas.height, gl.canvas.width/gl.canvas.height);
+        gl.uniform3f(this.getLocation("resolution"), gl.canvas.width, gl.canvas.height, gl.canvas.width/gl.canvas.height);
 
         // Sample per pixel uniform buffer
         // TODO: Implement user controled parameter
-        gl.uniform1ui(this.buffLoc.spp, 10);
+        gl.uniform1ui(this.getLocation("spp"), 10);
 
     }
 
