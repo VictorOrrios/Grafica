@@ -5,6 +5,8 @@ import { Material } from "./Primitives/Material";
 import { Plane } from "./Primitives/Plane";
 import { Triangle } from "./Primitives/Triangle";
 import { Quad } from "./Primitives/Quad";
+import { Mesh } from "./Primitives/Mesh";
+import { MeshLoader } from "./loaders/MeshLoader";
 
 export class Scene {
     public camera:Camera = new Camera();
@@ -13,6 +15,7 @@ export class Scene {
     public planeVec:{plane:Plane,materialIndex:number}[] = [];
     public triangleVec:{tri:Triangle,materialIndex:number}[] = [];
     public quadVec:{quad:Quad,materialIndex:number}[] = [];
+    public meshVec:{mesh:Mesh,materialIndex:number}[] = [];
 
     constructor() {
         this.scene2();
@@ -44,6 +47,18 @@ export class Scene {
     private addQuad(quad:Quad, materialIndex:number){
         this.addTriangle(quad.t1,materialIndex);
         this.addTriangle(quad.t2,materialIndex);
+    }
+
+    /**
+     * Add a mesh to the scene
+     * All triangles from the mesh will be added with the specified material
+     */
+    public addMesh(mesh:Mesh, materialIndex:number) {
+        this.meshVec.push({mesh, materialIndex});
+        // Add all mesh triangles to the triangle vector
+        mesh.getTriangles().forEach(tri => {
+            this.addTriangle(tri, materialIndex);
+        });
     }
 
     private scene1(){
@@ -162,6 +177,26 @@ export class Scene {
             0.3);
         this.addSphere(s2,blue);
 
+    }
+
+    private tungTungTungSahurScene(){
+        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
+        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
+        const p1:Plane = new Plane(
+            new Vector3(0.0,1.0,0.0),
+            1.0
+        );
+        this.addPlane(p1,lightBlue);
+        
+        try {
+            const tungTungTungSahurMesh = MeshLoader.load("/models/tung.fbx", "TungTungTungSahur");
+            tungTungTungSahurMesh.translate(new Vector3(-2, 0, 0));
+            this.addMesh(tungTungTungSahurMesh, yellow);
+            console.log("✓ Mesh loaded successfully:", tungTungTungSahurMesh.toString());
+        } catch (error) {
+            console.warn("⚠ Could not load mesh (this is normal during SSR):", error);
+            // Mesh loading will work in the browser, this error only happens during build
+        }
     }
     
     public serializeMaterialVec():Float32Array {
