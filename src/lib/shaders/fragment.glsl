@@ -1,5 +1,5 @@
 #version 300 es
-precision highp float;
+precision mediump float;
 
 //===========================
 // Global constants
@@ -113,8 +113,28 @@ uint xorshift(inout uint state) {
     return state;
 }
 
-float random(){
+float rand1() {
     return float(xorshift(seed)) / 4294967295.0;
+}
+
+float rand2() {
+    seed ^= seed << 13;
+    seed ^= seed >> 17;
+    seed ^= seed << 5;
+    return float(seed) * 2.3283064365386963e-10; // 1/2^32
+}
+
+float rand3(){
+    seed = (seed ^ 61u) ^ (seed >> 16u);
+    seed *= 9u;
+    seed = seed ^ (seed >> 4u);
+    seed *= 0x27d4eb2du;
+    seed = seed ^ (seed >> 15u);
+    return float(seed) / 4294967295.0; // Divide by uint max
+}
+
+float random(){
+    return rand2();
 }
 
 vec2 sample_square(){
@@ -415,13 +435,12 @@ vec3 cast_ray(Ray r){
 // Generates a ray pointing to the pixel this thread is assigned with
 Ray get_ray(vec2 uv){
     // Calculate offsets
-    float ndcX = 2.0 * uv.x - 1.0;
-    float ndcY = 2.0 * uv.y - 1.0;
+    vec2 ndc = 2.0*(uv + sample_square() / resolution.xy) -1.0;
 
     // Ray from 0,0,0 to +z + offsets
     vec3 rayDirCameraSpace = normalize(vec3(
-        ndcX * resolution.z * cam.position_fov.a,
-        ndcY * cam.position_fov.a,
+        ndc.x * resolution.z * cam.position_fov.a,
+        ndc.y * cam.position_fov.a,
         -1.0
     ));
 
@@ -443,7 +462,7 @@ void main() {
         ^ hash(uint(int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1920));
 
     // Calculate mean color of pixel
-    vec2 uv = (gl_FragCoord.xy + sample_square())/resolution.xy;
+    vec2 uv = (gl_FragCoord.xy)/resolution.xy;
     for(int i = 0; i<int(spp); i++){
         Ray r = get_ray(uv);
         outColor += vec4(cast_ray(r),0.0);
@@ -456,13 +475,18 @@ void main() {
     // Alpha channel correction
     outColor.a = 1.0; 
 
+    // Random test
+    //outColor.rgb = vec3(random(),random(),random()); 
+
     // Frame acummulation
     if (frames_acummulated > 0u) {
         vec3 last_color = texture(last_frame_buffer, uv).rgb;
         float f = float(frames_acummulated);
-        outColor.rgb = (last_color * (f - 1.0) + outColor.rgb) / f;
+        // Linear mean
+        //outColor.rgb = (last_color * (f - 1.0) + outColor.rgb) / f;
+        // Exponetianl mean
+        outColor.rgb = mix(last_color, outColor.rgb, 1.0 / float(frames_acummulated + 1u));
     }
 
-    // Random test
-    //outColor.rgb = vec3(random(),random(),random()); 
+    
 }

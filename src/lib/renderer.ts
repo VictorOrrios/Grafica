@@ -193,7 +193,7 @@ export class Renderer {
         gl.bindTexture(gl.TEXTURE_2D, this.last_frame);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB16F, gl.canvas.width, gl.canvas.height, 0, gl.RGB, gl.FLOAT, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.canvas.width, gl.canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         gl.bindTexture(gl.TEXTURE_2D, null);
 
         const loc = this.gl.getUniformLocation(this.program,"last_frame_buffer")
