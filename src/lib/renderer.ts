@@ -253,8 +253,9 @@ export class Renderer {
         gl.uniform3f(this.getLocation("resolution"), gl.canvas.width, gl.canvas.height, gl.canvas.width/gl.canvas.height);
 
         // Sample per pixel uniform buffer
-        // TODO: Implement user controled parameter
-        gl.uniform1ui(this.getLocation("spp"), 5);
+        // TODO: Implement user controled parameter+
+        // TODO, change
+        gl.uniform1ui(this.getLocation("spp"), 1);
 
         // Frame acummulation count buffer
         gl.uniform1ui(this.getLocation("frames_acummulated"), this.num_frames_acummulated);

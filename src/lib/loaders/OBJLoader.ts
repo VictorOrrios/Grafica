@@ -89,7 +89,7 @@ export class OBJLoader {
             }
         }
 
-        console.log(`✓ Parsed OBJ: ${mesh.toString()}`);
+        console.log(`✓ Parsed OBJ, number of triangles: ${mesh.getTriangles().length}`);
         return mesh;
     }
 
