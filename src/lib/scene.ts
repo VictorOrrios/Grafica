@@ -18,7 +18,7 @@ export class Scene {
     public meshVec:{mesh:Mesh,materialIndex:number}[] = [];
 
     constructor() {
-        this.scene1();
+        this.scene2();
     }
 
     private addMaterial(material:Material):number{
@@ -184,6 +184,7 @@ export class Scene {
 
     }
 
+    // TODO: REMOVE THIS NOW!!!
     private tungTungTungSahurScene(){
         const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
         const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
@@ -202,6 +203,16 @@ export class Scene {
             console.warn("⚠ Could not load mesh (this is normal during SSR):", error);
             // Mesh loading will work in the browser, this error only happens during build
         }
+    }
+
+    public serializeStaticBlock():Float32Array {
+        const data: number[] = [];
+        data.push(...this.serializeMaterialVec(),
+                ...this.serializeSphereVec(),
+                ...this.serializePlaneVec(),
+                ...this.serializeTriangleVec(),
+                );
+        return new Float32Array(data);
     }
     
     public serializeMaterialVec():Float32Array {

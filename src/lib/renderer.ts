@@ -153,18 +153,13 @@ export class Renderer {
     private initStorageBuffers(){
         const gl = this.gl;
 
-        const data: number[] = [];
-        data.push(...this.scene.serializeMaterialVec(),
-                ...this.scene.serializeSphereVec(),
-                ...this.scene.serializePlaneVec(),
-                ...this.scene.serializeTriangleVec());
-        const typed_data = new Float32Array(data);
-        console.log(`Initializing static buffer storage:`,typed_data);
-        console.log(this.scene.serializeTriangleVec())
+        const data = this.scene.serializeStaticBlock();
+
+        console.log(`Initializing static buffer storage:`,data);
 
         const sphereUBO = gl.createBuffer();
         gl.bindBuffer(gl.UNIFORM_BUFFER, sphereUBO);
-        gl.bufferData(gl.UNIFORM_BUFFER, typed_data, gl.DYNAMIC_DRAW);
+        gl.bufferData(gl.UNIFORM_BUFFER, data, gl.DYNAMIC_DRAW);
         const blockIndex = gl.getUniformBlockIndex(this.program, 'StaticBlock');
         const bindingPoint = 1;
         gl.uniformBlockBinding(this.program, blockIndex, bindingPoint);

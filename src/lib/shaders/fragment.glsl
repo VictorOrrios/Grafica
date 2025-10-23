@@ -81,9 +81,15 @@ uniform sampler2D last_frame_buffer;
 
 layout(std140) uniform StaticBlock {
     Material materials[NUM_MATERIALS];
-    Sphere spheres[NUM_SPHERES];
-    Plane planes[NUM_PLANES];
-    Triangle triangles[NUM_TRIS];
+    #if NUM_SPHERES > 0
+        Sphere spheres[NUM_SPHERES];
+    #endif
+    #if NUM_PLANES > 0
+        Plane planes[NUM_PLANES];
+    #endif
+    #if NUM_TRIS > 0
+        Triangle triangles[NUM_TRIS];
+    #endif
 };
 
 uniform sampler2D skybox;
@@ -309,36 +315,43 @@ bool hit_scene(Ray r, out Hit h){
     h.t = ray_max_distance;
 
     // Check for sphere hits
-    for(int s_i = 0; s_i < NUM_SPHERES; s_i++){
-        Sphere s = spheres[s_i];
-        if(hit_sphere(s,r,h_aux)){
-            if(h_aux.t<h.t){
-                h=h_aux;
+    #if NUM_SPHERES > 0
+        for(int s_i = 0; s_i < NUM_SPHERES; s_i++){
+            Sphere s = spheres[s_i];
+            if(hit_sphere(s,r,h_aux)){
+                if(h_aux.t<h.t){
+                    h=h_aux;
+                }
+                has_hit = true;
             }
-            has_hit = true;
         }
-    }
+    #endif
 
     // Check for plane hits
-    for(int p_i = 0; p_i < NUM_PLANES; p_i++) {
-        Plane p = planes[p_i];
-        if(hit_plane(p,r,h_aux)){
-            if(h_aux.t<h.t){
-                h=h_aux;
+    #if NUM_PLANES > 0
+        for(int p_i = 0; p_i < NUM_PLANES; p_i++) {
+            Plane p = planes[p_i];
+            if(hit_plane(p,r,h_aux)){
+                if(h_aux.t<h.t){
+                    h=h_aux;
+                }
+                has_hit = true;
             }
-            has_hit = true;
         }
-    }
+    #endif
 
-    for(int t_i = 0; t_i < NUM_TRIS; t_i++) {
-        Triangle tri = triangles[t_i];
-        if(hit_triangle(tri,r,h_aux)){
-            if(h_aux.t<h.t){
-                h=h_aux;
+    // Check for tri hits
+    #if NUM_TRIS > 0
+        for(int t_i = 0; t_i < NUM_TRIS; t_i++) {
+            Triangle tri = triangles[t_i];
+            if(hit_triangle(tri,r,h_aux)){
+                if(h_aux.t<h.t){
+                    h=h_aux;
+                }
+                has_hit = true;
             }
-            has_hit = true;
         }
-    }
+    #endif
 
     return has_hit;
 }
