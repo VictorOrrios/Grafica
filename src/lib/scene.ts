@@ -18,7 +18,8 @@ export class Scene {
     public meshVec:{mesh:Mesh,materialIndex:number}[] = [];
 
     constructor() {
-        this.scene2();
+        // this.scene2();
+        // this.tungTungTungSahurScene();
     }
 
     private addMaterial(material:Material):number{
@@ -185,7 +186,8 @@ export class Scene {
     }
 
     // TODO: REMOVE THIS NOW!!!
-    private tungTungTungSahurScene(){
+    // No
+    private async tungTungTungSahurScene(){
         const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
         const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
         const p1:Plane = new Plane(
@@ -195,14 +197,17 @@ export class Scene {
         this.addPlane(p1,lightBlue);
         
         try {
-            const tungTungTungSahurMesh = MeshLoader.load("/models/tung.fbx", "TungTungTungSahur");
-            tungTungTungSahurMesh.translate(new Vector3(-2, 0, 0));
+            const tungTungTungSahurMesh = await MeshLoader.load("/models/tung.fbx", "TungTungTungSahur");
+            tungTungTungSahurMesh.translate(new Vector3(20, 0, 0));
             this.addMesh(tungTungTungSahurMesh, yellow);
             console.log("✓ Mesh loaded successfully:", tungTungTungSahurMesh.toString());
         } catch (error) {
-            console.warn("⚠ Could not load mesh (this is normal during SSR):", error);
-            // Mesh loading will work in the browser, this error only happens during build
+            console.warn("⚠ Could not load mesh:", error);
         }
+    }
+
+    public async loadMeshes() {
+        await this.tungTungTungSahurScene();
     }
 
     public serializeStaticBlock():Float32Array {

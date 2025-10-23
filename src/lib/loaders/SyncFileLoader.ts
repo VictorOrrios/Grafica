@@ -1,32 +1,19 @@
 /**
- * Synchronous file loader using XMLHttpRequest
- * Only works in browser environment
+ * Asynchronous file loader using fetch
+ * Works in browser environment
  */
 export class SyncFileLoader {
     /**
-     * Load text file synchronously using XMLHttpRequest
+     * Load text file asynchronously using fetch
      * @param url - The URL to load
-     * @returns The file content as text
-     * @throws Error if the request fails or if not in browser environment
+     * @returns Promise resolving to the file content as text
+     * @throws Error if the request fails
      */
-    static loadText(url: string): string {
-        // Check if we're in a browser environment
-        if (typeof XMLHttpRequest === 'undefined') {
-            throw new Error(
-                `XMLHttpRequest is not available (likely running in Node.js/SSR context).\n` +
-                `File: ${url}\n` +
-                `This error occurs during build/SSR but won't affect browser runtime.`
-            );
+    static async loadText(url: string): Promise<string> {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to load ${url}: HTTP ${response.status}`);
         }
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', url, false); // false = synchronous
-        xhr.send();
-
-        if (xhr.status === 200) {
-            return xhr.responseText;
-        } else {
-            throw new Error(`Failed to load ${url}: HTTP ${xhr.status}`);
-        }
+        return await response.text();
     }
 }

@@ -5,7 +5,7 @@ import { SyncFileLoader } from "./SyncFileLoader";
 
 /**
  * Unified Mesh Loader
- * Fully synchronous API
+ * Asynchronous API for loading from URLs
  */
 export class MeshLoader {
     /**
@@ -29,13 +29,13 @@ export class MeshLoader {
     }
 
     /**
-     * Load a mesh from URL (synchronous)
+     * Load a mesh from URL (asynchronous)
      * @param url - URL to the mesh file
      * @param name - Optional name for the mesh
-     * @returns Mesh object
+     * @returns Promise resolving to Mesh object
      */
-    public static load(url: string, name?: string): Mesh {
-        const content = SyncFileLoader.loadText(url);
+    public static async load(url: string, name?: string): Promise<Mesh> {
+        const content = await SyncFileLoader.loadText(url);
         const format = this.detectFormat(url);
         
         if (!format) {
@@ -46,12 +46,12 @@ export class MeshLoader {
     }
 
     /**
-     * Load multiple meshes from URLs (synchronous)
+     * Load multiple meshes from URLs (asynchronous)
      * @param urls - Array of URLs to mesh files
-     * @returns Array of Mesh objects
+     * @returns Promise resolving to array of Mesh objects
      */
-    public static loadMultiple(urls: string[]): Mesh[] {
-        return urls.map(url => this.load(url));
+    public static async loadMultiple(urls: string[]): Promise<Mesh[]> {
+        return Promise.all(urls.map(url => this.load(url)));
     }
 
     /**

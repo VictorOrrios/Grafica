@@ -92,6 +92,8 @@
         if (!gl) throw new Error("WebGL2 not supported");
         const ext = gl.getExtension('EXT_color_buffer_float');
         if (!ext) throw new Error('EXT_color_buffer_float not supported');
+
+        await scene.loadMeshes();
         renderer = new Renderer(gl, scene);
 
         await renderer.initialize();
