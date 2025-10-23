@@ -93,7 +93,10 @@
         const ext = gl.getExtension('EXT_color_buffer_float');
         if (!ext) throw new Error('EXT_color_buffer_float not supported');
 
-        await scene.loadMeshes();
+        if (scene.hasMeshes) {
+            await scene.loadMeshes();
+            scene.finalizeScene();
+        }
         renderer = new Renderer(gl, scene);
 
         await renderer.initialize();

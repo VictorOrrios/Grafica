@@ -16,10 +16,29 @@ export class Scene {
     public triangleVec:{tri:Triangle,materialIndex:number}[] = [];
     public quadVec:{quad:Quad,materialIndex:number}[] = [];
     public meshVec:{mesh:Mesh,materialIndex:number}[] = [];
+    public hasMeshes: boolean = false;
+    public loadedMeshes: Map<string, Mesh> = new Map();
+    public sceneType: string = 'tung';
 
     constructor() {
-        // this.scene2();
-        // this.tungTungTungSahurScene();
+        this.sceneType = 'tung';
+        this.setupScene();
+    }
+
+    private setupScene() {
+        if (this.sceneType === 'tung') {
+            this.hasMeshes = true;
+            const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
+            const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
+            const p1:Plane = new Plane(
+                new Vector3(0.0,1.0,0.0),
+                1.0
+            );
+            this.addPlane(p1,lightBlue);
+        } else if (this.sceneType === 'scene2') {
+            this.scene2();
+        }
+        // Add other scenes as needed
     }
 
     private addMaterial(material:Material):number{
@@ -185,29 +204,34 @@ export class Scene {
 
     }
 
-    // TODO: REMOVE THIS NOW!!!
-    // No
-    private async tungTungTungSahurScene(){
-        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
-        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
-        const p1:Plane = new Plane(
-            new Vector3(0.0,1.0,0.0),
-            1.0
-        );
-        this.addPlane(p1,lightBlue);
-        
-        try {
-            const tungTungTungSahurMesh = await MeshLoader.load("/models/tung.fbx", "TungTungTungSahur");
-            tungTungTungSahurMesh.translate(new Vector3(20, 0, 0));
-            this.addMesh(tungTungTungSahurMesh, yellow);
-            console.log("✓ Mesh loaded successfully:", tungTungTungSahurMesh.toString());
-        } catch (error) {
-            console.warn("⚠ Could not load mesh:", error);
-        }
-    }
+
 
     public async loadMeshes() {
-        await this.tungTungTungSahurScene();
+        if (this.sceneType === 'tung') {
+            try {
+                const tungTungTungSahurMesh = await MeshLoader.load("/models/tung.fbx", "TungTungTungSahur");
+                tungTungTungSahurMesh.translate(new Vector3(20, 0, 0));
+                this.loadedMeshes.set("tung", tungTungTungSahurMesh);
+                console.log("✓ Mesh loaded successfully:", tungTungTungSahurMesh.toString());
+            } catch (error) {
+                console.warn("⚠ Could not load mesh:", error);
+            }
+        }
+        // Load meshes for other scenes here
+    }
+
+    public finalizeScene() {
+        if (this.sceneType === 'tung') {
+            const yellow = this.materialVec.find(m => m.albedo.equals(new Vector3(1, 1, 0)));
+            if (!yellow) return;
+            const yellowIndex = this.materialVec.indexOf(yellow);
+            
+            const tungMesh = this.loadedMeshes.get("tung");
+            if (tungMesh) {
+                this.addMesh(tungMesh, yellowIndex);
+            }
+        }
+        // Finalize other scenes here
     }
 
     public serializeStaticBlock():Float32Array {
