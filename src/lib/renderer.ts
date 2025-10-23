@@ -33,8 +33,14 @@ export class Renderer {
 
     public async initShaders(): Promise<WebGLProgram> {
 
+        let fragmentModified = fragmentSource;
+        fragmentModified = fragmentModified.replace("__NUM_MATERIALS__",this.scene.materialVec.length.toString())
+        fragmentModified = fragmentModified.replace("__NUM_SPHERES__",this.scene.sphereVec.length.toString())
+        fragmentModified = fragmentModified.replace("__NUM_PLANES__",this.scene.planeVec.length.toString())
+        fragmentModified = fragmentModified.replace("__NUM_TRIANGLES__",this.scene.triangleVec.length.toString())
+
         this.vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexSource);
-        this.fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentSource);
+        this.fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentModified);
 
         const program = this.gl.createProgram()!;
         this.gl.attachShader(program, this.vertexShader);
@@ -116,10 +122,6 @@ export class Renderer {
         this.attachments.set("spp",this.initUniform("spp",2))
         this.attachments.set("frames_acummulated",this.initUniform("frames_acummulated",2));
 
-        this.initUniform("sphere_num",0,[this.scene.sphereVec.length]);
-        this.initUniform("plane_num",0,[this.scene.planeVec.length]);
-        this.initUniform("triangle_num",0,[this.scene.triangleVec.length]);
-            
     }    
 
     private initUniform(name:string,type:number, value:any[] = [0]):WebGLUniformLocation{
@@ -149,15 +151,28 @@ export class Renderer {
     }
 
     private initStorageBuffers(){
-        
-        this.initStorageBuffer("material_vector",this.scene.serializeMaterialVec(),1);
-        this.initStorageBuffer("sphere_vector",this.scene.serializeSphereVec(),2);
-        this.initStorageBuffer("plane_vector",this.scene.serializePlaneVec(),3);
-        this.initStorageBuffer("triangle_vector",this.scene.serializeTriangleVec(),4);
+        const gl = this.gl;
+
+        const data: number[] = [];
+        data.push(...this.scene.serializeMaterialVec(),
+                ...this.scene.serializeSphereVec(),
+                ...this.scene.serializePlaneVec(),
+                ...this.scene.serializeTriangleVec());
+        const typed_data = new Float32Array(data);
+        console.log(`Initializing static buffer storage:`,typed_data);
+        console.log(this.scene.serializeTriangleVec())
+
+        const sphereUBO = gl.createBuffer();
+        gl.bindBuffer(gl.UNIFORM_BUFFER, sphereUBO);
+        gl.bufferData(gl.UNIFORM_BUFFER, typed_data, gl.DYNAMIC_DRAW);
+        const blockIndex = gl.getUniformBlockIndex(this.program, 'StaticBlock');
+        const bindingPoint = 1;
+        gl.uniformBlockBinding(this.program, blockIndex, bindingPoint);
+        gl.bindBufferBase(gl.UNIFORM_BUFFER, bindingPoint, sphereUBO);
         
     }
 
-    private initStorageBuffer(name:string,data:Float32Array,index:number) {
+    private initTextureBuffer(name:string,data:Float32Array,index:number) {
         if(data.length === 0) return;
         const gl = this.gl;
         const storageVec = gl.createTexture();
@@ -205,23 +220,18 @@ export class Renderer {
     }
 
     // Used in P2, look at for reference in future upgrades
-    private initImageBuffer(){
+    private async initImageBuffer(){
         const gl = this.gl;
         // Image download: https://polyhaven.com/a/little_paris_eiffel_tower
-        //const image = await loadEXRImage("pisztyk_2k.exr",1.0)
-        const image = {
-            data:new Uint8Array(),
-            width:0,
-            height:0
-        }
+        const image = await loadEXRImage("pisztyk_2k.exr",1.0)
 
         let tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, image.width, image.height, 0, gl.RGB, gl.UNSIGNED_BYTE, image.data);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        let location = gl.getUniformLocation(this.program, "texture_buffer");
-        if(!location) console.warn("getUniformLocation returned null at texture_buffer");
+        let location = gl.getUniformLocation(this.program, "skybox");
+        if(!location) console.warn("getUniformLocation returned null at skybox");
         gl.uniform1i(location, 0);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);

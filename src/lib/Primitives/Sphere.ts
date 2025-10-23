@@ -9,8 +9,16 @@ export class Sphere{
         this.radius = radius;
     };
 
-    public serialize():Float32Array{
-        return new Float32Array([this.center.x,this.center.y,this.center.z,this.radius]);
+    public serialize(materialIndex:number):Float32Array{
+        const ret = new Float32Array([
+            this.center.x, this.center.y, this.center.z, this.radius,
+            0, 0, 0, 0
+        ]);
+
+        // Bitwise cast of materialIndex
+        (new Int32Array(ret.buffer))[4] = materialIndex;
+
+        return ret;
     }
 
     public toString() : string {

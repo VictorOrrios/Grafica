@@ -18,7 +18,7 @@ export class Scene {
     public meshVec:{mesh:Mesh,materialIndex:number}[] = [];
 
     constructor() {
-        this.scene2();
+        this.scene1();
     }
 
     private addMaterial(material:Material):number{
@@ -89,6 +89,11 @@ export class Scene {
             new Vector3(4.0,1.0,3.0),
             2.0);
         this.addSphere(s2,m2);
+
+        const s3 = new Sphere(
+            new Vector3(4.0,1.0,-6.0),
+            2.0);
+        this.addSphere(s3,m2);
 
         const t1:Triangle = new Triangle(
             new Vector3(-3.0,0.5,2.0),
@@ -215,7 +220,7 @@ export class Scene {
         let arr: number[] = [];
         this.sphereVec.forEach(s => {
             // Spread serialized sphere and material index onto the arr
-            arr.push(...(s.sphere.serialize()),s.materialIndex);
+            arr.push(...(s.sphere.serialize(s.materialIndex)));
         });
         console.log("Serialized sphere vector length:", arr.length);
         const ret: Float32Array = new Float32Array(arr);
@@ -227,7 +232,7 @@ export class Scene {
         let arr: number[] = [];
         this.planeVec.forEach(p => {
             // Spread serialized plane and material index onto the arr
-            arr.push(...(p.plane.serialize()),p.materialIndex);
+            arr.push(...p.plane.serialize(p.materialIndex));
         });
         console.log("Serialized plane vector length:", arr.length);
         const ret: Float32Array = new Float32Array(arr);
@@ -239,7 +244,7 @@ export class Scene {
         let arr: number[] = [];
         this.triangleVec.forEach(t => {
             // Spread serialized triangle and material index onto the arr
-            arr.push(...(t.tri.serialize()),t.materialIndex);
+            arr.push(...t.tri.serialize(t.materialIndex));
         });
         console.log("Serialized triangle vector length:", arr.length);
         const ret: Float32Array = new Float32Array(arr);

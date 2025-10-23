@@ -1,6 +1,11 @@
 #version 300 es
 precision mediump float;
 
+#define NUM_MATERIALS __NUM_MATERIALS__
+#define NUM_SPHERES __NUM_SPHERES__
+#define NUM_PLANES __NUM_PLANES__
+#define NUM_TRIS __NUM_TRIANGLES__
+
 //===========================
 // Global constants
 //===========================
@@ -14,33 +19,25 @@ precision mediump float;
 // Type definitions
 //===========================
 
-#define Material_size 3
 struct Material {
-    vec3 albedo;    // RGB Albedo
+    vec3 albedo;
 };
 
-// Center coords (3) + radius (1) + material index (1)
-#define Sphere_size 5
 struct Sphere {
-    vec3 center;
-    float radius;
+    vec4 center_radius;     // xyz = center, w = radius
     int mat;
 };
 
-#define Plane_size 5
 struct Plane {
-    vec3 normal;    // The normal of the plane
-    float distance; // Distance from 0,0,0
-    int mat;        // Material index
+    vec4 normal_distance;   // xyz = The normal of the plane, w = Distance from 0,0,0
+    int mat;                // Material index
 };
 
-#define Triangle_size 13
 struct Triangle {
-    vec3 v0;        // Vertex 0
-    vec3 v1;        // Vertex 1
-    vec3 v2;        // Vertex 2
-    vec3 normal;    // The normal of the triangle
-    int mat;        // Material index
+    vec3 v0;            // Vertex 0
+    vec3 v1;            // Vertex 1
+    vec3 v2;            // Vertex 2
+    vec4 normal_mat;    // xyz = The normal of the triangle, w = material index
 };
 
 struct Ray {
@@ -82,16 +79,14 @@ uniform vec3 resolution;        // x,y,z = width,height,aspect_ratio
 uniform uint frames_acummulated;
 uniform sampler2D last_frame_buffer;
 
-uniform sampler2D material_vector;
+layout(std140) uniform StaticBlock {
+    Material materials[NUM_MATERIALS];
+    Sphere spheres[NUM_SPHERES];
+    Plane planes[NUM_PLANES];
+    Triangle triangles[NUM_TRIS];
+};
 
-uniform int sphere_num;
-uniform sampler2D sphere_vector;
-
-uniform int plane_num;
-uniform sampler2D plane_vector;
-
-uniform int triangle_num;
-uniform sampler2D triangle_vector;
+uniform sampler2D skybox;
 
 
 //===========================
@@ -198,42 +193,18 @@ vec3 gamma_correct(vec3 color){
 //===========================
 // Material functions
 //===========================
-// Material vector parser
-Material get_material(int mat_index){
-    int n_index = mat_index * Material_size;
-    return Material(vec3(
-        texelFetch(material_vector, ivec2(n_index,0), 0).r,
-        texelFetch(material_vector, ivec2(n_index+1,0), 0).r,
-        texelFetch(material_vector, ivec2(n_index+2,0), 0).r
-    ));
-}
 
 //===========================
 // Sphere functions
 //===========================
 
-// Sphere vector parser
-Sphere get_sphere(int index){
-    int n_index = index*Sphere_size;
-    Sphere ret = Sphere(
-        vec3(
-            texelFetch(sphere_vector, ivec2(n_index,0), 0).r,
-            texelFetch(sphere_vector, ivec2(n_index+1,0), 0).r,
-            texelFetch(sphere_vector, ivec2(n_index+2,0), 0).r
-        ), 
-        texelFetch(sphere_vector, ivec2(n_index+3,0), 0).r,
-        int(texelFetch(sphere_vector, ivec2(n_index+4,0), 0).r)
-    );
-    return ret;
-}
-
 // PRE: r.dir is already normalized
 bool hit_sphere(const Sphere s, const Ray r, out Hit h){
-    vec3 oc =  r.orig - s.center;
+    vec3 oc =  r.orig - s.center_radius.xyz;
     
     float a = 1.0;
     float half_b = dot(r.dir,oc);
-    float c = dot(oc,oc)-s.radius*s.radius;
+    float c = dot(oc,oc)-s.center_radius.a*s.center_radius.w;
 
     float discriminant = half_b*half_b - a*c;
     // If < 0.0 then no solution exists
@@ -251,7 +222,7 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
     h.t = d;
     h.p = r.orig+r.dir*d;
     h.mat = s.mat;
-    vec3 s_normal = (h.p-s.center)/s.radius;
+    vec3 s_normal = (h.p-s.center_radius.xyz)/s.center_radius.w;
     set_front_face(s_normal,r.dir,h);
     
     return true;
@@ -260,29 +231,16 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
 //===========================
 // Plane functions
 //===========================
-Plane get_plane(int index){
-    int n_index = index*Plane_size;
-    Plane ret = Plane(
-        vec3(
-            texelFetch(plane_vector, ivec2(n_index,0), 0).r,
-            texelFetch(plane_vector, ivec2(n_index+1,0), 0).r,
-            texelFetch(plane_vector, ivec2(n_index+2,0), 0).r
-        ), 
-        float(texelFetch(plane_vector, ivec2(n_index+3,0), 0).r),
-        int(texelFetch(plane_vector, ivec2(n_index+4,0), 0).r)
-    );
-    return ret;
-}
 
 bool hit_plane(const Plane p, const Ray r, out Hit h){
-    float denom = dot(p.normal, r.dir);
+    float denom = dot(p.normal_distance.xyz, r.dir);
     if(abs(denom) > 0.0001){
-        float t = dot((p.normal*-p.distance) - r.orig, p.normal) / denom;
+        float t = dot((p.normal_distance.xyz*-p.normal_distance.w) - r.orig, p.normal_distance.xyz) / denom;
         if(t >= ray_min_distance && t <= ray_max_distance){
             h.t = t;
             h.p = r.orig + r.dir * t;
             h.mat = p.mat;
-            set_front_face(p.normal,r.dir,h);
+            set_front_face(p.normal_distance.xyz,r.dir,h);
             return true;
         }
     }
@@ -292,33 +250,6 @@ bool hit_plane(const Plane p, const Ray r, out Hit h){
 //===========================
 // Triangle functions
 //===========================
-Triangle get_triangle(int index){
-    int n_index = index*Triangle_size;
-    Triangle ret = Triangle(
-        vec3(
-            texelFetch(triangle_vector, ivec2(n_index,0), 0).r,
-            texelFetch(triangle_vector, ivec2(n_index+1,0), 0).r,
-            texelFetch(triangle_vector, ivec2(n_index+2,0), 0).r
-        ), 
-        vec3(
-            texelFetch(triangle_vector, ivec2(n_index+3,0), 0).r,
-            texelFetch(triangle_vector, ivec2(n_index+4,0), 0).r,
-            texelFetch(triangle_vector, ivec2(n_index+5,0), 0).r
-        ),
-        vec3(
-            texelFetch(triangle_vector, ivec2(n_index+6,0), 0).r,
-            texelFetch(triangle_vector, ivec2(n_index+7,0), 0).r,
-            texelFetch(triangle_vector, ivec2(n_index+8,0), 0).r
-        ),
-        vec3(
-            texelFetch(triangle_vector, ivec2(n_index+9,0), 0).r,
-            texelFetch(triangle_vector, ivec2(n_index+10,0), 0).r,
-            texelFetch(triangle_vector, ivec2(n_index+11,0), 0).r
-        ),
-        int(texelFetch(triangle_vector, ivec2(n_index+12,0), 0).r)
-    );
-    return ret;
-}
 
 bool hit_triangle(const Triangle tri, const Ray r, out Hit h){
     // Moller-Trumbore algorithm
@@ -343,9 +274,9 @@ bool hit_triangle(const Triangle tri, const Ray r, out Hit h){
 
     h.t = t;
     h.p = r.orig + r.dir * t;
-    h.normal = normalize(tri.normal);
-    h.mat = tri.mat;
-    set_front_face(tri.normal,r.dir,h);
+    h.normal = normalize(tri.normal_mat.xyz);
+    h.mat = int(tri.normal_mat.w);
+    set_front_face(h.normal,r.dir,h);
     return true;
 }
 
@@ -378,8 +309,8 @@ bool hit_scene(Ray r, out Hit h){
     h.t = ray_max_distance;
 
     // Check for sphere hits
-    for(int s_i = 0; s_i < sphere_num; s_i++){
-        Sphere s = get_sphere(s_i);
+    for(int s_i = 0; s_i < NUM_SPHERES; s_i++){
+        Sphere s = spheres[s_i];
         if(hit_sphere(s,r,h_aux)){
             if(h_aux.t<h.t){
                 h=h_aux;
@@ -389,8 +320,8 @@ bool hit_scene(Ray r, out Hit h){
     }
 
     // Check for plane hits
-    for(int p_i = 0; p_i < plane_num; p_i++) {
-        Plane p = get_plane(p_i);
+    for(int p_i = 0; p_i < NUM_PLANES; p_i++) {
+        Plane p = planes[p_i];
         if(hit_plane(p,r,h_aux)){
             if(h_aux.t<h.t){
                 h=h_aux;
@@ -399,8 +330,8 @@ bool hit_scene(Ray r, out Hit h){
         }
     }
 
-    for(int t_i = 0; t_i < triangle_num; t_i++) {
-        Triangle tri = get_triangle(t_i);
+    for(int t_i = 0; t_i < NUM_TRIS; t_i++) {
+        Triangle tri = triangles[t_i];
         if(hit_triangle(tri,r,h_aux)){
             if(h_aux.t<h.t){
                 h=h_aux;
@@ -420,7 +351,7 @@ vec3 cast_ray(Ray r){
 
     for(int bounce_count = 0; bounce_count < bounce_hard_limit; bounce_count++){
         if(hit_scene(r,h)){
-            vec3 albedo = get_material(h.mat).albedo;
+            vec3 albedo = materials[h.mat].albedo;
             atenuation *= albedo;
             r.dir = random_vec_on_hemisphere(h.normal);
             r.orig = h.p;
@@ -487,6 +418,4 @@ void main() {
         // Exponetianl mean
         outColor.rgb = mix(last_color, outColor.rgb, 1.0 / float(frames_acummulated + 1u));
     }
-
-    
 }

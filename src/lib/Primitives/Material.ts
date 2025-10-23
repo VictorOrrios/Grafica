@@ -9,7 +9,7 @@ export class Material{
     }
 
     public serialize():Float32Array{
-        return new Float32Array([this.albedo.x,this.albedo.y,this.albedo.z]);
+        return new Float32Array([this.albedo.x,this.albedo.y,this.albedo.z,0]);
     }
 
 };

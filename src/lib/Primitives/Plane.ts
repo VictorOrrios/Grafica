@@ -13,11 +13,16 @@ export class Plane {
         this.distance = distance;
     }
 
-    public serialize():Float32Array{
-        return new Float32Array([
-            this.normal.x, this.normal.y, this.normal.z,
-            this.distance
+    public serialize(materialIndex:number):Float32Array{
+        const ret = new Float32Array([
+            this.normal.x, this.normal.y, this.normal.z,this.distance,
+            0, 0, 0, 0
         ]);
+
+        // Bitwise cast of materialIndex
+        (new Int32Array(ret.buffer))[4] = materialIndex;
+
+        return ret;
     }
 
     public toString() : string {

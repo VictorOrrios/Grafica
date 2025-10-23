@@ -19,13 +19,16 @@ export class Triangle {
         this.normal = this.getNormal();
     }
 
-    public serialize(): Float32Array {
-        return new Float32Array([
-            this.v0.x, this.v0.y, this.v0.z,
-            this.v1.x, this.v1.y, this.v1.z,
-            this.v2.x, this.v2.y, this.v2.z,
-            this.normal.x, this.normal.y, this.normal.z
+    public serialize(materialIndex:number): Float32Array {
+        const ret = new Float32Array([
+            this.v0.x, this.v0.y, this.v0.z, 0,
+            this.v1.x, this.v1.y, this.v1.z, 0,
+            this.v2.x, this.v2.y, this.v2.z, 0,
+            this.normal.x, this.normal.y, this.normal.z, materialIndex,
         ]);
+
+
+        return ret;
     }
 
     private getNormal(): Vector3 {
