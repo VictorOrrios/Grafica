@@ -105,19 +105,35 @@ export class Scene {
         this.camera = new Camera(new Vector3(0.0,0.0,10.0));
 
         const m1 = this.addMaterial(new Material(
-            new Vector3(1.0,0.0,0.0)
+            new Vector3(1.0,0.0,0.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
         ));
 
         const m2 = this.addMaterial(new Material(
-            new Vector3(0.0,1.0,0.0)
+            new Vector3(0.0,1.0,0.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
         ));
 
         const m3 = this.addMaterial(new Material(
-            new Vector3(0.0,0.5,1.0)
+            new Vector3(0.0,0.5,1.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
         ));
 
          const m4 = this.addMaterial(new Material(
-            new Vector3(0.9,0.9,0.0)
+            new Vector3(0.9,0.9,0.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
         ));
 
         const s1:Sphere = new Sphere(
@@ -153,23 +169,43 @@ export class Scene {
         this.camera = new Camera(new Vector3(0.0,0.0,3.5));
 
         const red = this.addMaterial(new Material(
-            new Vector3(1.0,0.0,0.0)
+            new Vector3(1.0,0.0,0.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
         ));
 
         const green = this.addMaterial(new Material(
-            new Vector3(0.0,1.0,0.0)
+            new Vector3(0.0,1.0,0.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
         ));
 
         const blue = this.addMaterial(new Material(
-            new Vector3(0.0,0.0,1.0)
+            new Vector3(0.0,0.0,1.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
         ));
 
         const white = this.addMaterial(new Material(
-            new Vector3(1.0,1.0,1.0)
+            new Vector3(1.0,1.0,1.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
         ));
 
         const yellow = this.addMaterial(new Material(
-            new Vector3(1.0,1.0,0.0)
+            new Vector3(1.0,1.0,0.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
         ));
 
         const floor:Quad = new Quad(
@@ -234,8 +270,20 @@ export class Scene {
     private tungTungTungSahurScene(){
         this.hasMeshes = true;
         this.camera = new Camera(new Vector3(0.0,-5.0,-4.0));
-        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
-        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
+        const yellow = this.addMaterial(new Material(
+            new Vector3(1, 1, 0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+        const lightBlue = this.addMaterial(
+            new Material(new Vector3(0.0,0.5,1.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
         const p1:Plane = new Plane(
             new Vector3(0.0,1.0,0.0),
             1.0
@@ -246,8 +294,21 @@ export class Scene {
     private tralaleroScene(){
         this.hasMeshes = true;
         this.camera = new Camera(new Vector3(0.0,-6.0,-4.0));
-        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
-        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
+        const yellow = this.addMaterial(
+            new Material(
+                new Vector3(1, 1, 0),
+                0,
+                new Vector3(0),
+                new Vector3(0),
+                1.0
+            ));
+        const lightBlue = this.addMaterial(
+            new Material(new Vector3(0.0,0.5,1.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
         const p1:Plane = new Plane(
             new Vector3(0.0,1.0,0.0),
             1.0
@@ -258,8 +319,21 @@ export class Scene {
     private arthasScene(){
         this.hasMeshes = true;
         this.camera = new Camera(new Vector3(0.0,-13.0,-10.0));
-        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
-        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
+        const yellow = this.addMaterial(
+            new Material(
+                new Vector3(1, 1, 0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+        const lightBlue = this.addMaterial(
+            new Material(new Vector3(0.0,0.5,1.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
         const p1:Plane = new Plane(
             new Vector3(0.0,1.0,0.0),
             1.0

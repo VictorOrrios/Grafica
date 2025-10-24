@@ -21,7 +21,9 @@ precision mediump float;
 //===========================
 
 struct Material {
-    vec3 albedo;
+    vec4 albedo_emission;
+    vec3 specular_color;
+    vec4 subsurface_color_ior;
 };
 
 struct Sphere {
@@ -61,9 +63,14 @@ struct Hit{
 };
 
 struct BSDF {
-    float kd; // Diffuse coefficient
-    float ks; // Specular coefficient
+    // Reflectance params
+    vec3 kd; // Diffuse coefficient
+    vec3 ks; // Specular coefficient
     float shininess; // Shininess factor for specular highlight size
+    // Transmission params
+    vec3 kt; // Transmission coefficient
+    float ior; // Index of refraction
+    vec3 F0; // Base reflectivity at normal incidence
 };
 
 //===========================
@@ -325,6 +332,21 @@ vec3 skybox_color(Ray r){
 }
 
 //===========================
+// Material functions
+//===========================
+// Returns 
+vec3 sample_mat_direction(Material mat, vec3 Vin, Hit h){
+    return random_vec_on_hemisphere(h.normal);
+}
+
+vec3 eval_mat(Material mat, vec3 Vout, vec3 Vin, Hit h, out float pdf){
+    vec3 fr = mat.albedo_emission.rgb/PI;
+    pdf = 1.0/PI;
+
+    return fr;
+}
+
+//===========================
 // Main functions
 //===========================
 
@@ -397,7 +419,7 @@ vec3 get_direct_light(Hit h){
 vec3 cast_ray(Ray r){
     vec3 color = vec3(0.0);
     Hit h;
-
+    float pdf;
     vec3 atenuation = vec3(1.0);
 
     /*
@@ -406,16 +428,25 @@ vec3 cast_ray(Ray r){
         bounce_count++;
     */
     for(int bounce_count = 0; 
-        (random()>rr_chance || bounce_count == 0) && bounce_count <= bounce_hard_limit; 
+        (random()>rr_chance || bounce_count <= 1) && bounce_count <= bounce_hard_limit; 
         bounce_count++){
 
         if(hit_scene(r,h)){
 
-            r.dir = random_vec_on_hemisphere(h.normal);
-            r.orig = h.p;
+            Material mat = materials[h.mat];
 
-            vec3 albedo = materials[h.mat].albedo;
-            atenuation *= albedo * abs(dot(h.normal,r.dir));
+            // Emissive material
+            if(mat.albedo_emission.a > 0.0){
+                return color + mat.albedo_emission.rgb*mat.albedo_emission.a*atenuation;
+            }
+
+            vec3 new_direction = sample_mat_direction(mat, r.dir,h);
+
+            vec3 fr = eval_mat(mat,new_direction,r.dir,h,pdf);
+            atenuation *= fr * abs(dot(h.normal,new_direction)) / pdf;
+            
+            r.dir = new_direction;
+            r.orig = h.p;
             
             // Get light from all light sources
             if(bounce_count == 0){
