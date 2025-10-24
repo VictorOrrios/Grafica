@@ -11,6 +11,7 @@ import { MeshLoader } from "./loaders/MeshLoader";
 enum SceneType {
     TUNG = 'tung',
     TRALALERO = 'tralalero',
+    ARTHAS = 'arthas',
     SCENE1 = 'scene1',
     SCENE2 = 'scene2',
 }
@@ -18,6 +19,7 @@ enum SceneType {
 enum MeshType {
     TUNG = 'tung',
     TRALALERO = 'tralalero',
+    ARTHAS = 'arthas',
 }
 
 export class Scene {
@@ -33,7 +35,7 @@ export class Scene {
     public sceneType: SceneType = SceneType.TUNG;
 
     constructor() {
-        this.sceneType = SceneType.TRALALERO;
+        this.sceneType = SceneType.ARTHAS;
         this.setupScene();
     }
 
@@ -46,6 +48,8 @@ export class Scene {
             this.scene1();
         } else if (this.sceneType === SceneType.SCENE2) {
             this.scene2();
+        } else if (this.sceneType === SceneType.ARTHAS) {
+            this.arthasScene();
         }
         // Add other scenes as needed
     }
@@ -65,6 +69,18 @@ export class Scene {
     private tralaleroScene(){
         this.hasMeshes = true;
         this.camera = new Camera(new Vector3(0.0,-6.0,-4.0));
+        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
+        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
+        const p1:Plane = new Plane(
+            new Vector3(0.0,1.0,0.0),
+            1.0
+        );
+        this.addPlane(p1,lightBlue);
+    }
+
+    private arthasScene(){
+        this.hasMeshes = true;
+        this.camera = new Camera(new Vector3(0.0,-13.0,-10.0));
         const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
         const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
         const p1:Plane = new Plane(
@@ -255,6 +271,14 @@ export class Scene {
             } catch (error) {
                 console.warn("⚠ Could not load mesh:", error);
             }
+        } else if (this.sceneType === SceneType.ARTHAS) {
+            try {
+                const arthasMesh = await MeshLoader.load("/models/obj/arthas/optim/Arthas.obj", MeshType.ARTHAS);
+                arthasMesh.scale(new Vector3(4.0, 4.0, 4.0));
+                this.loadedMeshes.set(MeshType.ARTHAS, arthasMesh);
+            } catch (error) {
+                console.warn("⚠ Could not load mesh:", error);
+            }
         }
     }
 
@@ -276,6 +300,15 @@ export class Scene {
             const tralaleroMesh = this.loadedMeshes.get(MeshType.TRALALERO);
             if (tralaleroMesh) {
                 this.addMesh(tralaleroMesh, yellowIndex);
+            }
+        } else if (this.sceneType === SceneType.ARTHAS) {
+            const yellow = this.materialVec.find(m => m.albedo.equals(new Vector3(1, 1, 0)));
+            if (!yellow) return;
+            const yellowIndex = this.materialVec.indexOf(yellow);
+
+            const arthasMesh = this.loadedMeshes.get(MeshType.ARTHAS);
+            if (arthasMesh) {
+                this.addMesh(arthasMesh, yellowIndex);
             }
         }
     }
