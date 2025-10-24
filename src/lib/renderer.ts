@@ -14,10 +14,14 @@ export class Renderer {
     private camera_ubo!:WebGLBuffer;
     private attachments:Map<string,WebGLUniformLocation> = new Map();
 
+    public frame_acummulation_on:boolean = true;
     private num_frames_rendered:number = 0;
     
     private num_frames_acummulated:number = 0;
     private last_frame!:WebGLTexture;
+
+    public spp:number = 3;
+    public rr_chance:number = 0.666;
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
         this.gl = gl;
@@ -56,7 +60,11 @@ export class Renderer {
 
     public resetFrameAcummulation(){
         this.num_frames_acummulated = 0;
-        console.log("RESET");
+    }
+
+    public setFrameAcummulation(value:boolean){
+        this.frame_acummulation_on = value;
+        this.resetFrameAcummulation();
     }
 
     private createShader(type: number, source: string): WebGLShader {
@@ -257,13 +265,13 @@ export class Renderer {
         // Sample per pixel uniform buffer
         // TODO: Implement user controled parameter+
         // TODO, change
-        gl.uniform1ui(this.getLocation("spp"), 3);
+        gl.uniform1ui(this.getLocation("spp"), this.spp);
 
         // Frame acummulation count buffer
         gl.uniform1ui(this.getLocation("frames_acummulated"), this.num_frames_acummulated);
 
         // Rusian roulette chance
-        gl.uniform1f(this.getLocation("rr_chance"), 0.8);
+        gl.uniform1f(this.getLocation("rr_chance"), this.rr_chance);
 
     }
 
@@ -318,7 +326,7 @@ export class Renderer {
 
 
         this.num_frames_rendered++;
-        this.num_frames_acummulated++;
+        if(this.frame_acummulation_on) this.num_frames_acummulated++;
     }
 }
 

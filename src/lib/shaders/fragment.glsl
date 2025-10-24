@@ -71,16 +71,6 @@ struct Hit{
     bool front_face;    // True if hit is to a front facing surface
 };
 
-struct BSDF {
-    // Reflectance params
-    vec3 kd; // Diffuse coefficient
-    vec3 ks; // Specular coefficient
-    float shininess; // Shininess factor for specular highlight size
-    // Transmission params
-    vec3 kt; // Transmission coefficient
-    float ior; // Index of refraction
-    vec3 F0; // Base reflectivity at normal incidence
-};
 
 //===========================
 // Global variables
@@ -138,6 +128,12 @@ uint hash(uint x) {
     return x;
 }
 
+void init_seed() {
+    seed = hash(uint(time)*1920u) 
+        ^ hash(frame_count)
+        ^ hash(uint(int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1920));
+}
+
 uint xorshift(inout uint state) {
     state ^= state << 13;
     state ^= state >> 17;
@@ -166,7 +162,7 @@ float rand3(){
 }
 
 float random(){
-    return rand2();
+    return rand3();
 }
 
 vec2 sample_square(){
@@ -427,19 +423,21 @@ bool hit_scene(Ray r, out Hit h){
 
 vec3 get_direct_light(Hit h){
     Hit aux;
-    vec3 ret;
-    for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
-        PointLight l = point_lights[i];
-        vec3 direction = l.position-h.p;
-        float d = length(direction);
-        // Cast a ray from the light source to the hit position
-        Ray r = Ray(h.p,normalize(l.position-h.p));
-        if(!hit_scene(r,aux) || aux.t >= d){
-            vec3 actual_light_color = l.color_power.xyz * l.color_power.w;
-            // Multiply by the cosine(ray_dir, hit_normal)
-            ret += actual_light_color * abs(dot(r.dir,h.normal));
+    vec3 ret = vec3(0);
+    #if NUM_POINT_LIGHTS > 0
+        for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
+            PointLight l = point_lights[i];
+            vec3 direction = l.position-h.p;
+            float d = length(direction);
+            // Cast a ray from the light source to the hit position
+            Ray r = Ray(h.p,normalize(l.position-h.p));
+            if(!hit_scene(r,aux) || aux.t >= d){
+                vec3 actual_light_color = l.color_power.xyz * l.color_power.w;
+                // Multiply by the cosine(ray_dir, hit_normal)
+                ret += actual_light_color * abs(dot(r.dir,h.normal));
+            }
         }
-    }
+    #endif
     return ret;
 }
 
@@ -457,7 +455,7 @@ vec3 cast_ray(Ray r){
         bounce_count++;
     */
     for(int bounce_count = 0; 
-        (random()>rr_chance || bounce_count <= 1) && bounce_count <= bounce_hard_limit; 
+        (random()>rr_chance || bounce_count < 1) && bounce_count <= bounce_hard_limit; 
         bounce_count++){
 
         if(hit_scene(r,h)){
@@ -469,7 +467,11 @@ vec3 cast_ray(Ray r){
                 return color + mat.albedo_emission.rgb*mat.albedo_emission.a*atenuation;
             }
 
-            atenuation *= eval_mat(mat,r.dir,h,new_direction) / rr_chance;
+            if(rr_chance <= 0.0){
+                atenuation *= eval_mat(mat,r.dir,h,new_direction);
+            }else{
+                atenuation *= eval_mat(mat,r.dir,h,new_direction) / rr_chance;
+            }
             
             r.dir = new_direction;
             r.orig = h.p;
@@ -513,9 +515,8 @@ Ray get_ray(vec2 uv){
 
 void main() {
     // Generate a random enough seed
-    seed = hash(uint(time)*1920U) 
-        ^ hash(frame_count)
-        ^ hash(uint(int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1920));
+    init_seed();
+            // Removing the px part gives weird paint brush effect on frame acummulation
 
     // Calculate mean color of pixel
     vec2 uv = (gl_FragCoord.xy)/resolution.xy;
@@ -532,7 +533,7 @@ void main() {
     outColor.a = 1.0; 
 
     // Random test
-    //outColor.rgb = vec3(random(),random(),random()); 
+    //outColor.rgb = vec3(random()); 
 
     // Frame acummulation
     if (frames_acummulated > 0u) {

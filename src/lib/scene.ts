@@ -9,7 +9,7 @@ import { Mesh } from "./Primitives/Mesh";
 import { MeshLoader } from "./loaders/MeshLoader";
 import { PointLight } from "./Lights/PointLight";
 
-enum SceneType {
+export enum SceneType {
     TUNG = 'tung',
     TRALALERO = 'tralalero',
     ARTHAS = 'arthas',
@@ -34,11 +34,11 @@ export class Scene {
     public meshVec:{mesh:Mesh,materialIndex:number}[] = [];
     public hasMeshes: boolean = false;
     public loadedMeshes: Map<string, Mesh> = new Map();
-    public sceneType: SceneType = SceneType.SCENE2;
+    public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
 
-    constructor() {
-        this.sceneType = SceneType.SCENE2;
+    constructor(type:SceneType = SceneType.SCENE2) {
+        this.sceneType = type;
         this.setupScene();
     }
 
@@ -261,7 +261,7 @@ export class Scene {
         const l1:PointLight = new PointLight(
             new Vector3(0,0.9,0.0),
             new Vector3(1.0,1.0,1.0),
-            0.8
+            0.5
         );
         this.addPointLight(l1);
 

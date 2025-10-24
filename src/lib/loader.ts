@@ -1,4 +1,4 @@
-import parseExr from "parse-exr";
+//import parseExr from "parse-exr";
 
 function float32ToUint8(floatArray:Float32Array) {
   const len = floatArray.length;
@@ -99,8 +99,11 @@ Promise<{ data: Uint8Array; width: number; height: number; }>{
     const exrData = await response.arrayBuffer();
     const FloatType = 1015;
     // const HalfFloatType = 1016;
-    let { data, width, height } = parseExr(exrData, FloatType);
-    data = data as Float32Array
+
+    //let { data, width, height } = parseExr(exrData, FloatType);
+    //data = data as Float32Array
+
+    let data = new Float32Array(), width = 0, height = 0;
 
     console.log("=== IMAGE READ: width ",width," height ",height, " data.len",data.length)
     console.log("=== FIRST 10 PIXELS")
