@@ -1,6 +1,8 @@
 #version 300 es
 precision mediump float;
-
+//===========================
+// On load constants
+//===========================
 #define NUM_MATERIALS __NUM_MATERIALS__
 #define NUM_SPHERES __NUM_SPHERES__
 #define NUM_PLANES __NUM_PLANES__
@@ -15,6 +17,13 @@ precision mediump float;
 #define ray_max_distance 10000.0
 #define bounce_hard_limit 100
 #define PI 3.14159265359
+
+//===========================
+// Enum defines
+//===========================
+#define DIFFUSE 0
+#define METALIC 1
+#define DIELECTRIC 2
 
 //===========================
 // Type definitions
@@ -334,16 +343,35 @@ vec3 skybox_color(Ray r){
 //===========================
 // Material functions
 //===========================
-// Returns 
-vec3 sample_mat_direction(Material mat, vec3 Vin, Hit h){
+
+vec3 sample_mat_direction(Material mat, vec3 Vin, Hit h, out int type){
+    type = DIFFUSE;
     return random_vec_on_hemisphere(h.normal);
 }
 
-vec3 eval_mat(Material mat, vec3 Vout, vec3 Vin, Hit h, out float pdf){
-    vec3 fr = mat.albedo_emission.rgb/PI;
-    pdf = 1.0/PI;
+vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
+    float pdf;
+    vec3 ret;
+    int type;
 
-    return fr;
+    Vout = sample_mat_direction(mat,Vin,h,type);
+
+
+    switch(type){
+        case DIFFUSE:
+            /*
+            vec3 fr = mat.albedo_emission.rgb/PI;
+            pdf = abs(dot(Vout,h.normal))/PI;
+            */
+            ret = mat.albedo_emission.rgb;
+            break;
+        case METALIC:
+            
+            break;
+
+    }
+
+    return ret;
 }
 
 //===========================
@@ -421,6 +449,7 @@ vec3 cast_ray(Ray r){
     Hit h;
     float pdf;
     vec3 atenuation = vec3(1.0);
+    vec3 new_direction;
 
     /*
     int bounce_count = 0;
@@ -440,10 +469,7 @@ vec3 cast_ray(Ray r){
                 return color + mat.albedo_emission.rgb*mat.albedo_emission.a*atenuation;
             }
 
-            vec3 new_direction = sample_mat_direction(mat, r.dir,h);
-
-            vec3 fr = eval_mat(mat,new_direction,r.dir,h,pdf);
-            atenuation *= fr * abs(dot(h.normal,new_direction)) / pdf;
+            atenuation *= eval_mat(mat,r.dir,h,new_direction) / rr_chance;
             
             r.dir = new_direction;
             r.orig = h.p;
@@ -517,4 +543,5 @@ void main() {
         // Exponetianl mean
         outColor.rgb = mix(last_color, outColor.rgb, 1.0 / float(frames_acummulated + 1u));
     }
+
 }
