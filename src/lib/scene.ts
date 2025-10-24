@@ -20,6 +20,7 @@ enum MeshType {
     TUNG = 'tung',
     TRALALERO = 'tralalero',
     ARTHAS = 'arthas',
+    GLOCK = 'glock',
 }
 
 export class Scene {
@@ -35,7 +36,7 @@ export class Scene {
     public sceneType: SceneType = SceneType.TUNG;
 
     constructor() {
-        this.sceneType = SceneType.ARTHAS;
+        this.sceneType = SceneType.TRALALERO;
         this.setupScene();
     }
 
@@ -260,7 +261,13 @@ export class Scene {
                 // tungTungTungSahurMesh.translate(new Vector3(200, 0, 0));
                 tungTungTungSahurMesh.scale(new Vector3(0.002, 0.002, 0.002));
                 this.loadedMeshes.set(MeshType.TUNG, tungTungTungSahurMesh);
-                console.log("✓ Mesh loaded successfully:", tungTungTungSahurMesh.toString());
+                console.log("✓ Tung mesh loaded successfully");
+
+                const glockMesh = await MeshLoader.load("/models/obj/glock/original/model.obj", MeshType.GLOCK);
+                glockMesh.translate(new Vector3(0, 1.0, 1.0));
+                this.loadedMeshes.set(MeshType.GLOCK, glockMesh);
+                console.log("✓ Glock mesh loaded successfully");
+
             } catch (error) {
                 console.warn("⚠ Could not load mesh:", error);
             }
@@ -289,8 +296,12 @@ export class Scene {
             const yellowIndex = this.materialVec.indexOf(yellow);
 
             const tungMesh = this.loadedMeshes.get(MeshType.TUNG);
+            const glockMesh = this.loadedMeshes.get(MeshType.GLOCK);
             if (tungMesh) {
                 this.addMesh(tungMesh, yellowIndex);
+            }
+            if (glockMesh) {
+                this.addMesh(glockMesh, yellowIndex);
             }
         } else if (this.sceneType === SceneType.TRALALERO) {
             const yellow = this.materialVec.find(m => m.albedo.equals(new Vector3(1, 1, 0)));
