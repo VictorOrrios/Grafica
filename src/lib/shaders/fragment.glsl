@@ -64,7 +64,7 @@ struct BSDF {
     float kd; // Diffuse coefficient
     float ks; // Specular coefficient
     float shininess; // Shininess factor for specular highlight size
-}
+};
 
 //===========================
 // Global variables
