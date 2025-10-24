@@ -38,6 +38,7 @@ export class Renderer {
         fragmentModified = fragmentModified.replace("__NUM_SPHERES__",this.scene.sphereVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_PLANES__",this.scene.planeVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_TRIANGLES__",this.scene.triangleVec.length.toString())
+        fragmentModified = fragmentModified.replace("__NUM_POINT_LIGHTS__",this.scene.pointLightVec.length.toString())
 
         this.vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexSource);
         this.fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentModified);
@@ -121,6 +122,7 @@ export class Renderer {
         this.attachments.set("resolution",this.initUniform("resolution",3))
         this.attachments.set("spp",this.initUniform("spp",2))
         this.attachments.set("frames_acummulated",this.initUniform("frames_acummulated",2));
+        this.attachments.set("rr_chance",this.initUniform("rr_chance",1));
 
     }    
 
@@ -255,10 +257,13 @@ export class Renderer {
         // Sample per pixel uniform buffer
         // TODO: Implement user controled parameter+
         // TODO, change
-        gl.uniform1ui(this.getLocation("spp"), 1);
+        gl.uniform1ui(this.getLocation("spp"), 3);
 
         // Frame acummulation count buffer
         gl.uniform1ui(this.getLocation("frames_acummulated"), this.num_frames_acummulated);
+
+        // Rusian roulette chance
+        gl.uniform1f(this.getLocation("rr_chance"), 0.8);
 
     }
 

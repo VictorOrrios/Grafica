@@ -7,6 +7,7 @@ import { Triangle } from "./Primitives/Triangle";
 import { Quad } from "./Primitives/Quad";
 import { Mesh } from "./Primitives/Mesh";
 import { MeshLoader } from "./loaders/MeshLoader";
+import { PointLight } from "./Lights/PointLight";
 
 enum SceneType {
     TUNG = 'tung',
@@ -33,10 +34,11 @@ export class Scene {
     public meshVec:{mesh:Mesh,materialIndex:number}[] = [];
     public hasMeshes: boolean = false;
     public loadedMeshes: Map<string, Mesh> = new Map();
-    public sceneType: SceneType = SceneType.TUNG;
+    public sceneType: SceneType = SceneType.SCENE2;
+    public pointLightVec: PointLight[] = [];
 
     constructor() {
-        this.sceneType = SceneType.TRALALERO;
+        this.sceneType = SceneType.SCENE2;
         this.setupScene();
     }
 
@@ -53,42 +55,6 @@ export class Scene {
             this.arthasScene();
         }
         // Add other scenes as needed
-    }
-
-    private tungTungTungSahurScene(){
-        this.hasMeshes = true;
-        this.camera = new Camera(new Vector3(0.0,-5.0,-4.0));
-        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
-        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
-        const p1:Plane = new Plane(
-            new Vector3(0.0,1.0,0.0),
-            1.0
-        );
-        this.addPlane(p1,lightBlue);
-    }
-
-    private tralaleroScene(){
-        this.hasMeshes = true;
-        this.camera = new Camera(new Vector3(0.0,-6.0,-4.0));
-        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
-        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
-        const p1:Plane = new Plane(
-            new Vector3(0.0,1.0,0.0),
-            1.0
-        );
-        this.addPlane(p1,lightBlue);
-    }
-
-    private arthasScene(){
-        this.hasMeshes = true;
-        this.camera = new Camera(new Vector3(0.0,-13.0,-10.0));
-        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
-        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
-        const p1:Plane = new Plane(
-            new Vector3(0.0,1.0,0.0),
-            1.0
-        );
-        this.addPlane(p1,lightBlue);
     }
 
     private addMaterial(material:Material):number{
@@ -117,6 +83,10 @@ export class Scene {
     private addQuad(quad:Quad, materialIndex:number){
         this.addTriangle(quad.t1,materialIndex);
         this.addTriangle(quad.t2,materialIndex);
+    }
+
+    private addPointLight(pl:PointLight){
+        this.pointLightVec.push(pl);
     }
 
     /**
@@ -252,6 +222,49 @@ export class Scene {
             0.3);
         this.addSphere(s2,blue);
 
+        const l1:PointLight = new PointLight(
+            new Vector3(0,0.9,0.0),
+            new Vector3(1.0,1.0,1.0),
+            0.8
+        );
+        this.addPointLight(l1);
+
+    }
+
+    private tungTungTungSahurScene(){
+        this.hasMeshes = true;
+        this.camera = new Camera(new Vector3(0.0,-5.0,-4.0));
+        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
+        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
+        const p1:Plane = new Plane(
+            new Vector3(0.0,1.0,0.0),
+            1.0
+        );
+        this.addPlane(p1,lightBlue);
+    }
+
+    private tralaleroScene(){
+        this.hasMeshes = true;
+        this.camera = new Camera(new Vector3(0.0,-6.0,-4.0));
+        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
+        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
+        const p1:Plane = new Plane(
+            new Vector3(0.0,1.0,0.0),
+            1.0
+        );
+        this.addPlane(p1,lightBlue);
+    }
+
+    private arthasScene(){
+        this.hasMeshes = true;
+        this.camera = new Camera(new Vector3(0.0,-13.0,-10.0));
+        const yellow = this.addMaterial(new Material(new Vector3(1, 1, 0)));
+        const lightBlue = this.addMaterial(new Material(new Vector3(0.0,0.5,1.0)));
+        const p1:Plane = new Plane(
+            new Vector3(0.0,1.0,0.0),
+            1.0
+        );
+        this.addPlane(p1,lightBlue);
     }
 
     public async loadMeshes() {
@@ -330,6 +343,7 @@ export class Scene {
                 ...this.serializeSphereVec(),
                 ...this.serializePlaneVec(),
                 ...this.serializeTriangleVec(),
+                ...this.serializePointLightVec(),
                 );
         return new Float32Array(data);
     }
@@ -381,4 +395,16 @@ export class Scene {
         
         return ret;
     }
+
+    public serializePointLightVec():Float32Array{
+        let arr: number[] = [];
+        this.pointLightVec.forEach(pl => {
+            // Spread serialized point light onto the arr
+            arr.push(...pl.serialize());
+        });
+        console.log("Serialized point light vector length:", arr.length);
+        const ret: Float32Array = new Float32Array(arr);
+        
+        return ret;
+    }   
 }

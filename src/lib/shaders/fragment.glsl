@@ -5,6 +5,7 @@ precision mediump float;
 #define NUM_SPHERES __NUM_SPHERES__
 #define NUM_PLANES __NUM_PLANES__
 #define NUM_TRIS __NUM_TRIANGLES__
+#define NUM_POINT_LIGHTS __NUM_POINT_LIGHTS__
 
 //===========================
 // Global constants
@@ -12,7 +13,7 @@ precision mediump float;
 // TODO: Fine tune to float precision limit when system is more advanced
 #define ray_min_distance 0.0001
 #define ray_max_distance 10000.0
-#define bounce_hard_limit 5
+#define bounce_hard_limit 100
 #define PI 3.14159265359
 
 //===========================
@@ -45,6 +46,11 @@ struct Ray {
     vec3 dir;
 };
 
+struct PointLight {
+    vec4 color_power;
+    vec3 position;
+};
+
 // Hit information record
 struct Hit{
     vec3 p;             // Where it happend
@@ -54,6 +60,11 @@ struct Hit{
     bool front_face;    // True if hit is to a front facing surface
 };
 
+struct BSDF {
+    float kd; // Diffuse coefficient
+    float ks; // Specular coefficient
+    float shininess; // Shininess factor for specular highlight size
+}
 
 //===========================
 // Global variables
@@ -75,6 +86,7 @@ uniform float time;
 uniform uint frame_count;
 uniform uint spp;               // samples per pixel
 uniform vec3 resolution;        // x,y,z = width,height,aspect_ratio
+uniform float rr_chance;
 
 uniform uint frames_acummulated;
 uniform sampler2D last_frame_buffer;
@@ -89,6 +101,9 @@ layout(std140) uniform StaticBlock {
     #endif
     #if NUM_TRIS > 0
         Triangle triangles[NUM_TRIS];
+    #endif
+    #if NUM_POINT_LIGHTS > 0
+        PointLight point_lights[NUM_POINT_LIGHTS];
     #endif
 };
 
@@ -301,6 +316,10 @@ vec3 skybox_color_day(Ray r) {
     return sky_gradient;
 }
 
+vec3 skybox_color_black(Ray r){
+    return vec3(0.0);
+}
+
 vec3 skybox_color(Ray r){
     return skybox_color_day(r);
 }
@@ -356,24 +375,60 @@ bool hit_scene(Ray r, out Hit h){
     return has_hit;
 }
 
+vec3 get_direct_light(Hit h){
+    Hit aux;
+    vec3 ret;
+    for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
+        PointLight l = point_lights[i];
+        vec3 direction = l.position-h.p;
+        float d = length(direction);
+        // Cast a ray from the light source to the hit position
+        Ray r = Ray(h.p,normalize(l.position-h.p));
+        if(!hit_scene(r,aux) || aux.t >= d){
+            vec3 actual_light_color = l.color_power.xyz * l.color_power.w;
+            // Multiply by the cosine(ray_dir, hit_normal)
+            ret += actual_light_color * abs(dot(r.dir,h.normal));
+        }
+    }
+    return ret;
+}
+
 // Cast the given ray and returns the computed color
 vec3 cast_ray(Ray r){
+    vec3 color = vec3(0.0);
     Hit h;
 
     vec3 atenuation = vec3(1.0);
 
-    for(int bounce_count = 0; bounce_count < bounce_hard_limit; bounce_count++){
+    /*
+    int bounce_count = 0;
+    while(bounce_count <= bounce_hard_limit && random()>rr_chance){
+        bounce_count++;
+    */
+    for(int bounce_count = 0; 
+        (random()>rr_chance || bounce_count == 0) && bounce_count <= bounce_hard_limit; 
+        bounce_count++){
+
         if(hit_scene(r,h)){
-            vec3 albedo = materials[h.mat].albedo;
-            atenuation *= albedo;
+
             r.dir = random_vec_on_hemisphere(h.normal);
             r.orig = h.p;
+
+            vec3 albedo = materials[h.mat].albedo;
+            atenuation *= albedo * abs(dot(h.normal,r.dir));
+            
+            // Get light from all light sources
+            if(bounce_count == 0){
+                vec3 direct_light = get_direct_light(h);
+                color += direct_light*atenuation;
+            }
         }else{
-            return skybox_color(r)*atenuation; 
+            color += skybox_color(r)*atenuation;
+            return color; 
         }
     }
 
-    return vec3(0.0);
+    return color * rr_chance;
 }
 
 // Generates a ray pointing to the pixel this thread is assigned with
