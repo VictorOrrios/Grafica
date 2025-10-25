@@ -33,6 +33,7 @@ struct Material {
     vec4 albedo_emission;
     vec3 specular_color;
     vec4 subsurface_color_ior;
+    vec3 lobe_chances; // diffuse + metalic + dielectric = 1.0
 };
 
 struct Sphere {
@@ -333,16 +334,42 @@ vec3 skybox_color_black(Ray r){
 }
 
 vec3 skybox_color(Ray r){
-    return skybox_color_day(r);
+    return skybox_color_black(r);
 }
 
 //===========================
 // Material functions
 //===========================
 
+// Fresnel-Schlick aproximation to reflectance for dielectrics
+float fresnel_dielectric(float cos_theta_i, float eta) {
+    float r0 = (1.0 - eta) / (1.0 + eta);
+    float F0 = r0 * r0;
+    return F0 + (1.0 - F0) * pow(1.0 - cos_theta_i, 5.0);
+}
+
 vec3 sample_mat_direction(Material mat, vec3 Vin, Hit h, out int type){
-    type = DIFFUSE;
-    return random_vec_on_hemisphere(h.normal);
+    float r = random();
+    if(r <= mat.lobe_chances.x){
+        type = DIFFUSE;
+        return random_vec_on_hemisphere(h.normal);
+    }else if(r <= mat.lobe_chances.y){
+        type = METALIC;
+        return reflect(Vin,h.normal);
+    }else{
+        float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
+        float cos_theta = abs(dot(Vin,h.normal));
+        float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
+        bool cannot_refract = eta * sin_theta > 1.0;
+        float reflectance = fresnel_dielectric(cos_theta,eta);
+        if(cannot_refract || reflectance > random()){
+            type = METALIC;
+            return reflect(Vin,h.normal);
+        }else{
+            type = DIELECTRIC;
+            return refract(Vin,h.normal,eta);
+        }
+    }
 }
 
 vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
@@ -352,6 +379,7 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     Vout = sample_mat_direction(mat,Vin,h,type);
 
+    ret = mat.albedo_emission.rgb;
 
     switch(type){
         case DIFFUSE:
@@ -359,12 +387,16 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
             vec3 fr = mat.albedo_emission.rgb/PI;
             pdf = abs(dot(Vout,h.normal))/PI;
             */
-            ret = mat.albedo_emission.rgb;
-            break;
-        case METALIC:
             
             break;
+        case METALIC:
+            ret += mat.specular_color.rgb;
+            break;
 
+        case DIELECTRIC:
+            ret += mat.subsurface_color_ior.rgb;
+            
+            break;
     }
 
     return ret;
@@ -477,7 +509,8 @@ vec3 cast_ray(Ray r){
             r.orig = h.p;
             
             // Get light from all light sources
-            if(bounce_count == 0){
+            //if(bounce_count == 0){
+            if(true){
                 vec3 direct_light = get_direct_light(h);
                 color += direct_light*atenuation;
             }

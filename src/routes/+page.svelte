@@ -36,8 +36,8 @@
 
     let fps = $state(0);
 
-    let samplesPerPixel = $state(1);
-    let meanBounces = $state(3);
+    let samplesPerPixel = $state(5);
+    let meanBounces = $state(5);
     let russianRoulette = $derived(1 - 1 / meanBounces);
     let frame_acummulation: boolean = $state(true);
 
