@@ -31,13 +31,24 @@ export class Material{
         this.ior = ior;
     }
 
+    private static getMaxComponent(v:Vector3):number{
+        return Math.max(v.x,v.y,v.z); 
+    }
+
     private getLobeChances():Vector3{
-        let total = this.albedo.len() + this.specular_color.len() + this.subsurface_color.len();
-        return new Vector3(
-            this.albedo.len()/total,
-            this.specular_color.len()/total,
-            this.subsurface_color.len()/total,
-        );
+        let pd = 0, ps = 0, pt = 0;
+        if(this.subsurface_color.len() > 0){
+            let ks_max = Material.getMaxComponent(this.specular_color);
+            let kt_max = Material.getMaxComponent(this.subsurface_color);
+            ps = ks_max / (ks_max+kt_max);
+            pt = 1 - ps;
+        }else{
+            let kd_max = Material.getMaxComponent(this.albedo);
+            let ks_max = Material.getMaxComponent(this.specular_color);
+            pd = kd_max / (kd_max+ks_max);
+            ps = 1 - pd;
+        }
+        return new Vector3(pd,ps,pt);
     }
 
     public serialize():Float32Array{

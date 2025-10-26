@@ -334,7 +334,7 @@ vec3 skybox_color_black(Ray r){
 }
 
 vec3 skybox_color(Ray r){
-    return skybox_color_black(r);
+    return skybox_color_day(r);
 }
 
 //===========================
@@ -350,24 +350,49 @@ float fresnel_dielectric(float cos_theta_i, float eta) {
 
 vec3 sample_mat_direction(Material mat, vec3 Vin, Hit h, out int type){
     float r = random();
-    if(r <= mat.lobe_chances.x){
-        type = DIFFUSE;
-        return random_vec_on_hemisphere(h.normal);
-    }else if(r <= mat.lobe_chances.y){
-        type = METALIC;
-        return reflect(Vin,h.normal);
+    if(mat.lobe_chances.z == 0.0){
+        if(r <= mat.lobe_chances.x){
+            type = DIFFUSE;
+            return random_vec_on_hemisphere(h.normal);
+        }else{
+            type = METALIC;
+            return reflect(Vin,h.normal);
+        }
     }else{
-        float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
-        float cos_theta = abs(dot(Vin,h.normal));
-        float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
-        bool cannot_refract = eta * sin_theta > 1.0;
-        float reflectance = fresnel_dielectric(cos_theta,eta);
-        if(cannot_refract || reflectance > random()){
+        if(r <= mat.lobe_chances.y){
             type = METALIC;
             return reflect(Vin,h.normal);
         }else{
-            type = DIELECTRIC;
+            /* Class
+            float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
+            type = METALIC;
             return refract(Vin,h.normal,eta);
+            */
+            /* With fresnel
+            float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
+            float cos_theta = abs(dot(Vin,h.normal));
+            float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
+            bool cannot_refract = eta * sin_theta > 1.0;
+            float reflectance = fresnel_dielectric(cos_theta,eta);
+            if(cannot_refract || reflectance > random()){
+                type = METALIC;
+                return reflect(Vin,h.normal);
+            }else{
+                type = DIELECTRIC;
+                return refract(Vin,h.normal,eta);
+            }
+            */
+            float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
+            float cos_theta = abs(dot(Vin,h.normal));
+            float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
+            bool cannot_refract = eta * sin_theta > 1.0;
+            if(cannot_refract){
+                type = DIELECTRIC;
+                return reflect(Vin,h.normal);
+            }else{
+                type = DIELECTRIC;
+                return refract(Vin,h.normal,eta);
+            }
         }
     }
 }
@@ -379,23 +404,24 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     Vout = sample_mat_direction(mat,Vin,h,type);
 
-    ret = mat.albedo_emission.rgb;
 
     switch(type){
         case DIFFUSE:
+            ret = mat.albedo_emission.rgb;
             /*
             vec3 fr = mat.albedo_emission.rgb/PI;
             pdf = abs(dot(Vout,h.normal))/PI;
             */
-            
+            ret /= mat.lobe_chances.x;
             break;
         case METALIC:
             ret += mat.specular_color.rgb;
+            ret /= mat.lobe_chances.y;
             break;
 
         case DIELECTRIC:
             ret += mat.subsurface_color_ior.rgb;
-            
+            ret /= mat.lobe_chances.z;
             break;
     }
 
@@ -510,7 +536,7 @@ vec3 cast_ray(Ray r){
             
             // Get light from all light sources
             //if(bounce_count == 0){
-            if(true){
+            if(false){
                 vec3 direct_light = get_direct_light(h);
                 color += direct_light*atenuation;
             }

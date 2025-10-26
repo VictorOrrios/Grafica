@@ -135,7 +135,7 @@ export class Scene {
             new Vector3(0),
             1.0
         ));
-
+        
         const s1:Sphere = new Sphere(
             new Vector3(0.0,0.0,0.0),
             1.0);
@@ -211,7 +211,7 @@ export class Scene {
         const glass = this.addMaterial(new Material(
             new Vector3(0.0),
             0.0,
-            new Vector3(0),
+            new Vector3(0.0,0.0,0.0),
             new Vector3(1.0,1.0,1.0),
             1.52
         ));
@@ -269,7 +269,7 @@ export class Scene {
         const s3:Sphere = new Sphere(
             new Vector3(0.0,-0.85,0.0),
             0.15);
-        //this.addSphere(s3,glass);
+        this.addSphere(s3,glass);
 
         const s4:Sphere = new Sphere(
             new Vector3(0.0,1.5,0.0),
