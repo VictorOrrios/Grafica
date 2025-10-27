@@ -192,6 +192,14 @@ export class Scene {
             1.0
         ));
 
+        const blue_metal = this.addMaterial(new Material(
+            new Vector3(0.0,0.0,1.0),
+            0,
+            new Vector3(0.1,0.1,0.1),
+            new Vector3(0),
+            1.0
+        ));
+
         const yellow = this.addMaterial(new Material(
             new Vector3(1.0,1.0,0.0),
             0,
@@ -304,7 +312,7 @@ export class Scene {
         const s2:Sphere = new Sphere(
             new Vector3(-0.5,-0.7,0.25),
             0.3);
-        this.addSphere(s2,blue);
+        this.addSphere(s2,blue_metal);
 
         const s3:Sphere = new Sphere(
             new Vector3(0.0,-0.75,0.5),
