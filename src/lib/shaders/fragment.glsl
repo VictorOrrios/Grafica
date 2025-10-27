@@ -387,7 +387,7 @@ vec3 sample_mat_direction(Material mat, vec3 Vin, Hit h, out int type){
             float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
             bool cannot_refract = eta * sin_theta > 1.0;
             if(cannot_refract){
-                type = DIELECTRIC;
+                type = METALIC;
                 return reflect(Vin,h.normal);
             }else{
                 type = DIELECTRIC;
@@ -405,9 +405,10 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
     Vout = sample_mat_direction(mat,Vin,h,type);
 
 
+    ret = mat.albedo_emission.rgb;
+    
     switch(type){
         case DIFFUSE:
-            ret = mat.albedo_emission.rgb;
             /*
             vec3 fr = mat.albedo_emission.rgb/PI;
             pdf = abs(dot(Vout,h.normal))/PI;
@@ -512,8 +513,9 @@ vec3 cast_ray(Ray r){
     while(bounce_count <= bounce_hard_limit && random()>rr_chance){
         bounce_count++;
     */
+
     for(int bounce_count = 0; 
-        (random()>rr_chance || bounce_count < 1) && bounce_count <= bounce_hard_limit; 
+        (random() < rr_chance || bounce_count < 1) && bounce_count <= bounce_hard_limit; 
         bounce_count++){
 
         if(hit_scene(r,h)){
@@ -522,7 +524,8 @@ vec3 cast_ray(Ray r){
 
             // Emissive material
             if(mat.albedo_emission.a > 0.0){
-                return color + mat.albedo_emission.rgb*mat.albedo_emission.a*atenuation;
+                color += mat.albedo_emission.rgb*mat.albedo_emission.a*atenuation;
+                return color; 
             }
 
             if(rr_chance <= 0.0){
@@ -546,7 +549,7 @@ vec3 cast_ray(Ray r){
         }
     }
 
-    return color * rr_chance;
+    return color;
 }
 
 // Generates a ray pointing to the pixel this thread is assigned with
@@ -586,7 +589,7 @@ void main() {
     outColor /= float(spp);
 
     // Postprocessing
-    //outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
+    outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
 
     // Alpha channel correction
     outColor.a = 1.0; 

@@ -208,11 +208,27 @@ export class Scene {
             1.0
         ));
 
-        const glass = this.addMaterial(new Material(
+        const glass100 = this.addMaterial(new Material(
             new Vector3(0.0),
             0.0,
             new Vector3(0.0,0.0,0.0),
             new Vector3(1.0,1.0,1.0),
+            1.52
+        ));
+
+        const glass90 = this.addMaterial(new Material(
+            new Vector3(0.0),
+            0.0,
+            new Vector3(0.1,0.1,0.1),
+            new Vector3(0.9,0.9,0.9),
+            1.52
+        ));
+
+        const glass50 = this.addMaterial(new Material(
+            new Vector3(0.0),
+            0.0,
+            new Vector3(0.5,0.5,0.5),
+            new Vector3(0.5,0.5,0.5),
             1.52
         ));
 
@@ -238,7 +254,7 @@ export class Scene {
             new Vector3(1.0,1.0,1.0),
             new Vector3(1.0,1.0,-1.0),
         );
-        this.addQuad(ceiling,white);
+        //this.addQuad(ceiling,white);
 
         const left:Quad = new Quad(
             new Vector3(-1.0,-1.0,1.0),
@@ -267,14 +283,14 @@ export class Scene {
         this.addSphere(s2,blue_metal);
 
         const s3:Sphere = new Sphere(
-            new Vector3(0.0,-0.85,0.0),
+            new Vector3(0.0,0.0,0.0),
             0.15);
-        this.addSphere(s3,glass);
+        this.addSphere(s3,glass100);
 
         const s4:Sphere = new Sphere(
             new Vector3(0.0,1.5,0.0),
             0.5);
-        //this.addSphere(s4,glass);
+        //this.addSphere(s4,glass100);
 
         const l1:PointLight = new PointLight(
             new Vector3(0,0.9,0.0),
