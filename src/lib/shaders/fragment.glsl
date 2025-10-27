@@ -334,7 +334,7 @@ vec3 skybox_color_black(Ray r){
 }
 
 vec3 skybox_color(Ray r){
-    return skybox_color_day(r);
+    return skybox_color_black(r);
 }
 
 //===========================
@@ -539,7 +539,7 @@ vec3 cast_ray(Ray r){
             
             // Get light from all light sources
             //if(bounce_count == 0){
-            if(false){
+            if(true){
                 vec3 direct_light = get_direct_light(h);
                 color += direct_light*atenuation;
             }

@@ -254,7 +254,7 @@ export class Scene {
             new Vector3(1.0,1.0,1.0),
             new Vector3(1.0,1.0,-1.0),
         );
-        //this.addQuad(ceiling,white);
+        this.addQuad(ceiling,white);
 
         const left:Quad = new Quad(
             new Vector3(-1.0,-1.0,1.0),
@@ -295,7 +295,7 @@ export class Scene {
         const l1:PointLight = new PointLight(
             new Vector3(0,0.9,0.0),
             new Vector3(1.0,1.0,1.0),
-            0.5
+            0.2
         );
         this.addPointLight(l1);
 

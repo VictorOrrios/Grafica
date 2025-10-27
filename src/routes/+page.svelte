@@ -154,10 +154,10 @@
 
 <div class="main w-screem h-screen">
 
-    <canvas id="canvas" width="854" height="480" bind:this={canvas}></canvas>
+    <div class="w-full flex gap-8 justify-between">
+        <canvas id="canvas" width="854" height="480" bind:this={canvas}></canvas>
 
-    <div class="flex gap-8">
-        <Card class="max-w-md mx-auto mt-10">
+        <Card class="max-w-md mx-auto">
             <CardHeader>
                 <CardTitle>Render Control Panel</CardTitle>
             </CardHeader>
@@ -205,6 +205,7 @@
 
                 <!-- Debug -->
                 <div class="text-sm text-muted-foreground">
+                    <p><strong>FPS:</strong> {fps}</p>
                     <p><strong>SPP:</strong> {samplesPerPixel}</p>
                     <p>
                         <strong>Rusian roulette chance:</strong>
@@ -212,16 +213,6 @@
                     </p>
                     <p><strong>Frame acummulation:</strong> {frame_acummulation}</p>
                 </div>
-            </CardContent>
-        </Card>
-        <Card class="max-w-md mx-auto w-30 mt-10">
-            <CardHeader>
-                <CardTitle>Metrics</CardTitle>
-            </CardHeader>
-
-            <CardContent class="space-y-6">
-                <Label>FPS: {fps}</Label>
-                
             </CardContent>
         </Card>
     </div>
