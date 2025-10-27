@@ -488,10 +488,11 @@ vec3 get_direct_light(Hit h){
             PointLight l = point_lights[i];
             vec3 direction = l.position-h.p;
             float d = length(direction);
+            float d2 = d*d;
             // Cast a ray from the light source to the hit position
             Ray r = Ray(h.p,normalize(l.position-h.p));
             if(!hit_scene(r,aux) || aux.t >= d){
-                vec3 actual_light_color = l.color_power.xyz * l.color_power.w;
+                vec3 actual_light_color = l.color_power.xyz * l.color_power.w / d2;
                 // Multiply by the cosine(ray_dir, hit_normal)
                 ret += actual_light_color * abs(dot(r.dir,h.normal));
             }
@@ -524,7 +525,8 @@ vec3 cast_ray(Ray r){
 
             // Emissive material
             if(mat.albedo_emission.a > 0.0){
-                color += mat.albedo_emission.rgb*mat.albedo_emission.a*atenuation;
+                float d2 = bounce_count == 0? 1.0:h.t*h.t;
+                color += atenuation * mat.albedo_emission.rgb*mat.albedo_emission.a/d2;
                 return color; 
             }
 
