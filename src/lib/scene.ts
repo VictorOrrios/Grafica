@@ -193,7 +193,7 @@ export class Scene {
         ));
 
         const blue_metal = this.addMaterial(new Material(
-            new Vector3(0.0,0.0,1.0),
+            new Vector3(0.0,0.0,0.9),
             0,
             new Vector3(0.1,0.1,0.1),
             new Vector3(0),
