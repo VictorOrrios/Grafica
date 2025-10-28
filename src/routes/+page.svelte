@@ -26,8 +26,8 @@
     let canvas!: HTMLCanvasElement;
 
     let needCapture: boolean = false;
+
     let listenToMove: boolean = true;
-    let animation_frame_id:number = 0;
 
     let lastFrameTime = performance.now();
     let frameCount = 0;
@@ -40,7 +40,6 @@
     let meanBounces = $state(5);
     let russianRoulette = $derived(1 - 1 / meanBounces);
     let frame_acummulation: boolean = $state(true);
-    let static_rendering: boolean = $state(false);
 
     $effect(() => {
         samplesPerPixel;
@@ -54,16 +53,6 @@
             renderer.setFrameAcummulation(frame_acummulation);
         }
     });
-
-    $effect(() => {
-        static_rendering;
-        if(static_rendering){
-            stopRendering = true;
-        }else{
-            stopRendering = false;
-            start_real_time_rendering();
-        }
-    })
 
     function mousedown(event: any) {
         const rect = canvas.getBoundingClientRect();
@@ -91,14 +80,6 @@
         //azymuth = 0;
         scene.camera.moveTo(azymuth, polar);
         renderer.resetFrameAcummulation();
-    }
-
-    function capture_screenshot(){
-        if(static_rendering){
-            saveScreenshot();
-        }else{
-            needCapture = true;
-        }
     }
 
     function updateFPS(time: number) {
@@ -132,24 +113,6 @@
         }, "image/png");
     }
 
-    function start_real_time_rendering(){
-        function loop(time: number) {
-            if (stopRendering) return;
-            renderer.render(time);
-            if (needCapture) {
-                saveScreenshot();
-                needCapture = false;
-            }
-            updateFPS(time);
-            animation_frame_id = requestAnimationFrame(loop);
-        }
-        animation_frame_id = requestAnimationFrame(loop);
-    }
-
-    function single_render(){
-        renderer.render(new Date().getSeconds());
-    }
-
     async function setUpMain() {
         lastFrameTime = performance.now();
         frameCount = 0;
@@ -167,7 +130,17 @@
 
         await renderer.initialize();
         rendererStarted = true;
-        start_real_time_rendering();
+        function loop(time: number) {
+            if (stopRendering) return;
+            renderer.render(time);
+            if (needCapture) {
+                saveScreenshot();
+                needCapture = false;
+            }
+            updateFPS(time);
+            requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
     }
 
     // MAIN LOOP
@@ -193,21 +166,15 @@
                 <Label>Actions</Label>
                 <div class="space-y-2 flex justify-between">
                     <Button
-                        onclick={capture_screenshot}>Capture PNG</Button
+                        onclick={() => {
+                            needCapture = true;
+                        }}>Capture PNG</Button
                     >
-                    {#if static_rendering}
-                        <Button
-                            onclick={() => {
-                                single_render();
-                            }}>Render</Button
-                        >
-                    {:else}
-                        <Button
-                            onclick={() => {
-                                stopRendering = true;
-                            }}>Stop</Button
-                        >
-                    {/if}
+                    <Button
+                        onclick={() => {
+                            stopRendering = true;
+                        }}>Stop</Button
+                    >
                 </div>
 
                 <!-- Samples per pixel -->
@@ -232,12 +199,6 @@
                 <div class="space-y-2">
                     <Label>Frame acummulation</Label>
                     <Switch bind:checked={frame_acummulation} />
-                </div>
-
-                <!-- Static rendering toggle -->
-                <div class="space-y-2">
-                    <Label>Static rendering</Label>
-                    <Switch bind:checked={static_rendering} />
                 </div>
 
                 <Separator />
