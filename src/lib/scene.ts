@@ -193,7 +193,7 @@ export class Scene {
         ));
 
         const blue_metal = this.addMaterial(new Material(
-            new Vector3(0.0,0.0,1.0),
+            new Vector3(0.0,0.0,0.9),
             0,
             new Vector3(0.1,0.1,0.1),
             new Vector3(0),
@@ -204,6 +204,14 @@ export class Scene {
             new Vector3(1.0,1.0,0.0),
             0,
             new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const half_half = this.addMaterial(new Material(
+            new Vector3(0.5,0.5,0.5),
+            0,
+            new Vector3(0.5,0.5,0.5),
             new Vector3(0),
             1.0
         ));
@@ -219,6 +227,14 @@ export class Scene {
         const white = this.addMaterial(new Material(
             new Vector3(1.0,1.0,1.0),
             0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const white_light = this.addMaterial(new Material(
+            new Vector3(1.0,1.0,1.0),
+            1.0,
             new Vector3(0),
             new Vector3(0),
             1.0
@@ -328,6 +344,16 @@ export class Scene {
             new Vector3(0.8,-0.8,0.4),
             0.2);
         this.addSphere(s5,mirror);
+
+        const s6:Sphere = new Sphere(
+            new Vector3(0.7,0.5,0.5),
+            0.2);
+        this.addSphere(s6,glass50);
+
+        const s7:Sphere = new Sphere(
+            new Vector3(-0.7,0.5,0.5),
+            0.2);
+        this.addSphere(s7,half_half);
 
         const q1:Quad = new Quad(
             new Vector3(-0.5,-1.0,-1.0),
