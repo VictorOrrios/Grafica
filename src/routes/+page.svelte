@@ -42,16 +42,18 @@
     let frame_acummulation: boolean = $state(true);
 
     $effect(() => {
-        samplesPerPixel;
-        russianRoulette;
-        frame_acummulation;
+        samplesPerPixel;russianRoulette;frame_acummulation;
         if (!rendererStarted) return;
-        renderer.spp = samplesPerPixel;
-        renderer.rr_chance = russianRoulette;
-        renderer.resetFrameAcummulation();
-        if (renderer.frame_acummulation_on !== frame_acummulation) {
-            renderer.setFrameAcummulation(frame_acummulation);
+
+        if (renderer.frame_acummulation_on !== frame_acummulation
+            || renderer.rr_chance !== russianRoulette
+        ) {
+            renderer.resetFrameAcummulation();
         }
+
+        renderer.spp = Math.max(samplesPerPixel,1);
+        renderer.rr_chance = Math.max(russianRoulette,0.0);
+        renderer.frame_acummulation_on = frame_acummulation;
     });
 
     function mousedown(event: any) {
@@ -154,10 +156,10 @@
 
 <div class="main w-screem h-screen">
 
-    <div class="w-full flex gap-8 justify-between">
-        <canvas id="canvas" width="854" height="480" bind:this={canvas}></canvas>
+    <div class="w-full h-full flex gap-8 p-4">
+        <canvas id="canvas" width="500" height="500" bind:this={canvas}></canvas>
 
-        <Card class="max-w-md mx-auto">
+        <Card class="max-w-md w-70">
             <CardHeader>
                 <CardTitle>Render Control Panel</CardTitle>
             </CardHeader>

@@ -133,6 +133,7 @@ void init_seed() {
     seed = hash(uint(time)*1920u) 
         ^ hash(frame_count)
         ^ hash(uint(int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1920));
+    // Removing the px part gives weird paint brush effect on frame acummulation
 }
 
 uint xorshift(inout uint state) {
@@ -581,18 +582,19 @@ Ray get_ray(vec2 uv){
 void main() {
     // Generate a random enough seed
     init_seed();
-            // Removing the px part gives weird paint brush effect on frame acummulation
 
     // Calculate mean color of pixel
     vec2 uv = (gl_FragCoord.xy)/resolution.xy;
     for(int i = 0; i<int(spp); i++){
         Ray r = get_ray(uv);
-        outColor += vec4(cast_ray(r),0.0);
+        vec3 ray_color = cast_ray(r);
+        // Postprocessing
+        outColor += vec4(clamp_color(aces_film(ray_color)),1.0);
     }
     outColor /= float(spp);
 
-    // Postprocessing
-    outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
+    // Final gamma correct
+    outColor.xyz = gamma_correct(outColor.xyz);
 
     // Alpha channel correction
     outColor.a = 1.0; 
