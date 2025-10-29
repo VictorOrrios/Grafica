@@ -509,22 +509,21 @@ vec3 cast_ray(Ray r){
     vec3 atenuation = vec3(1.0);
     vec3 new_direction;
 
-    /*
-    int bounce_count = 0;
-    while(bounce_count <= bounce_hard_limit && random()>rr_chance){
-        bounce_count++;
-    */
+    float total_t = 0.0, max_t = 999999.0, min_t = 0.0;
 
-    for(int bounce_count = 0; 
-        (random() < rr_chance || bounce_count < 1) && bounce_count <= bounce_hard_limit; 
-        bounce_count++){
+
+    for(int bounce_count = 0; random() < rr_chance || bounce_count < 1;bounce_count++){
 
         if(hit_scene(r,h)){
+
+            total_t += h.t;
+            if(total_t > max_t) return vec3(0.0);
 
             Material mat = materials[h.mat];
 
             // Emissive material
             if(mat.albedo_emission.a > 0.0){
+                if(total_t < min_t) return vec3(0.0);
                 float d2 = bounce_count == 0? 1.0:h.t*h.t;
                 color += atenuation * mat.albedo_emission.rgb*mat.albedo_emission.a/d2;
                 return color; 
@@ -546,11 +545,13 @@ vec3 cast_ray(Ray r){
                 color += direct_light*atenuation;
             }
         }else{
+            if(total_t < min_t) return vec3(0.0);
             color += skybox_color(r)*atenuation;
             return color; 
         }
     }
 
+    if(total_t < min_t) return vec3(0.0);
     return color;
 }
 
