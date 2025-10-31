@@ -248,11 +248,11 @@ export class Scene {
             1.0
         ));
 
-        const glass100 = this.addMaterial(new Material(
+        const glass99 = this.addMaterial(new Material(
             new Vector3(0.0),
             0.0,
-            new Vector3(0.0,0.0,0.0),
-            new Vector3(1.0,1.0,1.0),
+            new Vector3(0.01,0.01,0.01),
+            new Vector3(0.99,0.99,0.99),
             1.52
         ));
 
@@ -270,14 +270,6 @@ export class Scene {
             new Vector3(0.5,0.5,0.5),
             new Vector3(0.5,0.5,0.5),
             1.52
-        ));
-
-        const air = this.addMaterial(new Material(
-            new Vector3(0.0),
-            0.0,
-            new Vector3(0.0,0.0,0.0),
-            new Vector3(1.0,1.0,1.0),
-            1.0
         ));
 
         const floor:Quad = new Quad(
@@ -333,7 +325,7 @@ export class Scene {
         const s3:Sphere = new Sphere(
             new Vector3(0.0,-0.75,0.5),
             0.25);
-        this.addSphere(s3,glass100);
+        this.addSphere(s3,glass99);
 
         const s4:Sphere = new Sphere(
             new Vector3(-0.8,-0.9,0.4),

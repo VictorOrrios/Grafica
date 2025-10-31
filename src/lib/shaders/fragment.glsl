@@ -482,6 +482,11 @@ bool hit_scene(Ray r, out Hit h){
 }
 
 vec3 get_direct_light(Hit h){
+    Material mat = materials[h.mat];
+    // 0% diffuse means no point lights
+    if(length(mat.albedo_emission.xyz) <= 0.0){
+        return vec3(0.0);
+    }
     Hit aux;
     vec3 ret = vec3(0);
     #if NUM_POINT_LIGHTS > 0
@@ -493,9 +498,10 @@ vec3 get_direct_light(Hit h){
             // Cast a ray from the light source to the hit position
             Ray r = Ray(h.p,normalize(l.position-h.p));
             if(!hit_scene(r,aux) || aux.t >= d){
-                vec3 actual_light_color = l.color_power.xyz * l.color_power.w / d2;
-                // Multiply by the cosine(ray_dir, hit_normal)
-                ret += actual_light_color * abs(dot(r.dir,h.normal));
+                ret +=
+                    mat.albedo_emission.xyz / mat.lobe_chances.x
+                    * l.color_power.xyz * l.color_power.w / d2
+                    * abs(dot(r.dir,h.normal));
             }
         }
     #endif
@@ -513,7 +519,14 @@ vec3 cast_ray(Ray r){
     float total_t = 0.0, max_t = 999999.0, min_t = 0.0;
 
 
-    for(int bounce_count = 0; random() < rr_chance || bounce_count < 1;bounce_count++){
+    //for(int bounce_count = 0; random() < rr_chance || bounce_count < 1;bounce_count++){
+    
+    int bounce_count = 0;
+    while(true){
+
+        if(bounce_count >= 1 && random() >= rr_chance ){
+            break;
+        }
 
         if(hit_scene(r,h)){
 
@@ -550,6 +563,7 @@ vec3 cast_ray(Ray r){
             color += skybox_color(r)*atenuation;
             return color; 
         }
+        bounce_count++;
     }
 
     if(total_t < min_t) return vec3(0.0);
@@ -585,16 +599,15 @@ void main() {
 
     // Calculate mean color of pixel
     vec2 uv = (gl_FragCoord.xy)/resolution.xy;
+    vec3 samples_sum = vec3(0.0);
     for(int i = 0; i<int(spp); i++){
         Ray r = get_ray(uv);
-        vec3 ray_color = cast_ray(r);
-        // Postprocessing
-        outColor += vec4(clamp_color(aces_film(ray_color)),1.0);
+        samples_sum += cast_ray(r);
     }
-    outColor /= float(spp);
+    outColor = vec4(samples_sum/float(spp),1.0);
 
-    // Final gamma correct
-    outColor.xyz = gamma_correct(outColor.xyz);
+    // Post processing
+    outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
 
     // Alpha channel correction
     outColor.a = 1.0; 

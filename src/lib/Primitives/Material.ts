@@ -23,6 +23,11 @@ export class Material{
                     albedo,emission,specular_color,subsurface_color,ior)
             }
         }
+
+        // Check for dielectric with 0% specular
+        if(subsurface_color.len() > 0.0 && specular_color.len() === 0.0){
+            console.warn("Dielectric material with 0% specular coeficient found");
+        }
             
         this.albedo = albedo;
         this.emission = emission;
