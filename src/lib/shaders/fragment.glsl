@@ -620,9 +620,9 @@ void main() {
         vec3 last_color = texture(last_frame_buffer, uv).rgb;
         float f = float(frames_acummulated);
         // Linear mean
-        //outColor.rgb = (last_color * (f - 1.0) + outColor.rgb) / f;
+        outColor.rgb = (last_color * (f - 1.0) + outColor.rgb) / f;
         // Exponetianl mean
-        outColor.rgb = mix(last_color, outColor.rgb, 1.0 / float(frames_acummulated + 1u));
+        //outColor.rgb = mix(last_color, outColor.rgb, 1.0 / float(frames_acummulated + 1u));
     }
 
 }

@@ -62,11 +62,6 @@ export class Renderer {
         this.num_frames_acummulated = 0;
     }
 
-    public setFrameAcummulation(value:boolean){
-        this.frame_acummulation_on = value;
-        this.resetFrameAcummulation();
-    }
-
     private createShader(type: number, source: string): WebGLShader {
         const shader = this.gl.createShader(type)!;
         this.gl.shaderSource(shader, source);

@@ -13,8 +13,9 @@ export enum SceneType {
     TUNG = 'tung',
     TRALALERO = 'tralalero',
     ARTHAS = 'arthas',
-    SCENE1 = 'scene1',
-    SCENE2 = 'scene2',
+    TESTPLANE = 'testplane',
+    CORNElLEXTRA = 'cornellextra',
+    CORNELl = 'cornell',
 }
 
 enum MeshType {
@@ -37,7 +38,7 @@ export class Scene {
     public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
 
-    constructor(type:SceneType = SceneType.SCENE2) {
+    constructor(type:SceneType = SceneType.CORNElLEXTRA) {
         this.sceneType = type;
         this.setupScene();
     }
@@ -47,10 +48,12 @@ export class Scene {
             this.tungTungTungSahurScene();
         } else if (this.sceneType === SceneType.TRALALERO) {
             this.tralaleroScene();
-        } else if (this.sceneType === SceneType.SCENE1) {
-            this.scene1();
-        } else if (this.sceneType === SceneType.SCENE2) {
-            this.scene2();
+        } else if (this.sceneType === SceneType.TESTPLANE) {
+            this.testplane();
+        } else if (this.sceneType === SceneType.CORNELl) {
+            this.cornell();
+        } else if (this.sceneType === SceneType.CORNElLEXTRA) {
+            this.cornellextra();
         } else if (this.sceneType === SceneType.ARTHAS) {
             this.arthasScene();
         }
@@ -101,7 +104,7 @@ export class Scene {
         });
     }
 
-    private scene1(){
+    private testplane(){
         this.camera = new Camera(new Vector3(0.0,0.0,10.0));
 
         const m1 = this.addMaterial(new Material(
@@ -165,7 +168,7 @@ export class Scene {
         this.addPlane(p1,m3);
     }
 
-    private scene2(){
+    private cornell(){
         this.camera = new Camera(new Vector3(0.0,0.0,3.5));
 
         const red = this.addMaterial(new Material(
@@ -180,6 +183,126 @@ export class Scene {
             new Vector3(0.0,1.0,0.0),
             0,
             new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const blue = this.addMaterial(new Material(
+            new Vector3(0.0,0.0,1.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const yellow = this.addMaterial(new Material(
+            new Vector3(1.0,1.0,0.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const white = this.addMaterial(new Material(
+            new Vector3(1.0,1.0,1.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const floor:Quad = new Quad(
+            new Vector3(-1.0,-1.0,-1.0),
+            new Vector3(-1.0,-1.0,1.0),
+            new Vector3(1.0,-1.0,1.0),
+            new Vector3(1.0,-1.0,-1.0),
+        );
+        this.addQuad(floor,white);
+
+        const back:Quad = new Quad(
+            new Vector3(-1.0,-1.0,-1.0),
+            new Vector3(-1.0,1.0,-1.0),
+            new Vector3(1.0,1.0,-1.0),
+            new Vector3(1.0,-1.0,-1.0),
+        );
+        this.addQuad(back,white);
+
+        const ceiling:Quad = new Quad(
+            new Vector3(-1.0,1.0,-1.0),
+            new Vector3(-1.0,1.0,1.0),
+            new Vector3(1.0,1.0,1.0),
+            new Vector3(1.0,1.0,-1.0),
+        );
+        this.addQuad(ceiling,white);
+
+        const left:Quad = new Quad(
+            new Vector3(-1.0,-1.0,1.0),
+            new Vector3(-1.0,1.0,1.0),
+            new Vector3(-1.0,1.0,-1.0),
+            new Vector3(-1.0,-1.0,-1.0),
+        );
+        this.addQuad(left,red);
+
+        const right:Quad = new Quad(
+            new Vector3(1.0,-1.0,1.0),
+            new Vector3(1.0,1.0,1.0),
+            new Vector3(1.0,1.0,-1.0),
+            new Vector3(1.0,-1.0,-1.0),
+        );
+        this.addQuad(right,green);
+
+        const s1:Sphere = new Sphere(
+            new Vector3(0.5,-0.7,-0.25),
+            0.3);
+        this.addSphere(s1,yellow);
+
+        const s2:Sphere = new Sphere(
+            new Vector3(-0.5,-0.7,0.25),
+            0.3);
+        this.addSphere(s2,blue);
+
+
+        const l1:PointLight = new PointLight(
+            new Vector3(0,0.95,0.0),
+            new Vector3(1.0,1.0,1.0),
+            0.1
+        );
+        this.addPointLight(l1);
+
+
+    }
+
+    private cornellextra(){
+        this.camera = new Camera(new Vector3(0.0,0.0,3.5));
+
+        const red = this.addMaterial(new Material(
+            new Vector3(1.0,0.0,0.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const green = this.addMaterial(new Material(
+            new Vector3(0.0,1.0,0.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const red_mirror = this.addMaterial(new Material(
+            new Vector3(1.0,0.0,0.0),
+            0,
+            new Vector3(0.0,1.0,1.0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const green_mirror = this.addMaterial(new Material(
+            new Vector3(0.0,1.0,0.0),
+            0,
+            new Vector3(1.0,0.0,1.0),
             new Vector3(0),
             1.0
         ));
@@ -347,21 +470,39 @@ export class Scene {
             0.2);
         this.addSphere(s7,half_half);
 
+        const cool_factor:number = 0.5;
+
         const q1:Quad = new Quad(
-            new Vector3(-0.5,-1.0,-1.0),
-            new Vector3(-0.5,1.0,-1.0),
-            new Vector3(-1.0,1.0,-0.5),
-            new Vector3(-1.0,-1.0,-0.5),
+            new Vector3(-cool_factor,-1.0,-1.0),
+            new Vector3(-cool_factor,1.0,-1.0),
+            new Vector3(-1.0,1.0,-cool_factor),
+            new Vector3(-1.0,-1.0,-cool_factor),
         );
         this.addQuad(q1,mirror);
 
         const q2:Quad = new Quad(
-            new Vector3(0.5,-1.0,-1.0),
-            new Vector3(0.5,1.0,-1.0),
-            new Vector3(1.0,1.0,-0.5),
-            new Vector3(1.0,-1.0,-0.5),
+            new Vector3(cool_factor,-1.0,-1.0),
+            new Vector3(cool_factor,1.0,-1.0),
+            new Vector3(1.0,1.0,-cool_factor),
+            new Vector3(1.0,-1.0,-cool_factor),
         );
         this.addQuad(q2,mirror);
+
+        const q3:Quad = new Quad(
+            new Vector3(-1.0,-1.0,-cool_factor),
+            new Vector3(-1.0,-cool_factor,-1.0),
+            new Vector3(1.0,-cool_factor,-1.0),
+            new Vector3(1.0,-1.0,-cool_factor),
+        );
+        //this.addQuad(q3,mirror);
+
+        const q4:Quad = new Quad(
+            new Vector3(-1.0,1.0,-cool_factor),
+            new Vector3(-1.0,cool_factor,-1.0),
+            new Vector3(1.0,cool_factor,-1.0),
+            new Vector3(1.0,1.0,-cool_factor),
+        );
+        //this.addQuad(q4,mirror);
 
 
         const l1:PointLight = new PointLight(
@@ -370,6 +511,13 @@ export class Scene {
             0.1
         );
         this.addPointLight(l1);
+
+        const l2:PointLight = new PointLight(
+            new Vector3(0,0.0,-0.95),
+            new Vector3(1, 0.019, 0.878),
+            0.1
+        );
+        //this.addPointLight(l2);
 
 
     }
