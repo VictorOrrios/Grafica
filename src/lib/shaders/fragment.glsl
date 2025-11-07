@@ -21,9 +21,10 @@ precision mediump float;
 //===========================
 // Enum defines
 //===========================
-#define DIFFUSE 0
-#define METALIC 1
-#define DIELECTRIC 2
+#define NONE 0
+#define DIFFUSE 1
+#define METALIC 2
+#define DIELECTRIC 3
 
 //===========================
 // Type definitions
@@ -33,7 +34,7 @@ struct Material {
     vec4 albedo_emission;
     vec3 specular_color;
     vec4 subsurface_color_ior;
-    vec3 lobe_chances; // diffuse + metalic + dielectric = 1.0
+    vec4 lobe_chances; // diffuse/metalic/dielectric/sum 
 };
 
 struct Sphere {
@@ -349,66 +350,46 @@ float fresnel_dielectric(float cos_theta_i, float eta) {
     return F0 + (1.0 - F0) * pow(1.0 - cos_theta_i, 5.0);
 }
 
-vec3 sample_mat_direction(Material mat, vec3 Vin, Hit h, out int type){
+vec3 sample_mat_direction(inout Material mat, vec3 Vin, Hit h, out int type){
     float r = random();
-    if(mat.lobe_chances.z == 0.0){
-        if(r <= mat.lobe_chances.x){
-            type = DIFFUSE;
-            return random_vec_on_hemisphere(h.normal);
-        }else{
-            type = METALIC;
-            return reflect(Vin,h.normal);
-        }
+
+    float sum_chance = mat.lobe_chances.x;
+    if(r <= sum_chance){
+        type = DIFFUSE;
+        return random_vec_on_hemisphere(h.normal);
+    }
+    sum_chance += mat.lobe_chances.y;
+
+    if(r <= sum_chance){
+        type = METALIC;
+        return reflect(Vin,h.normal);
+    }
+
+    float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
+    float cos_theta = abs(dot(Vin,h.normal));
+    float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
+    bool cannot_refract = eta * sin_theta > 1.0;
+    if(cannot_refract){
+        type = METALIC;
+        return reflect(Vin,h.normal);
     }else{
-        if(r <= mat.lobe_chances.y){
-            type = METALIC;
-            return reflect(Vin,h.normal);
-        }else{
-            /* Class
-            float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
-            type = METALIC;
-            return refract(Vin,h.normal,eta);
-            */
-            /* With fresnel
-            float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
-            float cos_theta = abs(dot(Vin,h.normal));
-            float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
-            bool cannot_refract = eta * sin_theta > 1.0;
-            float reflectance = fresnel_dielectric(cos_theta,eta);
-            if(cannot_refract || reflectance > random()){
-                type = METALIC;
-                return reflect(Vin,h.normal);
-            }else{
-                type = DIELECTRIC;
-                return refract(Vin,h.normal,eta);
-            }
-            */
-            float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
-            float cos_theta = abs(dot(Vin,h.normal));
-            float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
-            bool cannot_refract = eta * sin_theta > 1.0;
-            if(cannot_refract){
-                type = METALIC;
-                return reflect(Vin,h.normal);
-            }else{
-                type = DIELECTRIC;
-                return refract(Vin,h.normal,eta);
-            }
-        }
+        type = DIELECTRIC;
+        return refract(Vin,h.normal,eta);
     }
 }
 
 vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
-    float pdf;
     vec3 ret;
     int type;
 
     Vout = sample_mat_direction(mat,Vin,h,type);
 
-
     ret = mat.albedo_emission.rgb;
     
     switch(type){
+        case NONE:
+            ret = vec3(0.0);
+            break; 
         case DIFFUSE:
             /*
             vec3 fr = mat.albedo_emission.rgb/PI;
@@ -489,6 +470,7 @@ vec3 get_direct_light(Hit h){
     }
     Hit aux;
     vec3 ret = vec3(0);
+
     #if NUM_POINT_LIGHTS > 0
         for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
             PointLight l = point_lights[i];
@@ -505,6 +487,7 @@ vec3 get_direct_light(Hit h){
             }
         }
     #endif
+
     return ret;
 }
 
@@ -518,13 +501,10 @@ vec3 cast_ray(Ray r){
 
     float total_t = 0.0, max_t = 999999.0, min_t = 0.0;
 
-
-    //for(int bounce_count = 0; random() < rr_chance || bounce_count < 1;bounce_count++){
-    
     int bounce_count = 0;
     while(true){
 
-        if(bounce_count >= 1 && random() >= rr_chance ){
+        if(bounce_count >= 1 && rr_chance <= random()){
             break;
         }
 
@@ -543,10 +523,14 @@ vec3 cast_ray(Ray r){
                 return color; 
             }
 
-            if(rr_chance <= 0.0){
-                atenuation *= eval_mat(mat,r.dir,h,new_direction);
-            }else{
-                atenuation *= eval_mat(mat,r.dir,h,new_direction) / rr_chance;
+            atenuation *= eval_mat(mat,r.dir,h,new_direction);
+            // 0 atennuation check for termination
+            if(length(atenuation) <= 0.01){
+                return vec3(0.0);
+            }
+            // Russian roulette pdf
+            if(rr_chance >= 0.0){
+                atenuation /= rr_chance;
             }
             
             r.dir = new_direction;

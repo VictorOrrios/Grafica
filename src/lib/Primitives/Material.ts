@@ -40,20 +40,17 @@ export class Material{
         return Math.max(v.x,v.y,v.z); 
     }
 
-    private getLobeChances():Vector3{
-        let pd = 0, ps = 0, pt = 0;
-        if(this.subsurface_color.len() > 0){
-            let ks_max = Material.getMaxComponent(this.specular_color);
-            let kt_max = Material.getMaxComponent(this.subsurface_color);
-            ps = ks_max / (ks_max+kt_max);
-            pt = 1 - ps;
-        }else{
-            let kd_max = Material.getMaxComponent(this.albedo);
-            let ks_max = Material.getMaxComponent(this.specular_color);
-            pd = kd_max / (kd_max+ks_max);
-            ps = 1 - pd;
-        }
-        return new Vector3(pd,ps,pt);
+    private getLobeChances():Vector4{
+        let pd = Material.getMaxComponent(this.albedo);
+        let ps = Material.getMaxComponent(this.specular_color);
+        let pt = Material.getMaxComponent(this.subsurface_color);
+        let sum = pd+ps+pt;
+        
+        pd /= sum;
+        ps /= sum;
+        pt /= sum;
+        
+        return new Vector4(pd,ps,pt,sum);
     }
 
     public serialize():Float32Array{
@@ -62,7 +59,7 @@ export class Material{
             this.albedo.x, this.albedo.y, this.albedo.z, this.emission,
             this.specular_color.x, this.specular_color.y, this.specular_color.z, 0,
             this.subsurface_color.x, this.subsurface_color.y, this.subsurface_color.z, this.ior,
-            lobe_chances.x, lobe_chances.y, lobe_chances.z, 0
+            lobe_chances.x, lobe_chances.y, lobe_chances.z, lobe_chances.w
         ]);
     }
 
