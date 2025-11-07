@@ -46,10 +46,12 @@ export class Material{
         let pt = Material.getMaxComponent(this.subsurface_color);
         let sum = pd+ps+pt;
         
+        /*
         pd /= sum;
         ps /= sum;
         pt /= sum;
-        
+        */
+
         return new Vector4(pd,ps,pt,sum);
     }
 

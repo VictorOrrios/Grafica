@@ -78,7 +78,7 @@ struct Hit{
 // Global variables
 //===========================
 uint seed;
-
+int bounce_count;
 
 //===========================
 // External variable definitions
@@ -352,6 +352,15 @@ float fresnel_dielectric(float cos_theta_i, float eta) {
 
 vec3 sample_mat_direction(inout Material mat, vec3 Vin, Hit h, out int type){
     float r = random();
+    float sum = mat.lobe_chances.w;
+    if(bounce_count > 2){
+        sum += 1.0 - rr_chance;
+    }
+    if(sum > 1.0){
+        mat.lobe_chances.x /= sum;
+        mat.lobe_chances.y /= sum;
+        mat.lobe_chances.z /= sum;
+    }
 
     float sum_chance = mat.lobe_chances.x;
     if(r <= sum_chance){
@@ -364,18 +373,24 @@ vec3 sample_mat_direction(inout Material mat, vec3 Vin, Hit h, out int type){
         type = METALIC;
         return reflect(Vin,h.normal);
     }
+    sum_chance += mat.lobe_chances.z;
 
-    float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
-    float cos_theta = abs(dot(Vin,h.normal));
-    float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
-    bool cannot_refract = eta * sin_theta > 1.0;
-    if(cannot_refract){
-        type = METALIC;
-        return reflect(Vin,h.normal);
-    }else{
-        type = DIELECTRIC;
-        return refract(Vin,h.normal,eta);
+    if(r <= sum_chance){
+        float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
+        float cos_theta = abs(dot(Vin,h.normal));
+        float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
+        bool cannot_refract = eta * sin_theta > 1.0;
+        if(cannot_refract){
+            type = METALIC;
+            return reflect(Vin,h.normal);
+        }else{
+            type = DIELECTRIC;
+            return refract(Vin,h.normal,eta);
+        }
     }
+
+    type = NONE;
+    return vec3(0.0);
 }
 
 vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
@@ -501,12 +516,14 @@ vec3 cast_ray(Ray r){
 
     float total_t = 0.0, max_t = 999999.0, min_t = 0.0;
 
-    int bounce_count = 0;
+    bounce_count = 0;
     while(true){
 
+        /*
         if(bounce_count >= 1 && rr_chance <= random()){
             break;
         }
+        */
 
         if(hit_scene(r,h)){
 
@@ -529,9 +546,11 @@ vec3 cast_ray(Ray r){
                 return vec3(0.0);
             }
             // Russian roulette pdf
+            /*
             if(rr_chance >= 0.0){
                 atenuation /= rr_chance;
             }
+            */
             
             r.dir = new_direction;
             r.orig = h.p;
