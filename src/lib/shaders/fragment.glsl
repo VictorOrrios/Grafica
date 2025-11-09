@@ -15,7 +15,7 @@ precision mediump float;
 // TODO: Fine tune to float precision limit when system is more advanced
 #define ray_min_distance 0.0001
 #define ray_max_distance 10000.0
-#define bounce_hard_limit 100
+#define bounce_hard_limit 200
 #define PI 3.14159265359
 
 //===========================
@@ -517,14 +517,8 @@ vec3 cast_ray(Ray r){
     float total_t = 0.0, max_t = 999999.0, min_t = 0.0;
 
     bounce_count = 0;
-    while(true){
-
-        /*
-        if(bounce_count >= 1 && rr_chance <= random()){
-            break;
-        }
-        */
-
+    for(int i = 0; i < bounce_hard_limit; i++) {
+        
         if(hit_scene(r,h)){
 
             total_t += h.t;
@@ -545,12 +539,6 @@ vec3 cast_ray(Ray r){
             if(length(atenuation) <= 0.01){
                 return vec3(0.0);
             }
-            // Russian roulette pdf
-            /*
-            if(rr_chance >= 0.0){
-                atenuation /= rr_chance;
-            }
-            */
             
             r.dir = new_direction;
             r.orig = h.p;
