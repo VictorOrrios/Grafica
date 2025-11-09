@@ -100,6 +100,8 @@ uniform float rr_chance;
 uniform uint frames_acummulated;
 uniform sampler2D last_frame_buffer;
 
+uniform sampler2D skybox;
+
 layout(std140) uniform StaticBlock {
     Material materials[NUM_MATERIALS];
     #if NUM_SPHERES > 0
@@ -115,8 +117,6 @@ layout(std140) uniform StaticBlock {
         PointLight point_lights[NUM_POINT_LIGHTS];
     #endif
 };
-
-uniform sampler2D skybox;
 
 
 //===========================
@@ -329,6 +329,12 @@ bool hit_triangle(const Triangle tri, const Ray r, out Hit h){
 //===========================
 // Skybox functions
 //===========================
+vec3 skybox_color_image(Ray r){
+    float u = atan(r.dir.z, r.dir.x) / (2.0 * PI) + 0.5;
+    float v = r.dir.y * 0.5 + 0.5;
+    return texture(skybox, vec2(u, v)).rgb;
+}
+
 vec3 skybox_color_day(Ray r) {
     const vec3 horizon_color = vec3(0.231, 0.756, 0.945);
     const vec3 zenith_color = vec3(1.0);

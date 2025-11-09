@@ -1,4 +1,5 @@
-//import parseExr from "parse-exr";
+import parseExr from "parse-exr";
+
 
 function float32ToUint8(floatArray:Float32Array) {
   const len = floatArray.length;
@@ -90,7 +91,8 @@ function reinhard(data: Float32Array, key_value: number = 0.18) {
 }
 
 export async function loadEXRImage(fileName:string, exposure:number):
-Promise<{ data: Uint8Array; width: number; height: number; }>{
+Promise<{ data: Float32Array; width: number; height: number; }>{
+
     console.log("=== STARTING EXR LOADER")
     const response = await fetch(fileName);
     if (!response.ok) throw new Error("Could not load image: " + fileName);
@@ -100,10 +102,10 @@ Promise<{ data: Uint8Array; width: number; height: number; }>{
     const FloatType = 1015;
     // const HalfFloatType = 1016;
 
-    //let { data, width, height } = parseExr(exrData, FloatType);
-    //data = data as Float32Array
+    let { data, width, height } = parseExr(exrData, FloatType);
+    data = data as Float32Array
 
-    let data = new Float32Array(), width = 0, height = 0;
+    //let data = new Float32Array(), width = 0, height = 0;
 
     console.log("=== IMAGE READ: width ",width," height ",height, " data.len",data.length)
     console.log("=== FIRST 10 PIXELS")
@@ -119,15 +121,14 @@ Promise<{ data: Uint8Array; width: number; height: number; }>{
     const maxV = getMaxValue(realData)
     console.log("=== MAX VALUE:", maxV)
 
-    //equalizeAndClamp(data, maxV);
+    //equalizeAndClamp(realData, maxV);
     //equalizeAndClamp(realData, 5);
     //acesFilm(realData);
-    reinhard(realData, 0.18)
-    clamp(realData);
-    correctGamma(realData, 1/2.2);
+    //reinhard(realData, 0.18)
+    //clamp(realData);
+    //correctGamma(realData, 1/2.2);
 
 
-    const convertedData = float32ToUint8(realData);
     console.log("=== FINISHED LOADING")
-    return { data:convertedData, width, height }
+    return { data:realData, width, height }
 }

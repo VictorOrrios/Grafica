@@ -20,6 +20,7 @@
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/typography": "^0.5.18",
 		"@tailwindcss/vite": "^4.1.13",
+		"@types/three": "^0.181.0",
 		"bits-ui": "^2.14.1",
 		"clsx": "^2.1.1",
 		"svelte": "^5.39.5",
@@ -33,6 +34,8 @@
 		"vite-plugin-string": "^1.2.3"
 	},
 	"dependencies": {
-		"math.gl": "^4.1.0"
+		"math.gl": "^4.1.0",
+		"node": "^25.1.0",
+		"parse-exr": "^1.0.2"
 	}
 }

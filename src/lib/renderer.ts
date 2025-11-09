@@ -9,19 +9,19 @@ export class Renderer {
     private scene: Scene;
     private program!: WebGLProgram;
     private vao!: WebGLVertexArrayObject;
-    private vertexShader!:WebGLShader;
-    private fragmentShader!:WebGLShader;
-    private camera_ubo!:WebGLBuffer;
-    private attachments:Map<string,WebGLUniformLocation> = new Map();
+    private vertexShader!: WebGLShader;
+    private fragmentShader!: WebGLShader;
+    private camera_ubo!: WebGLBuffer;
+    private attachments: Map<string, WebGLUniformLocation> = new Map();
 
-    public frame_acummulation_on:boolean = true;
-    private num_frames_rendered:number = 0;
-    
-    private num_frames_acummulated:number = 0;
-    private last_frame!:WebGLTexture;
+    public frame_acummulation_on: boolean = true;
+    private num_frames_rendered: number = 0;
 
-    public spp:number = 3;
-    public rr_chance:number = 0.666;
+    private num_frames_acummulated: number = 0;
+    private last_frame!: WebGLTexture;
+
+    public spp: number = 3;
+    public rr_chance: number = 0.666;
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
         this.gl = gl;
@@ -38,11 +38,11 @@ export class Renderer {
     public async initShaders(): Promise<WebGLProgram> {
 
         let fragmentModified = fragmentSource;
-        fragmentModified = fragmentModified.replace("__NUM_MATERIALS__",this.scene.materialVec.length.toString())
-        fragmentModified = fragmentModified.replace("__NUM_SPHERES__",this.scene.sphereVec.length.toString())
-        fragmentModified = fragmentModified.replace("__NUM_PLANES__",this.scene.planeVec.length.toString())
-        fragmentModified = fragmentModified.replace("__NUM_TRIANGLES__",this.scene.triangleVec.length.toString())
-        fragmentModified = fragmentModified.replace("__NUM_POINT_LIGHTS__",this.scene.pointLightVec.length.toString())
+        fragmentModified = fragmentModified.replace("__NUM_MATERIALS__", this.scene.materialVec.length.toString())
+        fragmentModified = fragmentModified.replace("__NUM_SPHERES__", this.scene.sphereVec.length.toString())
+        fragmentModified = fragmentModified.replace("__NUM_PLANES__", this.scene.planeVec.length.toString())
+        fragmentModified = fragmentModified.replace("__NUM_TRIANGLES__", this.scene.triangleVec.length.toString())
+        fragmentModified = fragmentModified.replace("__NUM_POINT_LIGHTS__", this.scene.pointLightVec.length.toString())
 
         this.vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexSource);
         this.fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentModified);
@@ -58,7 +58,7 @@ export class Renderer {
         return program;
     }
 
-    public resetFrameAcummulation(){
+    public resetFrameAcummulation() {
         this.num_frames_acummulated = 0;
     }
 
@@ -96,17 +96,18 @@ export class Renderer {
         this.initCamera();
         this.initUniforms();
         this.initFrameAcummulation();
+        //this.initSkyboxBuffer();
         this.initStorageBuffers();
     }
 
-    private initCamera(){
+    private initCamera() {
         const gl = this.gl;
         this.camera_ubo = gl.createBuffer();
         gl.bindBuffer(gl.UNIFORM_BUFFER, this.camera_ubo);
         // std140 is 16 BYTE aligned
         let data = new Float32Array(20);
-        data.set(this.scene.camera.view_inv,0);
-        data.set(this.scene.camera.position,16);
+        data.set(this.scene.camera.view_inv, 0);
+        data.set(this.scene.camera.position, 16);
         data[19] = this.scene.camera.tan_fov;
         gl.bufferData(gl.UNIFORM_BUFFER, data, gl.STATIC_DRAW);
         // Link to binding point
@@ -118,24 +119,24 @@ export class Renderer {
         );
     }
 
-    private initUniforms(){
+    private initUniforms() {
 
-        this.attachments.set("time",this.initUniform("time",1))
-        this.attachments.set("frame_count",this.initUniform("frame_count",2))
-        this.attachments.set("resolution",this.initUniform("resolution",3))
-        this.attachments.set("spp",this.initUniform("spp",2))
-        this.attachments.set("frames_acummulated",this.initUniform("frames_acummulated",2));
-        this.attachments.set("rr_chance",this.initUniform("rr_chance",1));
+        this.attachments.set("time", this.initUniform("time", 1))
+        this.attachments.set("frame_count", this.initUniform("frame_count", 2))
+        this.attachments.set("resolution", this.initUniform("resolution", 3))
+        this.attachments.set("spp", this.initUniform("spp", 2))
+        this.attachments.set("frames_acummulated", this.initUniform("frames_acummulated", 2));
+        this.attachments.set("rr_chance", this.initUniform("rr_chance", 1));
 
-    }    
+    }
 
-    private initUniform(name:string,type:number, value:any[] = [0]):WebGLUniformLocation{
+    private initUniform(name: string, type: number, value: any[] = [0]): WebGLUniformLocation {
         let location = this.gl.getUniformLocation(this.program, name);
-        if(!location){
-            console.warn(name,"location returned null");
+        if (!location) {
+            console.warn(name, "location returned null");
             return 0 as WebGLUniformLocation;
         }
-        switch(type){
+        switch (type) {
             case 0: // int
                 this.gl.uniform1i(location, value[0]);
                 break;
@@ -155,12 +156,12 @@ export class Renderer {
         return location
     }
 
-    private initStorageBuffers(){
+    private initStorageBuffers() {
         const gl = this.gl;
 
         const data = this.scene.serializeStaticBlock();
 
-        console.log(`Initializing static buffer storage:`,data);
+        console.log(`Initializing static buffer storage:`, data);
 
         const sphereUBO = gl.createBuffer();
         gl.bindBuffer(gl.UNIFORM_BUFFER, sphereUBO);
@@ -169,15 +170,15 @@ export class Renderer {
         const bindingPoint = 1;
         gl.uniformBlockBinding(this.program, blockIndex, bindingPoint);
         gl.bindBufferBase(gl.UNIFORM_BUFFER, bindingPoint, sphereUBO);
-        
+
     }
 
-    private initTextureBuffer(name:string,data:Float32Array,index:number) {
-        if(data.length === 0) return;
+    private initTextureBuffer(name: string, data: Float32Array, index: number) {
+        if (data.length === 0) return;
         const gl = this.gl;
         const storageVec = gl.createTexture();
-        console.log(`Initializing storage buffer for ${name}:`,data);
-        gl.activeTexture(gl.TEXTURE0+index);
+        console.log(`Initializing storage buffer for ${name}:`, data);
+        gl.activeTexture(gl.TEXTURE0 + index);
         gl.bindTexture(gl.TEXTURE_2D, storageVec);
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -187,65 +188,65 @@ export class Renderer {
 
         gl.texImage2D(
             gl.TEXTURE_2D,
-            0,                        
-            gl.R32F,    
+            0,
+            gl.R32F,
             data.length, 1,     // width = n, height = 1
-            0,                        
-            gl.RED,                  
-            gl.FLOAT,                 
-            data                
+            0,
+            gl.RED,
+            gl.FLOAT,
+            data
         );
 
         let location = gl.getUniformLocation(this.program, name);
-        if(!location) console.warn(name,"location returned null");
+        if (!location) console.warn(name, "location returned null");
         gl.uniform1i(location, index);
     }
 
-    private initFrameAcummulation(){
+    private initFrameAcummulation() {
         const gl = this.gl;
 
         this.last_frame = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.last_frame);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.canvas.width, gl.canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         gl.bindTexture(gl.TEXTURE_2D, null);
 
-        const loc = this.gl.getUniformLocation(this.program,"last_frame_buffer")
-        if(loc){
-            this.attachments.set("last_frame_buffer",loc)
-        }else{
+        const loc = this.gl.getUniformLocation(this.program, "last_frame_buffer")
+        if (loc) {
+            this.attachments.set("last_frame_buffer", loc)
+        } else {
             throw new Error("Error while trying to find last_frame_buffer");
         }
     }
 
     // Used in P2, look at for reference in future upgrades
-    private async initImageBuffer(){
+    private async initSkyboxBuffer() {
         const gl = this.gl;
-        // Image download: https://polyhaven.com/a/little_paris_eiffel_tower
-        const image = await loadEXRImage("pisztyk_2k.exr",1.0)
+        // All images taken from: https://polyhaven.com
+        const image = await loadEXRImage("charolettenbrunn_park_4k.exr", 1.0)
 
         let tex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, image.width, image.height, 0, gl.RGB, gl.UNSIGNED_BYTE, image.data);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, image.width, image.height, 0, gl.RGB, gl.FLOAT, image.data);
         let location = gl.getUniformLocation(this.program, "skybox");
-        if(!location) console.warn("getUniformLocation returned null at skybox");
-        gl.uniform1i(location, 0);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, tex);
+        if (!location) console.warn("getUniformLocation returned null at skybox");
+        gl.uniform1i(location, 1);
     }
 
-    private getLocation(name:string):WebGLUniformLocation{
+    private getLocation(name: string): WebGLUniformLocation {
         const r = this.attachments.get(name);
-        if(r) return r;
-        else{
-            throw new Error("Error while getting "+name+" attachment location")
+        if (r) return r;
+        else {
+            throw new Error("Error while getting " + name + " attachment location")
         }
     }
 
-    private updateBuffers(time: number){
+    private updateBuffers(time: number) {
         const gl = this.gl;
 
         // Time buffer
@@ -255,7 +256,7 @@ export class Renderer {
         gl.uniform1ui(this.getLocation("frame_count"), this.num_frames_rendered);
 
         // Resolution buffer
-        gl.uniform3f(this.getLocation("resolution"), gl.canvas.width, gl.canvas.height, gl.canvas.width/gl.canvas.height);
+        gl.uniform3f(this.getLocation("resolution"), gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height);
 
         // Sample per pixel uniform buffer
         // TODO: Implement user controled parameter+
@@ -270,7 +271,7 @@ export class Renderer {
 
     }
 
-    private updateCameraUBO(){
+    private updateCameraUBO() {
         const gl = this.gl;
 
         let data = new Float32Array(20);
@@ -282,7 +283,7 @@ export class Renderer {
         gl.bufferSubData(gl.UNIFORM_BUFFER, 0, data);
     }
 
-    private updateFrameBuffer(){
+    private updateFrameBuffer() {
         const gl = this.gl;
 
         gl.activeTexture(gl.TEXTURE0);
@@ -321,7 +322,7 @@ export class Renderer {
 
 
         this.num_frames_rendered++;
-        if(this.frame_acummulation_on) this.num_frames_acummulated++;
+        if (this.frame_acummulation_on) this.num_frames_acummulated++;
     }
 }
 
