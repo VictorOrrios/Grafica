@@ -131,10 +131,19 @@ uint hash(uint x) {
 }
 
 void init_seed() {
-    seed = hash(uint(time)*1920u) 
-        ^ hash(frame_count)
-        ^ hash(uint(int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1920));
-    // Removing the px part gives weird paint brush effect on frame acummulation
+    uint px = uint(gl_FragCoord.x);
+    uint py = uint(gl_FragCoord.y);
+    uint width = uint(resolution.x);
+    
+    uint spatial = (py * width + px) % 2147483647u;
+    uint temporal = (uint(time * 100.0) + frame_count * 65537u) % 2147483647u;
+    
+    seed = hash(spatial * 1664525u + temporal);
+    // Removing the px/py part gives weird paint brush effect on frame acummulation
+
+    for(int i = 0; i < 3; i++) {
+        seed = hash(seed);
+    }
 }
 
 uint xorshift(inout uint state) {
