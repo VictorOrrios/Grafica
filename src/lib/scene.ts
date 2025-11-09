@@ -504,6 +504,47 @@ export class Scene {
         );
         //this.addQuad(q4,mirror);
 
+        // Mirror cube as skybox
+        if(false){
+            const mirror_cube_d = 5.0
+
+            const pback:Plane = new Plane(
+                new Vector3(0.0,0.0,1.0),
+                mirror_cube_d
+            );
+            this.addPlane(pback,mirror)
+
+            const pfront:Plane = new Plane(
+                new Vector3(0.0,0.0,-1.0),
+                mirror_cube_d
+            );
+            this.addPlane(pfront,mirror)
+
+            const pleft:Plane = new Plane(
+                new Vector3(-1.0,0.0,0.0),
+                mirror_cube_d
+            );
+            this.addPlane(pleft,mirror)
+
+            const pright:Plane = new Plane(
+                new Vector3(1.0,0.0,0.0),
+                mirror_cube_d
+            );
+            this.addPlane(pright,mirror)
+
+            const pdown:Plane = new Plane(
+                new Vector3(0.0,-1.0,0.0),
+                mirror_cube_d
+            );
+            this.addPlane(pdown,mirror)
+
+            const pup:Plane = new Plane(
+                new Vector3(0.0,1.0,0.0),
+                mirror_cube_d
+            );
+            this.addPlane(pup,mirror)
+        }
+
 
         const l1:PointLight = new PointLight(
             new Vector3(0,0.95,0.0),

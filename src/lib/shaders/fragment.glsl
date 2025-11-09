@@ -16,6 +16,7 @@ precision mediump float;
 #define ray_min_distance 0.0001
 #define ray_max_distance 10000.0
 #define bounce_hard_limit 200
+#define minimun_atenuation 0.0
 #define PI 3.14159265359
 
 //===========================
@@ -174,7 +175,7 @@ float rand3(){
 }
 
 float random(){
-    return rand3();
+    return rand1();
 }
 
 vec2 sample_square(){
@@ -483,6 +484,8 @@ bool hit_scene(Ray r, out Hit h){
         }
     #endif
 
+
+
     return has_hit;
 }
 
@@ -545,8 +548,8 @@ vec3 cast_ray(Ray r){
 
             atenuation *= eval_mat(mat,r.dir,h,new_direction);
             // 0 atennuation check for termination
-            if(length(atenuation) <= 0.01){
-                return vec3(0.0);
+            if(length(atenuation) <= minimun_atenuation){
+                return color;
             }
             
             r.dir = new_direction;
