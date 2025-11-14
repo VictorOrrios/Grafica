@@ -18,6 +18,7 @@
     import { Separator } from "$lib/components/ui/separator";
     import { Switch } from "$lib/components/ui/switch/index.js";
     import { Button } from "$lib/components/ui/button/index.js";
+    import { Slider } from "$lib/components/ui/slider/index.js";
 
     let scene = new Scene();
     let renderer: Renderer;
@@ -40,13 +41,18 @@
     let meanBounces = $state(5);
     let russianRoulette = $derived(1 - 1 / meanBounces);
     let frame_acummulation: boolean = $state(true);
+    let range_thing: boolean = $state(false);
+    let range_slider: number[] = $state([0.0,20.0]);
+    let range_numbers: number[] = $derived(range_thing? range_slider : [0.0,10000.0]);
 
     $effect(() => {
-        samplesPerPixel;russianRoulette;frame_acummulation;
+        samplesPerPixel;russianRoulette;frame_acummulation;range_numbers[0];range_numbers[1];
         if (!rendererStarted) return;
 
         if (renderer.frame_acummulation_on !== frame_acummulation
             || renderer.rr_chance !== russianRoulette
+            || renderer.range_numbers[0] !== range_numbers[0]
+            || renderer.range_numbers[1] !== range_numbers[1]
         ) {
             renderer.resetFrameAcummulation();
         }
@@ -54,6 +60,8 @@
         renderer.spp = Math.max(samplesPerPixel,1);
         renderer.rr_chance = Math.max(russianRoulette,0.0);
         renderer.frame_acummulation_on = frame_acummulation;
+        renderer.range_numbers[0] = range_numbers[0];
+        renderer.range_numbers[1] = range_numbers[1];
     });
 
     function mousedown(event: any) {
@@ -203,6 +211,20 @@
                     <Switch bind:checked={frame_acummulation} />
                 </div>
 
+                <!-- Range thing toggle -->
+                <div class="space-y-2">
+                    <Label>Range thingy</Label>
+                    <Switch bind:checked={range_thing} />
+                </div>
+
+                <!-- Range slide -->
+                <div class="space-y-2">
+                    <Label>Range thingy</Label>
+                    <Slider type="multiple" bind:value={range_slider} 
+                    disabled={!range_thing}
+                    max={20.0} step={0.1} />
+                </div>
+
                 <Separator />
 
                 <!-- Debug -->
@@ -214,6 +236,7 @@
                         {Math.floor(russianRoulette * 1000) / 1000}
                     </p>
                     <p><strong>Frame acummulation:</strong> {frame_acummulation}</p>
+                    <p><strong>Ray range:</strong> {range_numbers}</p>
                 </div>
             </CardContent>
         </Card>

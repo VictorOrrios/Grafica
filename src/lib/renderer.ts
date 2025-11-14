@@ -22,6 +22,7 @@ export class Renderer {
 
     public spp: number = 3;
     public rr_chance: number = 0.666;
+    public range_numbers: number[] = [0.0,100000.0];
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
         this.gl = gl;
@@ -127,6 +128,7 @@ export class Renderer {
         this.attachments.set("spp", this.initUniform("spp", 2))
         this.attachments.set("frames_acummulated", this.initUniform("frames_acummulated", 2));
         this.attachments.set("rr_chance", this.initUniform("rr_chance", 1));
+        this.attachments.set("ray_range", this.initUniform("ray_range", 4));
 
     }
 
@@ -148,6 +150,9 @@ export class Renderer {
                 break;
             case 3: //vec3
                 this.gl.uniform3f(location, value[0], value[1], value[2]);
+                break;
+            case 4: //vec2
+                this.gl.uniform2f(location, value[0], value[1]);
                 break;
             default: // int
                 this.gl.uniform1i(location, value[0]);
@@ -225,7 +230,7 @@ export class Renderer {
     private async initSkyboxBuffer() {
         const gl = this.gl;
         // All images taken from: https://polyhaven.com
-        const image = await loadEXRImage("charolettenbrunn_park_4k.exr", 1.0)
+        const image = await loadEXRImage("modern_evening_street_4k.exr", 1.0)
 
         let tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE1);
@@ -268,6 +273,9 @@ export class Renderer {
 
         // Rusian roulette chance
         gl.uniform1f(this.getLocation("rr_chance"), this.rr_chance);
+
+        // Ray ranges
+        gl.uniform2f(this.getLocation("ray_range"), this.range_numbers[0], this.range_numbers[1]);
 
     }
 

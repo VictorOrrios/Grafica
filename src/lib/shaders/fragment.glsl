@@ -96,6 +96,7 @@ uniform uint frame_count;
 uniform uint spp;               // samples per pixel
 uniform vec3 resolution;        // x,y,z = width,height,aspect_ratio
 uniform float rr_chance;
+uniform vec2 ray_range;
 
 uniform uint frames_acummulated;
 uniform sampler2D last_frame_buffer;
@@ -532,7 +533,7 @@ vec3 cast_ray(Ray r){
     vec3 atenuation = vec3(1.0);
     vec3 new_direction;
 
-    float total_t = 0.0, max_t = 999999.0, min_t = 0.0;
+    float total_t = 0.0;
 
     bounce_count = 0;
     for(int i = 0; i < bounce_hard_limit; i++) {
@@ -540,13 +541,13 @@ vec3 cast_ray(Ray r){
         if(hit_scene(r,h)){
 
             total_t += h.t;
-            if(total_t > max_t) return vec3(0.0);
+            if(total_t > ray_range.y) return vec3(0.0);
 
             Material mat = materials[h.mat];
 
             // Emissive material
             if(mat.albedo_emission.a > 0.0){
-                if(total_t < min_t) return vec3(0.0);
+                if(total_t < ray_range.x) return vec3(0.0);
                 float d2 = bounce_count == 0? 1.0:h.t*h.t;
                 color += atenuation * mat.albedo_emission.rgb*mat.albedo_emission.a/d2;
                 return color; 
@@ -568,14 +569,14 @@ vec3 cast_ray(Ray r){
                 color += direct_light*atenuation;
             }
         }else{
-            if(total_t < min_t) return vec3(0.0);
+            if(total_t < ray_range.x) return vec3(0.0);
             color += skybox_color(r)*atenuation;
             return color; 
         }
         bounce_count++;
     }
 
-    if(total_t < min_t) return vec3(0.0);
+    if(total_t < ray_range.x) return vec3(0.0);
     return color;
 }
 
