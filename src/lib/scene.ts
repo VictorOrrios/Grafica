@@ -38,7 +38,7 @@ export class Scene {
     public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
 
-    constructor(type:SceneType = SceneType.CORNElLEXTRA) {
+    constructor(type:SceneType = SceneType.CORNELl) {
         this.sceneType = type;
         this.setupScene();
     }
@@ -241,7 +241,7 @@ export class Scene {
             new Vector3(1.0,1.0,1.0),
             new Vector3(1.0,1.0,-1.0),
         );
-        this.addQuad(ceiling,white);
+        this.addQuad(ceiling,white  );
 
         const left:Quad = new Quad(
             new Vector3(-1.0,-1.0,1.0),
@@ -387,6 +387,14 @@ export class Scene {
             1.52
         ));
 
+        const glass95 = this.addMaterial(new Material(
+            new Vector3(0.0),
+            0.0,
+            new Vector3(0.05,0.05,0.05),
+            new Vector3(0.95,0.95,0.95),
+            1.52
+        ));
+
         const glass90 = this.addMaterial(new Material(
             new Vector3(0.0),
             0.0,
@@ -425,7 +433,7 @@ export class Scene {
             new Vector3(1.0,1.0,1.0),
             new Vector3(1.0,1.0,-1.0),
         );
-        this.addQuad(ceiling,white_light);
+        this.addQuad(ceiling,white);
 
         const left:Quad = new Quad(
             new Vector3(-1.0,-1.0,1.0),
@@ -456,7 +464,7 @@ export class Scene {
         const s3:Sphere = new Sphere(
             new Vector3(0.0,-0.75,0.5),
             0.25);
-        this.addSphere(s3,glass99);
+        this.addSphere(s3,glass95);
 
         const s4:Sphere = new Sphere(
             new Vector3(-0.8,-0.9,0.4),
@@ -559,7 +567,7 @@ export class Scene {
             new Vector3(1.0,1.0,1.0),
             0.1
         );
-        //this.addPointLight(l1);
+        this.addPointLight(l1);
 
         const l2:PointLight = new PointLight(
             new Vector3(0,0.0,-0.95),
