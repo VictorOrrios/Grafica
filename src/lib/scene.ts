@@ -187,16 +187,16 @@ export class Scene {
             1.0
         ));
 
-        const blue = this.addMaterial(new Material(
-            new Vector3(0.0,0.0,1.0),
+        const purple = this.addMaterial(new Material(
+            new Vector3(0.5,0.9,0.9),
             0,
             new Vector3(0),
             new Vector3(0),
             1.0
         ));
 
-        const yellow = this.addMaterial(new Material(
-            new Vector3(1.0,1.0,0.0),
+        const pink = this.addMaterial(new Material(
+            new Vector3(0.8,0.6,0.9),
             0,
             new Vector3(0),
             new Vector3(0),
@@ -206,6 +206,14 @@ export class Scene {
         const white = this.addMaterial(new Material(
             new Vector3(1.0,1.0,1.0),
             0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const white_light = this.addMaterial(new Material(
+            new Vector3(1.0,1.0,1.0),
+            1.0,
             new Vector3(0),
             new Vector3(0),
             1.0
@@ -254,12 +262,12 @@ export class Scene {
         const s1:Sphere = new Sphere(
             new Vector3(0.5,-0.7,-0.25),
             0.3);
-        this.addSphere(s1,yellow);
+        this.addSphere(s1,pink);
 
         const s2:Sphere = new Sphere(
             new Vector3(-0.5,-0.7,0.25),
             0.3);
-        this.addSphere(s2,blue);
+        this.addSphere(s2,purple);
 
 
         const l1:PointLight = new PointLight(
@@ -417,7 +425,7 @@ export class Scene {
             new Vector3(1.0,1.0,1.0),
             new Vector3(1.0,1.0,-1.0),
         );
-        this.addQuad(ceiling,white);
+        this.addQuad(ceiling,white_light);
 
         const left:Quad = new Quad(
             new Vector3(-1.0,-1.0,1.0),
@@ -551,7 +559,7 @@ export class Scene {
             new Vector3(1.0,1.0,1.0),
             0.1
         );
-        this.addPointLight(l1);
+        //this.addPointLight(l1);
 
         const l2:PointLight = new PointLight(
             new Vector3(0,0.0,-0.95),

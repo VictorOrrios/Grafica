@@ -548,8 +548,7 @@ vec3 cast_ray(Ray r){
             // Emissive material
             if(mat.albedo_emission.a > 0.0){
                 if(total_t < ray_range.x) return vec3(0.0);
-                float d2 = bounce_count == 0? 1.0:h.t*h.t;
-                color += atenuation * mat.albedo_emission.rgb*mat.albedo_emission.a/d2;
+                color += atenuation * mat.albedo_emission.rgb*mat.albedo_emission.a;
                 return color; 
             }
 
