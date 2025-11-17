@@ -14,8 +14,9 @@ export enum SceneType {
     TRALALERO = 'tralalero',
     ARTHAS = 'arthas',
     TESTPLANE = 'testplane',
-    CORNElLEXTRA = 'cornellextra',
-    CORNELl = 'cornell',
+    CORNELEXTRA = 'cornellextra',
+    CORNEL = 'cornell',
+    CORNELTRANSIENT = 'cornelltransient',
 }
 
 enum MeshType {
@@ -38,7 +39,7 @@ export class Scene {
     public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
 
-    constructor(type:SceneType = SceneType.CORNELl) {
+    constructor(type:SceneType = SceneType.CORNELTRANSIENT) {
         this.sceneType = type;
         this.setupScene();
     }
@@ -50,10 +51,12 @@ export class Scene {
             this.tralaleroScene();
         } else if (this.sceneType === SceneType.TESTPLANE) {
             this.testplane();
-        } else if (this.sceneType === SceneType.CORNELl) {
+        } else if (this.sceneType === SceneType.CORNEL) {
             this.cornell();
-        } else if (this.sceneType === SceneType.CORNElLEXTRA) {
+        } else if (this.sceneType === SceneType.CORNELEXTRA) {
             this.cornellextra();
+        } else if (this.sceneType === SceneType.CORNELTRANSIENT) {
+            this.cornelltransient();
         } else if (this.sceneType === SceneType.ARTHAS) {
             this.arthasScene();
         }
@@ -575,6 +578,108 @@ export class Scene {
             0.1
         );
         //this.addPointLight(l2);
+
+
+    }
+
+    private cornelltransient(){
+        this.camera = new Camera(new Vector3(0.0,0.0,3.5));
+
+        const red = this.addMaterial(new Material(
+            new Vector3(1.0,0.0,0.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const green = this.addMaterial(new Material(
+            new Vector3(0.0,1.0,0.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const purple = this.addMaterial(new Material(
+            new Vector3(0.5,0.9,0.9),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const pink = this.addMaterial(new Material(
+            new Vector3(0.8,0.6,0.9),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const white = this.addMaterial(new Material(
+            new Vector3(1.0,1.0,1.0),
+            0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const white_light = this.addMaterial(new Material(
+            new Vector3(1.0,1.0,1.0),
+            1.0,
+            new Vector3(0),
+            new Vector3(0),
+            1.0
+        ));
+
+        const floor:Quad = new Quad(
+            new Vector3(-1.0,-1.0,-1.0),
+            new Vector3(-1.0,-1.0,1.0),
+            new Vector3(1.0,-1.0,1.0),
+            new Vector3(1.0,-1.0,-1.0),
+        );
+        this.addQuad(floor,white);
+
+        const back:Quad = new Quad(
+            new Vector3(-1.0,-1.0,-1.0),
+            new Vector3(-1.0,1.0,-1.0),
+            new Vector3(1.0,1.0,-1.0),
+            new Vector3(1.0,-1.0,-1.0),
+        );
+        this.addQuad(back,white);
+
+
+        const right:Quad = new Quad(
+            new Vector3(-1.0,-1.0,1.0),
+            new Vector3(-1.0,1.0,1.0),
+            new Vector3(-1.0,1.0,-1.0),
+            new Vector3(-1.0,-1.0,-1.0),
+        );
+        this.addQuad(right,red);
+
+
+        const s1:Sphere = new Sphere(
+            new Vector3(0.5,-0.7,-0.25),
+            0.3);
+        this.addSphere(s1,pink);
+
+        const s2:Sphere = new Sphere(
+            new Vector3(-0.5,-0.7,0.25),
+            0.3);
+        this.addSphere(s2,purple);
+
+        const s3:Sphere = new Sphere(
+            new Vector3(2.0,-1.0,2.0),
+            1.0);
+        this.addSphere(s3,white_light);
+
+        const l1:PointLight = new PointLight(
+            new Vector3(2.0,-1.0,2.0),
+            new Vector3(1.0,0.99,1.0),
+            1.0
+        );
+        //this.addPointLight(l1);
 
 
     }

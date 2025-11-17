@@ -43,16 +43,19 @@
     let frame_acummulation: boolean = $state(true);
     let range_thing: boolean = $state(false);
     let range_slider: number[] = $state([0.0,20.0]);
+    let range_slider_ini: number = $state(0.0);
     let range_numbers: number[] = $derived(range_thing? range_slider : [0.0,10000.0]);
 
     $effect(() => {
-        samplesPerPixel;russianRoulette;frame_acummulation;range_numbers[0];range_numbers[1];
+        samplesPerPixel;russianRoulette;frame_acummulation;range_numbers[0];range_numbers[1];range_slider_ini;
         if (!rendererStarted) return;
+
+        let range_numbers_fix = [range_numbers[0]+range_slider_ini,range_numbers[1]+range_slider_ini];
 
         if (renderer.frame_acummulation_on !== frame_acummulation
             || renderer.rr_chance !== russianRoulette
-            || renderer.range_numbers[0] !== range_numbers[0]
-            || renderer.range_numbers[1] !== range_numbers[1]
+            || renderer.range_numbers[0] !== range_numbers_fix[0]
+            || renderer.range_numbers[1] !== range_numbers_fix[1]
         ) {
             renderer.resetFrameAcummulation();
         }
@@ -60,8 +63,8 @@
         renderer.spp = Math.max(samplesPerPixel,1);
         renderer.rr_chance = Math.max(russianRoulette,0.0);
         renderer.frame_acummulation_on = frame_acummulation;
-        renderer.range_numbers[0] = range_numbers[0];
-        renderer.range_numbers[1] = range_numbers[1];
+        renderer.range_numbers[0] = range_numbers_fix[0];
+        renderer.range_numbers[1] = range_numbers_fix[1];
     });
 
     function mousedown(event: any) {
@@ -221,6 +224,14 @@
                 <div class="space-y-2">
                     <Label>Range thingy</Label>
                     <Slider type="multiple" bind:value={range_slider} 
+                    disabled={!range_thing}
+                    max={20.0} step={0.1} />
+                </div>
+
+                <!-- Range slide ini -->
+                <div class="space-y-2">
+                    <Label>Range thingy ini</Label>
+                    <Slider type="single" bind:value={range_slider_ini} 
                     disabled={!range_thing}
                     max={20.0} step={0.1} />
                 </div>

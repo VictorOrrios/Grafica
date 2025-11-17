@@ -56,6 +56,12 @@ export class Renderer {
         if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
             throw new Error("Error linking shaders: " + this.gl.getProgramInfoLog(program));
         }
+
+        console.log("Info on vertex:"+this.gl.getShaderInfoLog(this.vertexShader));
+        console.log("Info on fragment:"+this.gl.getShaderInfoLog(this.fragmentShader));
+        console.log("Info on program:"+this.gl.getProgramInfoLog(program));
+
+
         return program;
     }
 
