@@ -647,7 +647,7 @@ export class Scene {
             new Vector3(1.0,-1.0,1.0),
             new Vector3(1.0,-1.0,-1.0),
         );
-        this.addQuad(floor,white);
+        //this.addQuad(floor,white);
 
         const back:Quad = new Quad(
             new Vector3(-1.0,-1.0,-1.0),
@@ -655,7 +655,7 @@ export class Scene {
             new Vector3(1.0,1.0,-1.0),
             new Vector3(1.0,-1.0,-1.0),
         );
-        this.addQuad(back,white);
+        //this.addQuad(back,white);
 
 
         const right:Quad = new Quad(
@@ -664,8 +664,13 @@ export class Scene {
             new Vector3(-1.0,1.0,-1.0),
             new Vector3(-1.0,-1.0,-1.0),
         );
-        this.addQuad(right,red);
+        //this.addQuad(right,red);
 
+        const floor_panel:Plane = new Plane(
+            new Vector3(0.0,1.0,0.0),
+            1.0
+        );
+        this.addPlane(floor_panel,white);
 
         const s1:Sphere = new Sphere(
             new Vector3(0.5,-0.7,-0.25),
@@ -677,15 +682,32 @@ export class Scene {
             0.3);
         this.addSphere(s2,glass95);
 
+        const glass_panel:Quad = new Quad(
+            new Vector3(-1.0,-1.0,-1.0),
+            new Vector3(-1.0,1.0,-1.0),
+            new Vector3(1.0,1.0,-1.0),
+            new Vector3(1.0,-1.0,-1.0),
+        );
+        this.addQuad(glass_panel,glass95);
+
+        const x = 0.5;
+        const glass_panel_2:Quad = new Quad(
+            new Vector3(1.0,-1.0,-1.0+x),
+            new Vector3(1.0,1.0,-1.0+x),
+            new Vector3(-1.0,1.0,-1.0+x),
+            new Vector3(-1.0,-1.0,-1.0+x),
+        );
+        this.addQuad(glass_panel_2,glass95);
+
         const s3:Sphere = new Sphere(
-            new Vector3(2.0,-1.0,2.0),
-            1.0);
+            new Vector3(3.0,1.0,3.0),
+            2.0);
         this.addSphere(s3,white_light);
 
         const l1:PointLight = new PointLight(
-            new Vector3(2.0,-1.0,2.0),
-            new Vector3(1.0,0.99,1.0),
-            1.0
+            new Vector3(2.0,0.0,2.0),
+            new Vector3(1.0,1.0,1.0),            
+            5.0
         );
         //this.addPointLight(l1);
 

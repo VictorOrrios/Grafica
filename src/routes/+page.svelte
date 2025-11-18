@@ -44,13 +44,14 @@
     let range_thing: boolean = $state(false);
     let range_slider: number[] = $state([0.0,20.0]);
     let range_slider_ini: number = $state(0.0);
+    let range_numbers_ini: number = $derived(range_thing? range_slider_ini : 0.0);
     let range_numbers: number[] = $derived(range_thing? range_slider : [0.0,10000.0]);
 
     $effect(() => {
-        samplesPerPixel;russianRoulette;frame_acummulation;range_numbers[0];range_numbers[1];range_slider_ini;
+        samplesPerPixel;russianRoulette;frame_acummulation;range_numbers[0];range_numbers[1];range_numbers_ini;
         if (!rendererStarted) return;
 
-        let range_numbers_fix = [range_numbers[0]+range_slider_ini,range_numbers[1]+range_slider_ini];
+        let range_numbers_fix = [range_numbers[0]+range_numbers_ini,range_numbers[1]+range_numbers_ini];
 
         if (renderer.frame_acummulation_on !== frame_acummulation
             || renderer.rr_chance !== russianRoulette
@@ -247,7 +248,7 @@
                         {Math.floor(russianRoulette * 1000) / 1000}
                     </p>
                     <p><strong>Frame acummulation:</strong> {frame_acummulation}</p>
-                    <p><strong>Ray range:</strong> {range_numbers}</p>
+                    <p><strong>Ray range:</strong> {range_numbers[0]+range_numbers_ini},{range_numbers[1]+range_numbers_ini}</p>
                 </div>
             </CardContent>
         </Card>
