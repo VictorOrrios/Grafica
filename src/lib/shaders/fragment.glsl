@@ -435,6 +435,7 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
             break;
 
         case DIELECTRIC:
+            if(!h.front_face) h.t *= mat.subsurface_color_ior.w;
             ret += mat.subsurface_color_ior.rgb;
             ret /= mat.lobe_chances.z;
             break;
