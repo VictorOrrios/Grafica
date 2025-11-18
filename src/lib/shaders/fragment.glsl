@@ -496,7 +496,7 @@ bool hit_scene(Ray r, out Hit h){
     return has_hit;
 }
 
-vec3 get_direct_light(Hit h){
+vec3 get_direct_light(Hit h, float total_t){
     Material mat = materials[h.mat];
     // 0% diffuse means no point lights
     if(length(mat.albedo_emission.xyz) <= 0.0){
@@ -510,6 +510,12 @@ vec3 get_direct_light(Hit h){
             PointLight l = point_lights[i];
             vec3 direction = l.position-h.p;
             float d = length(direction);
+
+            // Range check
+            float total_plus_pl = total_t + d;
+            if(total_plus_pl > ray_range.y ||
+            total_plus_pl < ray_range.x) return vec3(0.0);
+
             float d2 = d*d;
             // Cast a ray from the light source to the hit position
             Ray r = Ray(h.p,normalize(l.position-h.p));
@@ -564,7 +570,7 @@ vec3 cast_ray(Ray r){
             // Get light from all light sources
             //if(bounce_count == 0){
             if(true){
-                vec3 direct_light = get_direct_light(h);
+                vec3 direct_light = get_direct_light(h,total_t);
                 color += direct_light*atenuation;
             }
         }else{

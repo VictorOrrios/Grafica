@@ -672,14 +672,14 @@ export class Scene {
         const s3:Sphere = new Sphere(
             new Vector3(2.0,-1.0,2.0),
             1.0);
-        this.addSphere(s3,white_light);
+        //this.addSphere(s3,white_light);
 
         const l1:PointLight = new PointLight(
             new Vector3(2.0,-1.0,2.0),
             new Vector3(1.0,0.99,1.0),
             1.0
         );
-        //this.addPointLight(l1);
+        this.addPointLight(l1);
 
 
     }
