@@ -237,9 +237,16 @@
                     max={20.0} step={0.1} />
                 </div>
 
-                <Separator />
 
-                <!-- Debug -->
+                
+            </CardContent>
+        </Card>
+        <Card class="max-w-md w-70">
+            <CardHeader>
+                <CardTitle>Render info</CardTitle>
+            </CardHeader>
+
+            <CardContent class="space-y-6">
                 <div class="text-sm text-muted-foreground">
                     <p><strong>FPS:</strong> {fps}</p>
                     <p><strong>SPP:</strong> {samplesPerPixel}</p>

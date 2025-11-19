@@ -517,6 +517,9 @@ vec3 get_direct_light(Hit h, float total_t){
             if(total_plus_pl > ray_range.y ||
             total_plus_pl < ray_range.x) return vec3(0.0);
 
+            // Normal check
+            if(dot(h.normal,direction) < 0.0) return vec3(0.0);
+
             float d2 = d*d;
             // Cast a ray from the light source to the hit position
             Ray r = Ray(h.p,normalize(l.position-h.p));
@@ -548,13 +551,13 @@ vec3 cast_ray(Ray r){
         if(hit_scene(r,h)){
 
             total_t += h.t;
-            if(total_t > ray_range.y) return vec3(0.0);
+            if(total_t > ray_range.y) return color;
 
             Material mat = materials[h.mat];
 
             // Emissive material
             if(mat.albedo_emission.a > 0.0){
-                if(total_t < ray_range.x) return vec3(0.0);
+                if(total_t < ray_range.x) return color;
                 color += atenuation * mat.albedo_emission.rgb*mat.albedo_emission.a;
                 return color; 
             }
@@ -575,14 +578,14 @@ vec3 cast_ray(Ray r){
                 color += direct_light*atenuation;
             }
         }else{
-            if(total_t < ray_range.x) return vec3(0.0);
+            if(total_t < ray_range.x) return color;
             color += skybox_color(r)*atenuation;
             return color; 
         }
         bounce_count++;
     }
 
-    if(total_t < ray_range.x) return vec3(0.0);
+    if(total_t < ray_range.x) return color;
     return color;
 }
 

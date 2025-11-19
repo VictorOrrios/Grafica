@@ -675,7 +675,7 @@ export class Scene {
         const s1:Sphere = new Sphere(
             new Vector3(0.5,-0.7,-0.25),
             0.3);
-        this.addSphere(s1,pink);
+        this.addSphere(s1,red);
 
         const s2:Sphere = new Sphere(
             new Vector3(-0.5,-0.7,0.25),
@@ -699,9 +699,17 @@ export class Scene {
         );
         this.addQuad(glass_panel_2,glass95);
 
+        const wall:Quad = new Quad(
+            new Vector3(-1.0,-1.0,3.0),
+            new Vector3(-1.0,1.0,3.0),
+            new Vector3(-1.0,1.0,1.0),
+            new Vector3(-1.0,-1.0,1.0),
+        );
+        this.addQuad(wall,red);
+
         const s3:Sphere = new Sphere(
-            new Vector3(3.0,1.0,3.0),
-            2.0);
+            new Vector3(-4.0,0.0,2.0),
+            1.0);
         this.addSphere(s3,white_light);
 
         const l1:PointLight = new PointLight(
@@ -709,7 +717,7 @@ export class Scene {
             new Vector3(1.0,1.0,1.0),            
             5.0
         );
-        //this.addPointLight(l1);
+        this.addPointLight(l1);
 
 
     }
