@@ -41,14 +41,17 @@
     let meanBounces = $state(5);
     let russianRoulette = $derived(1 - 1 / meanBounces);
     let frame_acummulation: boolean = $state(true);
+
     let range_thing: boolean = $state(false);
     let range_slider_ini: number = $state(0.0);
     let range_numbers_ini: number = $derived(range_thing? range_slider_ini : 0.0);
     let range_input: number = $state(0.1);
     let range_size: number = $derived(range_thing? range_input : 100000.0);
+    let kernel_sigma_input:number = $state(0.0);
+    let kernel_sigma:number = $derived(range_thing? kernel_sigma_input : 0.0);
 
     $effect(() => {
-        samplesPerPixel;russianRoulette;frame_acummulation;range_size;range_numbers_ini;
+        samplesPerPixel;russianRoulette;frame_acummulation;range_size;range_numbers_ini;kernel_sigma;
         if (!rendererStarted) return;
 
         let range_numbers_fix = [range_numbers_ini,range_size+range_numbers_ini];
@@ -57,6 +60,7 @@
             || renderer.rr_chance !== russianRoulette
             || renderer.range_numbers[0] !== range_numbers_fix[0]
             || renderer.range_numbers[1] !== range_numbers_fix[1]
+            || renderer.kernel_sigma !== kernel_sigma
         ) {
             renderer.resetFrameAcummulation();
         }
@@ -66,6 +70,7 @@
         renderer.frame_acummulation_on = frame_acummulation;
         renderer.range_numbers[0] = range_numbers_fix[0];
         renderer.range_numbers[1] = range_numbers_fix[1];
+        renderer.kernel_sigma = kernel_sigma;
     });
 
     function mousedown(event: any) {
@@ -218,13 +223,25 @@
                 <!-- Range thing toggle -->
                 <div class="space-y-2">
                     <Label>Transient options</Label>
+                    <div class="text-sm {range_thing?'':'text-muted-foreground'} flex justify-between">
+                        <p>Activate</p> 
+                        <p>Offset</p>
+                    </div>
                     <div class="flex items-center gap-2">
                         <Switch bind:checked={range_thing} /> 
-                        <Input id="rangesize" type="number" min="0" step="0.01" bind:value={range_input} />
+                        <Slider type="single" bind:value={range_slider_ini} 
+                        disabled={!range_thing}
+                        max={20.0} step={0.1} />
                     </div>
-                    <Slider type="single" bind:value={range_slider_ini} 
-                    disabled={!range_thing}
-                    max={20.0} step={0.1} />
+                    <div class="flex items-center gap-2 text-sm {range_thing?'':'text-muted-foreground'}">
+                        <p>Range</p> 
+                        <Input id="rangesize" type="number" min="0" step="0.01" bind:value={range_input} disabled={!range_thing}/>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm {range_thing?'':'text-muted-foreground'}">
+                        <p>Sigma</p>
+                        <Input id="kernelsigma" type="number" min="0" step="0.01" bind:value={kernel_sigma_input} disabled={!range_thing}/>
+                    </div>
+                    
                 </div>
 
 
@@ -246,7 +263,11 @@
                         {Math.floor(russianRoulette * 1000) / 1000}
                     </p>
                     <p><strong>Frame acummulation:</strong> {frame_acummulation}</p>
-                    <p><strong>Ray range:</strong> {range_numbers_ini},{range_size+range_numbers_ini}</p>
+                    <p><strong>Ray range:</strong> 
+                        {Math.floor(range_numbers_ini * 1000) / 1000},
+                        {Math.floor((range_size+range_numbers_ini) * 1000) / 1000}
+                    </p>
+                    <p><strong>Kernel sigma:</strong> {kernel_sigma}</p>
                 </div>
             </CardContent>
         </Card>

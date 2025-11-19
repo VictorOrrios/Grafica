@@ -23,6 +23,7 @@ export class Renderer {
     public spp: number = 3;
     public rr_chance: number = 0.666;
     public range_numbers: number[] = [0.0,100000.0];
+    public kernel_sigma: number = 0.0;
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
         this.gl = gl;
@@ -128,13 +129,14 @@ export class Renderer {
 
     private initUniforms() {
 
-        this.attachments.set("time", this.initUniform("time", 1))
-        this.attachments.set("frame_count", this.initUniform("frame_count", 2))
-        this.attachments.set("resolution", this.initUniform("resolution", 3))
-        this.attachments.set("spp", this.initUniform("spp", 2))
-        this.attachments.set("frames_acummulated", this.initUniform("frames_acummulated", 2));
-        this.attachments.set("rr_chance", this.initUniform("rr_chance", 1));
-        this.attachments.set("ray_range", this.initUniform("ray_range", 4));
+        this.initUniform("time", 1)
+        this.initUniform("frame_count", 2)
+        this.initUniform("resolution", 3)
+        this.initUniform("spp", 2)
+        this.initUniform("frames_acummulated", 2)
+        this.initUniform("rr_chance", 1)
+        this.initUniform("ray_range", 4)
+        this.initUniform("kernel_sigma", 1)
 
     }
 
@@ -164,6 +166,7 @@ export class Renderer {
                 this.gl.uniform1i(location, value[0]);
                 break;
         }
+        this.attachments.set(name,location);
         return location
     }
 
@@ -270,8 +273,6 @@ export class Renderer {
         gl.uniform3f(this.getLocation("resolution"), gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height);
 
         // Sample per pixel uniform buffer
-        // TODO: Implement user controled parameter+
-        // TODO, change
         gl.uniform1ui(this.getLocation("spp"), this.spp);
 
         // Frame acummulation count buffer
@@ -282,6 +283,9 @@ export class Renderer {
 
         // Ray ranges
         gl.uniform2f(this.getLocation("ray_range"), this.range_numbers[0], this.range_numbers[1]);
+
+        // Kernel sigma
+        gl.uniform1f(this.getLocation("kernel_sigma"), this.kernel_sigma);
 
     }
 

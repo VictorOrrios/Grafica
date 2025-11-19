@@ -97,6 +97,7 @@ uniform uint spp;               // samples per pixel
 uniform vec3 resolution;        // x,y,z = width,height,aspect_ratio
 uniform float rr_chance;
 uniform vec2 ray_range;
+uniform float kernel_sigma;
 
 uniform uint frames_acummulated;
 uniform sampler2D last_frame_buffer;
@@ -238,8 +239,28 @@ vec3 gamma_correct(vec3 color){
 
 
 //===========================
-// Material functions
+// Kernel functions
 //===========================
+
+vec3 apply_kernel_clamped_triangle(vec3 color, float t){
+    float sigma = min(kernel_sigma, 0.5);
+    float t_norm = clamp((t - ray_range.x)/ray_range.y,0.0,1.0);
+    float k;
+
+    if (t_norm <= sigma) {
+        k = t_norm / sigma;
+    } else {
+        k = (1.0 - t_norm) / sigma;
+    }
+    k = clamp(k, 0.0, 1.0);
+
+    return color * k; 
+}
+
+vec3 apply_kernel(vec3 color, float t){
+    if(kernel_sigma <= 0.0) return color;
+    return apply_kernel_clamped_triangle(color, t);
+}
 
 //===========================
 // Sphere functions
@@ -515,19 +536,20 @@ vec3 get_direct_light(Hit h, float total_t){
             // Range check
             float total_plus_pl = total_t + d;
             if(total_plus_pl > ray_range.y ||
-            total_plus_pl < ray_range.x) return vec3(0.0);
+            total_plus_pl < ray_range.x) continue;
 
             // Normal check
-            if(dot(h.normal,direction) < 0.0) return vec3(0.0);
+            if(dot(h.normal,direction) < 0.0) continue;
 
             float d2 = d*d;
             // Cast a ray from the light source to the hit position
             Ray r = Ray(h.p,normalize(l.position-h.p));
             if(!hit_scene(r,aux) || aux.t >= d){
-                ret +=
+                ret += apply_kernel(
                     mat.albedo_emission.xyz / mat.lobe_chances.x
                     * l.color_power.xyz * l.color_power.w / d2
-                    * abs(dot(r.dir,h.normal));
+                    * abs(dot(r.dir,h.normal)),
+                    total_t+d);
             }
         }
     #endif
@@ -545,28 +567,32 @@ vec3 cast_ray(Ray r){
 
     float total_t = 0.0;
 
+
     bounce_count = 0;
     for(int i = 0; i < bounce_hard_limit; i++) {
         
         if(hit_scene(r,h)){
 
             total_t += h.t;
-            if(total_t > ray_range.y) return color;
+            // Max distance check
+            if(total_t > ray_range.y) break;
 
             Material mat = materials[h.mat];
 
-            // Emissive material
+            // Emissive material & Min distance check
             if(mat.albedo_emission.a > 0.0){
-                if(total_t < ray_range.x) return color;
-                color += atenuation * mat.albedo_emission.rgb*mat.albedo_emission.a;
-                return color; 
+                // Min distance check
+                if(total_t < ray_range.x) break;
+
+                color += apply_kernel(
+                    atenuation * mat.albedo_emission.rgb*mat.albedo_emission.a,
+                    total_t);
+                break; 
             }
 
             atenuation *= eval_mat(mat,r.dir,h,new_direction);
             // 0 atennuation check for termination
-            if(length(atenuation) <= minimun_atenuation){
-                return color;
-            }
+            if(length(atenuation) <= minimun_atenuation) break;
             
             r.dir = new_direction;
             r.orig = h.p;
@@ -578,14 +604,17 @@ vec3 cast_ray(Ray r){
                 color += direct_light*atenuation;
             }
         }else{
-            if(total_t < ray_range.x) return color;
-            color += skybox_color(r)*atenuation;
-            return color; 
+            // No hit => skybox hit
+            color += apply_kernel(
+                skybox_color(r)*atenuation,
+                total_t);
+            break; 
         }
         bounce_count++;
     }
 
-    if(total_t < ray_range.x) return color;
+    
+
     return color;
 }
 
