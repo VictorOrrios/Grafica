@@ -244,15 +244,15 @@ vec3 gamma_correct(vec3 color){
 
 vec3 apply_kernel_clamped_triangle(vec3 color, float t){
     float sigma = min(kernel_sigma, 0.5);
-    float t_norm = clamp((t - ray_range.x)/ray_range.y,0.0,1.0);
-    float k;
+    float t_norm = (t - ray_range.x)/(ray_range.y-ray_range.x);
+    float k = 1.0;
 
     if (t_norm <= sigma) {
         k = t_norm / sigma;
-    } else {
+    } else if(t_norm >= 1.0-sigma){
         k = (1.0 - t_norm) / sigma;
     }
-    k = clamp(k, 0.0, 1.0);
+    k = min(k, 1.0);
 
     return color * k; 
 }
@@ -549,7 +549,7 @@ vec3 get_direct_light(Hit h, float total_t){
                     mat.albedo_emission.xyz / mat.lobe_chances.x
                     * l.color_power.xyz * l.color_power.w / d2
                     * abs(dot(r.dir,h.normal)),
-                    total_t+d);
+                    total_plus_pl);
             }
         }
     #endif
