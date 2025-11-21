@@ -50,8 +50,13 @@
     let kernel_sigma_input:number = $state(0.0);
     let kernel_sigma:number = $derived(range_thing? kernel_sigma_input : 0.0);
 
+    let focal_distance:number = $state(1.0);
+    let aperture_radius:number = $state(0.0);
+
     $effect(() => {
-        samplesPerPixel;russianRoulette;frame_acummulation;range_size;range_numbers_ini;kernel_sigma;
+        samplesPerPixel;russianRoulette;frame_acummulation;
+        range_size;range_numbers_ini;kernel_sigma;
+        focal_distance;aperture_radius;
         if (!rendererStarted) return;
 
         let range_numbers_fix = [range_numbers_ini,range_size+range_numbers_ini];
@@ -61,6 +66,8 @@
             || renderer.range_numbers[0] !== range_numbers_fix[0]
             || renderer.range_numbers[1] !== range_numbers_fix[1]
             || renderer.kernel_sigma !== kernel_sigma
+            || renderer.aperture_radius !== aperture_radius
+            || renderer.focal_distance !== focal_distance
         ) {
             renderer.resetFrameAcummulation();
         }
@@ -71,6 +78,8 @@
         renderer.range_numbers[0] = range_numbers_fix[0];
         renderer.range_numbers[1] = range_numbers_fix[1];
         renderer.kernel_sigma = kernel_sigma;
+        renderer.aperture_radius = aperture_radius;
+        renderer.focal_distance = focal_distance;
     });
 
     function mousedown(event: any) {
@@ -162,6 +171,12 @@
         requestAnimationFrame(loop);
     }
 
+    function animateRange(time:number){
+        range_slider_ini += 0.01;
+        if(range_slider_ini<5.0 || range_slider_ini>15.0) range_slider_ini = 5.0;
+        requestAnimationFrame(animateRange)
+    }
+
     // MAIN LOOP
     onMount(async () => {
         canvas.addEventListener("mousedown", (e) => mousedown(e));
@@ -220,6 +235,17 @@
                     <Switch bind:checked={frame_acummulation} />
                 </div>
 
+                <!-- Thin lense -->
+                <div class="space-y-2">
+                    <Label>Thin lense</Label>
+                    <div class="flex items-center gap-2">
+                        <p class="text-md text-muted-foreground italic">f</p> 
+                        <Input id="aperture" class="w-30" type="number" min="0" step="0.001" bind:value={aperture_radius}/>
+                        <Slider type="single" bind:value={focal_distance} 
+                        max={20.0} min={0.1} step={0.1} />
+                    </div>
+                </div>
+
                 <!-- Range thing toggle -->
                 <div class="space-y-2">
                     <Label>Transient options</Label>
@@ -263,6 +289,8 @@
                         {Math.floor(russianRoulette * 1000) / 1000}
                     </p>
                     <p><strong>Frame acummulation:</strong> {frame_acummulation}</p>
+                    <p><strong>Aperture radius:</strong> {aperture_radius}</p>
+                    <p><strong>Focal distance:</strong> {focal_distance}</p>
                     <p><strong>Ray range:</strong> 
                         {Math.floor(range_numbers_ini * 1000) / 1000},
                         {Math.floor((range_size+range_numbers_ini) * 1000) / 1000}

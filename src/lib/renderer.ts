@@ -24,6 +24,8 @@ export class Renderer {
     public rr_chance: number = 0.666;
     public range_numbers: number[] = [0.0,100000.0];
     public kernel_sigma: number = 0.0;
+    public aperture_radius: number = 0.0;
+    public focal_distance: number = 1.0;
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
         this.gl = gl;
@@ -113,10 +115,14 @@ export class Renderer {
         this.camera_ubo = gl.createBuffer();
         gl.bindBuffer(gl.UNIFORM_BUFFER, this.camera_ubo);
         // std140 is 16 BYTE aligned
-        let data = new Float32Array(20);
+        let data = new Float32Array(32);
         data.set(this.scene.camera.view_inv, 0);
         data.set(this.scene.camera.position, 16);
         data[19] = this.scene.camera.tan_fov;
+        data.set(this.scene.camera.up, 20);
+        data.set(this.scene.camera.right, 24);
+        data[28] = this.aperture_radius;
+        data[29] = this.focal_distance;
         gl.bufferData(gl.UNIFORM_BUFFER, data, gl.STATIC_DRAW);
         // Link to binding point
         let blockIndex = gl.getUniformBlockIndex(this.program, "Camera");
@@ -288,15 +294,22 @@ export class Renderer {
         // Kernel sigma
         gl.uniform1f(this.getLocation("kernel_sigma"), this.kernel_sigma);
 
+
     }
 
     private updateCameraUBO() {
         const gl = this.gl;
 
-        let data = new Float32Array(20);
+        let data = new Float32Array(32);
         data.set(this.scene.camera.view_inv, 0);
         data.set(this.scene.camera.position, 16);
         data[19] = this.scene.camera.tan_fov;
+        data.set(this.scene.camera.up, 20);
+        data.set(this.scene.camera.right, 24);
+        data[28] = this.aperture_radius;
+        data[29] = this.focal_distance;
+        data[20] = this.aperture_radius;
+        data[21] = this.focal_distance;
 
         gl.bindBuffer(gl.UNIFORM_BUFFER, this.camera_ubo);
         gl.bufferSubData(gl.UNIFORM_BUFFER, 0, data);

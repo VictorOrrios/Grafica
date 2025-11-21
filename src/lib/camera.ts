@@ -4,6 +4,8 @@ import { createBaseMatrix, createViewMatrix } from "./Math/Bases";
 export class Camera {
     public view_inv:Matrix4;
     public position:Vector3;
+    public up:Vector3 = new Vector3(0.0);
+    public right:Vector3 = new Vector3(0.0);
     public tan_fov:number;
     public radius:number;
 
@@ -31,9 +33,9 @@ export class Camera {
         if (Math.abs(w.dot(up)) > 0.999) { // Gimbal lock prevention
             up = new Vector3(0, 0, 1);
         }
-        let u:Vector3 = w.clone().cross(up).normalize();
-        let v:Vector3 = u.clone().cross(w).normalize();
-        return createViewMatrix(u,v,w,this.position);
+        this.right = w.clone().cross(up).normalize();
+        this.up = this.right.clone().cross(w).normalize();
+        return createViewMatrix(this.right,this.up,w,this.position);
     }
 
     public tick(){

@@ -90,6 +90,9 @@ out vec4 outColor;
 layout(std140) uniform Camera {
     mat4 view_inv;
     vec4 position_fov;
+    vec3 up;
+    vec3 right;
+    vec2 thin_lense; // x = aperture radius, y = focal distance
 } cam;
 
 uniform float time;
@@ -183,6 +186,12 @@ float random(){
 
 vec2 sample_square(){
     return vec2(random()-0.5,random()-0.5);
+}
+
+vec2 sample_disc(){
+    float r = sqrt(random());
+    float theta = 2.0 * PI * random();
+    return vec2(cos(theta), sin(theta)) * r;
 }
 
 vec3 random_unit_vec(){
@@ -631,20 +640,23 @@ vec3 cast_ray(Ray r){
 Ray get_ray(vec2 uv){
     // Calculate offsets
     vec2 ndc = 2.0*(uv + sample_square() / resolution.xy) -1.0;
+    vec2 aperture = sample_disc()*cam.thin_lense.x;
 
     // Ray from 0,0,0 to +z + offsets
-    vec3 rayDirCameraSpace = normalize(vec3(
+    vec3 rayDirCameraSpace = vec3(
         ndc.x * resolution.z * cam.position_fov.a,
         ndc.y * cam.position_fov.a,
         -1.0
-    ));
+    )*cam.thin_lense.y;
 
     // Tranformed to camera base
-    vec3 rayDir = normalize(vec3(cam.view_inv * vec4(rayDirCameraSpace, 0.0)));
+    vec3 focus_point = vec3(cam.view_inv * vec4(rayDirCameraSpace, 0.0));
 
     Ray ray;
-    ray.orig = cam.position_fov.xyz;
-    ray.dir = rayDir;
+
+    vec3 orig_offset = normalize(cam.right)*aperture.x + normalize(cam.up)*aperture.y;
+    ray.orig = cam.position_fov.xyz + orig_offset;
+    ray.dir = normalize(focus_point+orig_offset);
 
     return ray;
 }
