@@ -35,20 +35,18 @@ export class Scene {
     public quadVec:{quad:Quad,materialIndex:number}[] = [];
     public meshVec:{mesh:Mesh,materialIndex:number}[] = [];
     public hasMeshes: boolean = false;
-    public loadedMeshes: Map<string, Mesh> = new Map();
     public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
 
-    constructor(type:SceneType = SceneType.CORNELTRANSIENT) {
+    constructor(type:SceneType = SceneType.TRALALERO /*SceneType.CORNELTRANSIENT*/) {
         this.sceneType = type;
-        this.setupScene();
     }
 
-    private setupScene() {
+    public async setupScene() {
         if (this.sceneType === SceneType.TUNG) {
-            this.tungTungTungSahurScene();
+            await this.tungTungTungSahurScene();
         } else if (this.sceneType === SceneType.TRALALERO) {
-            this.tralaleroScene();
+            await this.tralaleroScene();
         } else if (this.sceneType === SceneType.TESTPLANE) {
             this.testplane();
         } else if (this.sceneType === SceneType.CORNEL) {
@@ -58,7 +56,7 @@ export class Scene {
         } else if (this.sceneType === SceneType.CORNELTRANSIENT) {
             this.cornelltransient();
         } else if (this.sceneType === SceneType.ARTHAS) {
-            this.arthasScene();
+            await this.arthasScene();
         }
         // Add other scenes as needed
     }
@@ -722,7 +720,7 @@ export class Scene {
 
     }
 
-    private tungTungTungSahurScene(){
+    private async tungTungTungSahurScene(){
         this.hasMeshes = true;
         this.camera = new Camera(new Vector3(0.0,-5.0,-4.0));
         const yellow = this.addMaterial(new Material(
@@ -744,9 +742,24 @@ export class Scene {
             1.0
         );
         this.addPlane(p1,lightBlue);
+
+        // Load meshes
+        try {
+            const tungMesh = await MeshLoader.load("/models/obj/tung/original/tung.obj", MeshType.TUNG);
+            tungMesh.scale(new Vector3(0.002, 0.002, 0.002));
+            this.addMesh(tungMesh, yellow);
+            console.log("✓ Tung mesh loaded successfully");
+
+            const glockMesh = await MeshLoader.load("/models/obj/glock/original/model.obj", MeshType.GLOCK);
+            glockMesh.translate(new Vector3(0, 1.0, 1.0));
+            this.addMesh(glockMesh, yellow);
+            console.log("✓ Glock mesh loaded successfully");
+        } catch (error) {
+            console.warn("⚠ Could not load mesh:", error);
+        }
     }
 
-    private tralaleroScene(){
+    private async tralaleroScene(){
         this.hasMeshes = true;
         this.camera = new Camera(new Vector3(0.0,-6.0,-4.0));
         const yellow = this.addMaterial(
@@ -769,9 +782,18 @@ export class Scene {
             1.0
         );
         this.addPlane(p1,lightBlue);
+
+        // Load mesh
+        try {
+            const tralaleroMesh = await MeshLoader.load("/models/obj/tralalero/original/model.obj", MeshType.TRALALERO);
+            this.addMesh(tralaleroMesh, yellow);
+            console.log("✓ Tralalero mesh loaded successfully");
+        } catch (error) {
+            console.warn("⚠ Could not load mesh:", error);
+        }
     }
 
-    private arthasScene(){
+    private async arthasScene(){
         this.hasMeshes = true;
         this.camera = new Camera(new Vector3(0.0,-13.0,-10.0));
         const yellow = this.addMaterial(
@@ -794,77 +816,19 @@ export class Scene {
             1.0
         );
         this.addPlane(p1,lightBlue);
-    }
 
-    public async loadMeshes() {
-        if (this.sceneType === SceneType.TUNG) {
-            try {
-                const tungTungTungSahurMesh = await MeshLoader.load("/models/obj/tung/original/tung.obj", MeshType.TUNG);
-                // tungTungTungSahurMesh.translate(new Vector3(200, 0, 0));
-                tungTungTungSahurMesh.scale(new Vector3(0.002, 0.002, 0.002));
-                this.loadedMeshes.set(MeshType.TUNG, tungTungTungSahurMesh);
-                console.log("✓ Tung mesh loaded successfully");
-
-                const glockMesh = await MeshLoader.load("/models/obj/glock/original/model.obj", MeshType.GLOCK);
-                glockMesh.translate(new Vector3(0, 1.0, 1.0));
-                this.loadedMeshes.set(MeshType.GLOCK, glockMesh);
-                console.log("✓ Glock mesh loaded successfully");
-
-            } catch (error) {
-                console.warn("⚠ Could not load mesh:", error);
-            }
-        } else if (this.sceneType === SceneType.TRALALERO) {
-            try {
-                const tralaleroMesh = await MeshLoader.load("/models/obj/tralalero/original/model.obj", MeshType.TRALALERO);
-                this.loadedMeshes.set(MeshType.TRALALERO, tralaleroMesh);
-            } catch (error) {
-                console.warn("⚠ Could not load mesh:", error);
-            }
-        } else if (this.sceneType === SceneType.ARTHAS) {
-            try {
-                const arthasMesh = await MeshLoader.load("/models/obj/arthas/optim/Arthas.obj", MeshType.ARTHAS);
-                arthasMesh.scale(new Vector3(4.0, 4.0, 4.0));
-                this.loadedMeshes.set(MeshType.ARTHAS, arthasMesh);
-            } catch (error) {
-                console.warn("⚠ Could not load mesh:", error);
-            }
+        // Load mesh
+        try {
+            const arthasMesh = await MeshLoader.load("/models/obj/arthas/optim/Arthas.obj", MeshType.ARTHAS);
+            arthasMesh.scale(new Vector3(4.0, 4.0, 4.0));
+            this.addMesh(arthasMesh, yellow);
+            console.log("✓ Arthas mesh loaded successfully");
+        } catch (error) {
+            console.warn("⚠ Could not load mesh:", error);
         }
     }
 
-    public finalizeScene() {
-        if (this.sceneType === SceneType.TUNG) {
-            const yellow = this.materialVec.find(m => m.albedo.equals(new Vector3(1, 1, 0)));
-            if (!yellow) return;
-            const yellowIndex = this.materialVec.indexOf(yellow);
 
-            const tungMesh = this.loadedMeshes.get(MeshType.TUNG);
-            const glockMesh = this.loadedMeshes.get(MeshType.GLOCK);
-            if (tungMesh) {
-                this.addMesh(tungMesh, yellowIndex);
-            }
-            if (glockMesh) {
-                this.addMesh(glockMesh, yellowIndex);
-            }
-        } else if (this.sceneType === SceneType.TRALALERO) {
-            const yellow = this.materialVec.find(m => m.albedo.equals(new Vector3(1, 1, 0)));
-            if (!yellow) return;
-            const yellowIndex = this.materialVec.indexOf(yellow);
-
-            const tralaleroMesh = this.loadedMeshes.get(MeshType.TRALALERO);
-            if (tralaleroMesh) {
-                this.addMesh(tralaleroMesh, yellowIndex);
-            }
-        } else if (this.sceneType === SceneType.ARTHAS) {
-            const yellow = this.materialVec.find(m => m.albedo.equals(new Vector3(1, 1, 0)));
-            if (!yellow) return;
-            const yellowIndex = this.materialVec.indexOf(yellow);
-
-            const arthasMesh = this.loadedMeshes.get(MeshType.ARTHAS);
-            if (arthasMesh) {
-                this.addMesh(arthasMesh, yellowIndex);
-            }
-        }
-    }
 
     public serializeStaticBlock():Float32Array {
         const data: number[] = [];
