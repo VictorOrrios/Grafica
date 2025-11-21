@@ -8,6 +8,7 @@ import { Quad } from "./Primitives/Quad";
 import { Mesh } from "./Primitives/Mesh";
 import { MeshLoader } from "./loaders/MeshLoader";
 import { PointLight } from "./Lights/PointLight";
+import { ThreeJSOBJLoader } from "./loaders/ThreeJSOBJLoader";
 
 export enum SceneType {
     TUNG = 'tung',
@@ -716,8 +717,6 @@ export class Scene {
             5.0
         );
         this.addPointLight(l1);
-
-
     }
 
     private async tungTungTungSahurScene(){
@@ -786,6 +785,7 @@ export class Scene {
         // Load mesh
         try {
             const tralaleroMesh = await MeshLoader.load("/models/obj/tralalero/original/model.obj", MeshType.TRALALERO);
+            // const tralaleroMesh = await ThreeJSOBJLoader.load("/models/obj/tralalero/original/model.obj");
             this.addMesh(tralaleroMesh, yellow);
             console.log("✓ Tralalero mesh loaded successfully");
         } catch (error) {
@@ -827,8 +827,6 @@ export class Scene {
             console.warn("⚠ Could not load mesh:", error);
         }
     }
-
-
 
     public serializeStaticBlock():Float32Array {
         const data: number[] = [];
