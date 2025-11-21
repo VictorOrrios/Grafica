@@ -18,6 +18,7 @@ precision mediump float;
 #define bounce_hard_limit 200
 #define minimun_atenuation 0.0
 #define PI 3.14159265359
+#define E_NUMBER 2.71828182845
 
 //===========================
 // Enum defines
@@ -96,7 +97,7 @@ uniform uint frame_count;
 uniform uint spp;               // samples per pixel
 uniform vec3 resolution;        // x,y,z = width,height,aspect_ratio
 uniform float rr_chance;
-uniform vec2 ray_range;
+uniform vec3 ray_range;         // x = min, y = max, z = (min+max)/2
 uniform float kernel_sigma;
 
 uniform uint frames_acummulated;
@@ -255,6 +256,14 @@ vec3 apply_kernel_clamped_triangle(vec3 color, float t){
     k = min(k, 1.0);
 
     return color * k; 
+}
+
+vec3 apply_gaussian_kernel(vec3 color, float t){
+    float sigma2times2 = 2.0*kernel_sigma*kernel_sigma;
+    float k = 1.0 / sqrt(PI*sigma2times2);
+    float d_to_center = ray_range.z - t;
+    k *= pow(E_NUMBER,-d_to_center*d_to_center/sigma2times2);
+    return color*k;
 }
 
 vec3 apply_kernel(vec3 color, float t){

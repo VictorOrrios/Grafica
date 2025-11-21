@@ -135,7 +135,7 @@ export class Renderer {
         this.initUniform("spp", 2)
         this.initUniform("frames_acummulated", 2)
         this.initUniform("rr_chance", 1)
-        this.initUniform("ray_range", 4)
+        this.initUniform("ray_range", 3)
         this.initUniform("kernel_sigma", 1)
 
     }
@@ -282,7 +282,8 @@ export class Renderer {
         gl.uniform1f(this.getLocation("rr_chance"), this.rr_chance);
 
         // Ray ranges
-        gl.uniform2f(this.getLocation("ray_range"), this.range_numbers[0], this.range_numbers[1]);
+        gl.uniform3f(this.getLocation("ray_range"), 
+        this.range_numbers[0], this.range_numbers[1], (this.range_numbers[0]+this.range_numbers[1])/2.0);
 
         // Kernel sigma
         gl.uniform1f(this.getLocation("kernel_sigma"), this.kernel_sigma);
