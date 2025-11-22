@@ -9,6 +9,7 @@ import { Mesh } from "./Primitives/Mesh";
 import { MeshLoader } from "./loaders/MeshLoader";
 import { PointLight } from "./Lights/PointLight";
 import { ThreeJSOBJLoader } from "./loaders/ThreeJSOBJLoader";
+import type { EfficientModelData } from "./loaders/ThreeJSOBJLoader";
 
 export enum SceneType {
     TUNG = 'tung',
@@ -35,9 +36,11 @@ export class Scene {
     public triangleVec:{tri:Triangle,materialIndex:number}[] = [];
     public quadVec:{quad:Quad,materialIndex:number}[] = [];
     public meshVec:{mesh:Mesh,materialIndex:number}[] = [];
-    public hasMeshes: boolean = false;
     public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
+
+    // Efficient mesh data for GLSL
+    public meshDataVec: EfficientModelData[] = [];
 
     constructor(type:SceneType = SceneType.TRALALERO /*SceneType.CORNELTRANSIENT*/) {
         this.sceneType = type;
@@ -720,7 +723,6 @@ export class Scene {
     }
 
     private async tungTungTungSahurScene(){
-        this.hasMeshes = true;
         this.camera = new Camera(new Vector3(0.0,-5.0,-4.0));
         const yellow = this.addMaterial(new Material(
             new Vector3(1, 1, 0),
@@ -759,7 +761,6 @@ export class Scene {
     }
 
     private async tralaleroScene(){
-        this.hasMeshes = true;
         this.camera = new Camera(new Vector3(0.0,-6.0,-4.0));
         const yellow = this.addMaterial(
             new Material(
@@ -784,9 +785,10 @@ export class Scene {
 
         // Load mesh
         try {
-            const tralaleroMesh = await MeshLoader.load("/models/obj/tralalero/original/model.obj", MeshType.TRALALERO);
-            // const tralaleroMesh = await ThreeJSOBJLoader.load("/models/obj/tralalero/original/model.obj");
-            this.addMesh(tralaleroMesh, yellow);
+            /*const tralaleroMesh = await MeshLoader.load("/models/obj/tralalero/original/model.obj", MeshType.TRALALERO);
+            this.addMesh(tralaleroMesh, yellow);*/
+            const tralaleroMesh = await ThreeJSOBJLoader.load("tralalero/original/model.obj");
+            this.addEfficientMeshData(tralaleroMesh);
             console.log("✓ Tralalero mesh loaded successfully");
         } catch (error) {
             console.warn("⚠ Could not load mesh:", error);
@@ -794,7 +796,6 @@ export class Scene {
     }
 
     private async arthasScene(){
-        this.hasMeshes = true;
         this.camera = new Camera(new Vector3(0.0,-13.0,-10.0));
         const yellow = this.addMaterial(
             new Material(
@@ -828,13 +829,22 @@ export class Scene {
         }
     }
 
+    /**
+     * Add efficient mesh data to the scene
+     */
+    public addEfficientMeshData(meshData: EfficientModelData) {
+        this.meshDataVec.push(meshData);
+    }
+
     public serializeStaticBlock():Float32Array {
         const data: number[] = [];
+        console.log("Total materials (non-mesh):", this.materialVec.length);
         data.push(...this.serializeMaterialVec(),
                 ...this.serializeSphereVec(),
                 ...this.serializePlaneVec(),
                 ...this.serializeTriangleVec(),
                 ...this.serializePointLightVec(),
+                ...this.serializeMeshInfoVec()
                 );
         return new Float32Array(data);
     }
@@ -897,5 +907,122 @@ export class Scene {
         const ret: Float32Array = new Float32Array(arr);
         
         return ret;
-    }   
+    }
+
+    public serializeMeshInfoVec():Float32Array {
+        let arr: number[] = [];
+        let triangleStart = 0;
+        // let materialOffset = this.materialVec.length;  // Start after scene materials
+
+        for (const meshData of this.meshDataVec) {
+            const triangleCount = meshData.positionIndices.length / 3;
+            
+            // Use a random material index from scene materials for testing
+            const randomMatIdx = Math.floor(Math.random() * this.materialVec.length);
+            console.log("MeshInfo - triangleCount:", triangleCount);
+            console.log("MeshInfo - randomMatIdx:", randomMatIdx);
+            console.log("MeshInfo - triangleStart:", triangleStart);
+            // std140 pads struct members to vec4 boundaries. MeshInfo contains 3 ints -> occupies 16 bytes (4 floats)
+            // Push an extra padding float (0) so the Uniform Buffer matches the shader's expected size.
+            const ret = new Float32Array([0, 0, 0, 0]);
+            (new Int32Array(ret.buffer))[0] = triangleStart;
+            (new Int32Array(ret.buffer))[1] = triangleCount;
+            (new Int32Array(ret.buffer))[2] = randomMatIdx;
+            // index 3 is padding, already 0
+            arr.push(...ret);
+            triangleStart += triangleCount;
+            // materialOffset += meshData.materials.length;
+        }
+        console.log("Serialized mesh info vector length:", arr.length);
+        const ret: Float32Array = new Float32Array(arr);
+        
+        return ret;
+    }
+    /**
+     * Returns concatenated mesh texture buffers for all meshes in the scene.
+     */
+    public getMeshTextureBuffers() {
+        let positionsList: Float32Array[] = [];
+        let normalsList: Float32Array[] = [];
+        let uvsList: Float32Array[] = [];
+        let indexList: Uint32Array[] = [];
+        let normalIndexList: Uint32Array[] = [];
+        let uvIndexList: Uint32Array[] = [];
+        let triMatList: Uint32Array[] = [];
+        let materialsList: Float32Array[] = [];
+
+        let positionsCount = 0;
+        let trianglesCount = 0;
+        let materialOffset = 0;
+
+        for (const meshData of this.meshDataVec) {
+            const s = meshData.serializeTextures();
+
+            // Offset triangle material indices by cumulative material count
+            // TODO, revise
+            const offsetTriMat = new Uint32Array(s.triangleMaterials.length);
+            for (let i = 0; i < s.triangleMaterials.length; i++) {
+                offsetTriMat[i] = s.triangleMaterials[i] + materialOffset;
+            }
+            triMatList.push(offsetTriMat);
+
+            positionsList.push(s.positionsRGBA);
+            normalsList.push(s.normalsRGBA);
+            uvsList.push(s.uvsRG);
+            indexList.push(s.positionIndices);
+            normalIndexList.push(s.normalIndices);
+            uvIndexList.push(s.uvIndices);
+            materialsList.push(s.materialsFloat);
+
+            positionsCount += s.positionsRGBA.length / 4;
+            trianglesCount += s.positionIndices.length / 3;
+            materialOffset += s.materialsFloat.length / 16;  // 16 floats per material
+        }
+
+        // Concatenate arrays
+        const positionsConcat = concatFloat32Arrays(positionsList);
+        const normalsConcat = concatFloat32Arrays(normalsList);
+        const uvsConcat = concatFloat32Arrays(uvsList);
+        const indicesConcat = concatUint32Arrays(indexList);
+        const normalIndicesConcat = concatUint32Arrays(normalIndexList);
+        const uvIndicesConcat = concatUint32Arrays(uvIndexList);
+        const triMatConcat = concatUint32Arrays(triMatList);
+        const materialsConcat = concatFloat32Arrays(materialsList);
+
+        return {
+            positions: positionsConcat,
+            normals: normalsConcat,
+            uvs: uvsConcat,
+            positionIndices: indicesConcat,
+            normalIndices: normalIndicesConcat,
+            uvIndices: uvIndicesConcat,
+            triangleMaterials: triMatConcat,
+            materialsFloat: materialsConcat,
+            positionsCount,
+            trianglesCount,
+            materialsCount: materialOffset
+        };
+    }
+
+}
+
+// Small helpers for concatenation
+function concatFloat32Arrays(arrs: Float32Array[]): Float32Array {
+    if (arrs.length === 0) return new Float32Array(0);
+    let total = 0;
+    for (const a of arrs) total += a.length;
+    const out = new Float32Array(total);
+    let off = 0;
+    for (const a of arrs) { out.set(a, off); off += a.length; }
+    return out;
+}
+
+function concatUint32Arrays(arrs: Uint32Array[]): Uint32Array {
+    if (arrs.length === 0) return new Uint32Array(0);
+    let total = 0;
+    for (const a of arrs) total += a.length;
+    const out = new Uint32Array(total);
+    let off = 0;
+    for (const a of arrs) { out.set(a, off); off += a.length; }
+    return out;
 }

@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 
 // Interface for extracted data (matching your Triangle and Material structs)
 export interface ExtractedMaterial {
     albedo_emission: [number, number, number, number]; // RGB + emission
     specular_color: [number, number, number];
     subsurface_color_ior: [number, number, number, number];
-    lobe_chances: [number, number, number]; // Diffuse, metallic, dielectric
+    lobe_chances: [number, number, number, number]; // Diffuse, metallic, dielectric, sum
 }
 
 // Memory-efficient structure for GLSL serialization
@@ -27,6 +27,18 @@ export interface EfficientModelData {
 
     // Per-triangle material assignment
     triangleMaterials: Uint8Array;  // material index for each triangle
+
+    // Serialization method that returns separate buffers for texture uploads
+    serializeTextures(): {
+        positionsRGBA: Float32Array;    // RGBA32F texels (x,y,z,0)
+        normalsRGBA: Float32Array;      // RGBA32F texels (x,y,z,0)
+        uvsRG: Float32Array;            // RG32F texels (u,v)
+        positionIndices: Uint32Array;   // R32UI texels (one uint per index)
+        normalIndices: Uint32Array;     // R32UI texels (one uint per index)
+        uvIndices: Uint32Array;         // R32UI texels (one uint per index)
+        triangleMaterials: Uint32Array; // R32UI texels (one uint per triangle)
+        materialsFloat: Float32Array;   // small UBO style flattened materials (floats)
+    };
 }
 
 /**
@@ -54,6 +66,7 @@ export class ThreeJSOBJLoader {
         }
 
         // Load OBJ with materials
+        // TODO, add gltf loader
         const objLoader = new OBJLoader();
         if (materialsCreator) {
             objLoader.setMaterials(materialsCreator);
@@ -89,8 +102,12 @@ export class ThreeJSOBJLoader {
         const normalMap = new Map<string, number>();
         const uvMap = new Map<string, number>();
 
+        let total_meshes = 0;
         object.traverse((child) => {
             if (child instanceof THREE.Mesh) {
+                total_meshes++;
+                if (total_meshes <= 10) console.log("Total meshes so far:", total_meshes);
+                // console.log("Child object:", child);
                 const geometry = child.geometry as THREE.BufferGeometry;
                 const material = child.material as THREE.MeshPhongMaterial; // Assuming Phong for simplicity; adjust for PBR
 
@@ -100,10 +117,28 @@ export class ThreeJSOBJLoader {
                 const uvs = geometry.attributes.uv?.array as Float32Array;
                 const indices = geometry.index?.array as Uint16Array | Uint32Array;
 
-                if (!indices) {
-                    console.warn('No indices found; skipping mesh without triangulation.');
-                    return;
+                console.log("Positions:", positions.subarray(0, 32), "total length:", positions.length);
+                /*console.log("Normals:", normals ? normals.subarray(0, 9) : 'No normals');
+                console.log("UVs:", uvs ? uvs.subarray(0, 6) : 'No UVs');
+                console.log("Indices:", indices ? indices.subarray(0, 9) : 'No indices');*/
+
+                // Handle both indexed and non-indexed geometries
+                let triangleCount: number;
+                let getVertexIndex: (triangleIndex: number, vertexInTriangle: number) => number;
+
+                if (indices && indices.length > 0) {
+                    // Indexed geometry
+                    triangleCount = indices.length / 3;
+                    getVertexIndex = (triangleIndex: number, vertexInTriangle: number) => indices[triangleIndex * 3 + vertexInTriangle];
+                    console.log("Using indexed geometry with", triangleCount, "triangles");
+                } else {
+                    // Non-indexed geometry - each 3 vertices form a triangle
+                    triangleCount = positions.length / 9; // 3 vertices * 3 components each
+                    getVertexIndex = (triangleIndex: number, vertexInTriangle: number) => triangleIndex * 3 + vertexInTriangle;
+                    console.log("Using non-indexed geometry with", triangleCount, "triangles");
                 }
+
+                 // Log first 3 vertices (9 values)
 
                 const materialIndex = materials.length;
 
@@ -121,14 +156,14 @@ export class ThreeJSOBJLoader {
                         material.specular?.b || 0
                     ],
                     subsurface_color_ior: [0, 0, 0, material.refractionRatio || 1.0], // Placeholder for dielectrics
-                    lobe_chances: [1.0, 0.0, 0.0] // Default to diffuse; customize based on material type
+                    lobe_chances: [1.0, 0.0, 0.0, 1.0] // Default to diffuse; customize based on material type
                 };
                 materials.push(mat);
 
-                for (let i = 0; i < indices.length; i += 3) {
-                    const i0 = indices[i];
-                    const i1 = indices[i + 1];
-                    const i2 = indices[i + 2];
+                for (let i = 0; i < triangleCount; i++) {
+                    const i0 = getVertexIndex(i, 0);
+                    const i1 = getVertexIndex(i, 1);
+                    const i2 = getVertexIndex(i, 2);
 
                     // ===== EFFICIENT INDEXED FORMAT =====
 
@@ -223,7 +258,86 @@ export class ThreeJSOBJLoader {
             normalIndices: new Uint16Array(normalIndices),
             uvIndices: new Uint16Array(uvIndices),
             materials: materials,
-            triangleMaterials: new Uint8Array(triangleMaterials)
+            triangleMaterials: new Uint8Array(triangleMaterials),
+            serializeTextures: function() {
+                // Convert positions to RGBA texels (x,y,z,0)
+                const numPositions = this.positions.length / 3;
+                const positionsRGBA = new Float32Array(numPositions * 4);
+                for (let i = 0; i < numPositions; i++) {
+                    positionsRGBA[i * 4 + 0] = this.positions[i * 3 + 0];
+                    positionsRGBA[i * 4 + 1] = this.positions[i * 3 + 1];
+                    positionsRGBA[i * 4 + 2] = this.positions[i * 3 + 2];
+                    positionsRGBA[i * 4 + 3] = 0.0;
+                }
+
+                // Normals (pack as RGBA too)
+                const numNormals = this.normals.length / 3;
+                const normalsRGBA = new Float32Array(numNormals * 4);
+                for (let i = 0; i < numNormals; i++) {
+                    normalsRGBA[i * 4 + 0] = this.normals[i * 3 + 0];
+                    normalsRGBA[i * 4 + 1] = this.normals[i * 3 + 1];
+                    normalsRGBA[i * 4 + 2] = this.normals[i * 3 + 2];
+                    normalsRGBA[i * 4 + 3] = 0.0;
+                }
+
+                // UVs (RG)
+                const numUVs = this.uvs.length / 2;
+                const uvsRG = new Float32Array(numUVs * 2);
+                for (let i = 0; i < numUVs; i++) {
+                    uvsRG[i * 2 + 0] = this.uvs[i * 2 + 0];
+                    uvsRG[i * 2 + 1] = this.uvs[i * 2 + 1];
+                }
+
+                // Indices: convert to Uint32Array
+                const positionIndices = new Uint32Array(this.positionIndices);
+                const normalIndices = new Uint32Array(this.normalIndices);
+                const uvIndices = new Uint32Array(this.uvIndices);
+
+                // Triangle materials per triangle
+                const triangleMaterials = new Uint32Array(this.triangleMaterials.length);
+                for (let i = 0; i < this.triangleMaterials.length; i++) {
+                    triangleMaterials[i] = this.triangleMaterials[i];
+                }
+
+                // console.log("Loaded threejs materials:", this.materials);
+                // Flatten materials into float array (16 floats per material)
+                // KEY, NOTE: there will be as many materials as objects in the .obj file;
+                // they'll probably be repeated, we'll see if we can optimize this later
+                const materialsFloat = new Float32Array(this.materials.length * 16);
+                let mo = 0;
+                for (const material of this.materials) {
+                    materialsFloat[mo++] = material.albedo_emission[0];
+                    materialsFloat[mo++] = material.albedo_emission[1];
+                    materialsFloat[mo++] = material.albedo_emission[2];
+                    materialsFloat[mo++] = material.albedo_emission[3];
+
+                    materialsFloat[mo++] = material.specular_color[0];
+                    materialsFloat[mo++] = material.specular_color[1];
+                    materialsFloat[mo++] = material.specular_color[2];
+                    materialsFloat[mo++] = 0.0; // padding
+
+                    materialsFloat[mo++] = material.subsurface_color_ior[0];
+                    materialsFloat[mo++] = material.subsurface_color_ior[1];
+                    materialsFloat[mo++] = material.subsurface_color_ior[2];
+                    materialsFloat[mo++] = material.subsurface_color_ior[3];
+
+                    materialsFloat[mo++] = material.lobe_chances[0];
+                    materialsFloat[mo++] = material.lobe_chances[1];
+                    materialsFloat[mo++] = material.lobe_chances[2];
+                    materialsFloat[mo++] = material.lobe_chances[3];
+                }
+
+                return {
+                    positionsRGBA,
+                    normalsRGBA,
+                    uvsRG,
+                    positionIndices,
+                    normalIndices,
+                    uvIndices,
+                    triangleMaterials,
+                    materialsFloat
+                };
+            }
         };
 
         return efficient;

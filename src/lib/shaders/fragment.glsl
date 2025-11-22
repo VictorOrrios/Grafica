@@ -1,5 +1,6 @@
 #version 300 es
 precision mediump float;
+precision highp usampler2D;
 //===========================
 // On load constants
 //===========================
@@ -8,6 +9,7 @@ precision mediump float;
 #define NUM_PLANES __NUM_PLANES__
 #define NUM_TRIS __NUM_TRIANGLES__
 #define NUM_POINT_LIGHTS __NUM_POINT_LIGHTS__
+#define NUM_MESHES __NUM_MESHES__
 
 //===========================
 // Global constants
@@ -56,6 +58,12 @@ struct Triangle {
     vec4 normal_mat;    // xyz = The normal of the triangle, w = material index
 };
 
+struct MeshInfo {
+    int startTriangle;
+    int triangleCount;
+    int materialIndex;
+};
+
 struct Ray {
     vec3 orig;
     vec3 dir;
@@ -73,6 +81,7 @@ struct Hit{
     int mat;            // Material index of the object it hit
     float t;            // The distance from the ray origin to the hit
     bool front_face;    // True if hit is to a front facing surface
+    bool isMesh;        // True if hit came from a mesh
 };
 
 
@@ -119,7 +128,30 @@ layout(std140) uniform StaticBlock {
     #if NUM_POINT_LIGHTS > 0
         PointLight point_lights[NUM_POINT_LIGHTS];
     #endif
+    #if NUM_MESHES > 0
+        MeshInfo meshInfos[NUM_MESHES];
+    #endif
+    /*#if MAX_POINT_LIGHTS > 0
+        // (kept for parity if needed)
+    #endif*/
 };
+
+// Mesh data provided via textures (to avoid large std140 arrays)
+uniform sampler2D u_positions_tex;        // RGBA32F: xyz, _
+uniform sampler2D u_normals_tex;          // RGBA32F: xyz, _ (optional)
+uniform sampler2D u_uvs_tex;              // RG32F: uv
+uniform usampler2D u_positionIndices_tex; // R32UI: one uint per texel
+uniform usampler2D u_normalIndices_tex;   // R32UI: one uint per texel
+uniform usampler2D u_uvIndices_tex;       // R32UI: one uint per texel
+uniform usampler2D u_triangleMaterials_tex; // R32UI: material index per triangle
+uniform sampler2D u_meshMaterials_tex;    // RGBA32F: flattened mesh materials
+
+// TODO: usar (o borrar)
+uniform int u_positions_count;
+uniform int u_uvs_count;
+uniform int u_triangle_count;
+uniform int u_materials_count;
+
 
 
 //===========================
@@ -325,36 +357,112 @@ bool hit_plane(const Plane p, const Ray r, out Hit h){
 }
 
 //===========================
-// Triangle functions
+// Efficient Triangle functions (using indexed vertex data)
 //===========================
 
-bool hit_triangle(const Triangle tri, const Ray r, out Hit h){
-    // Moller-Trumbore algorithm
-    vec3 edge1 = tri.v1 - tri.v0;
-    vec3 edge2 = tri.v2 - tri.v0;
-    vec3 h_vec = cross(r.dir, edge2);
+bool hit_triangle(Triangle tri, const Ray r, out Hit h){
+    vec3 v0 = tri.v0;
+    vec3 v1 = tri.v1;
+    vec3 v2 = tri.v2;
 
-    float a = dot(edge1, h_vec);
-    if(abs(a) < 0.0001) return false; // Ray parallel to triangle
+    // Moller-Trumbore intersection
+    vec3 edge1 = v1 - v0;
+    vec3 edge2 = v2 - v0;
+    vec3 pvec = cross(r.dir, edge2);
+    float det = dot(edge1, pvec);
+    if(abs(det) < 1e-6) return false; // Parallel or nearly parallel
 
-    float f = 1.0 / a;
-    vec3 s = r.orig - tri.v0;
-    float u = f * dot(s, h_vec);
+    float invDet = 1.0 / det;
+    vec3 tvec = r.orig - v0;
+    float u = dot(tvec, pvec) * invDet;
     if(u < 0.0 || u > 1.0) return false;
 
-    vec3 q_vec = cross(s, edge1);
-    float v = f * dot(r.dir, q_vec);
+    vec3 qvec = cross(tvec, edge1);
+    float v = dot(r.dir, qvec) * invDet;
     if(v < 0.0 || u + v > 1.0) return false;
 
-    float t = f * dot(edge2, q_vec);
-    if(t < ray_min_distance || t > ray_max_distance) return false; // Boundary check
+    float t = dot(edge2, qvec) * invDet;
+    if(t < ray_min_distance || t > ray_max_distance) return false;
 
     h.t = t;
     h.p = r.orig + r.dir * t;
-    h.normal = normalize(tri.normal_mat.xyz);
+
+    vec3 normal = tri.normal_mat.xyz;
     h.mat = int(tri.normal_mat.w);
-    set_front_face(h.normal,r.dir,h);
+    h.isMesh = false;  // This is a UBO triangle
+    set_front_face(normal, r.dir, h);
     return true;
+}
+
+bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
+    // Each triangle stores 3 uint indices in the u_positionIndices_tex (one uint per texel)
+    int base = triIndex * 3;
+
+    // Fetch packed indices (R32UI texture)
+    uvec4 id0 = texelFetch(u_positionIndices_tex, ivec2(base + 0, 0), 0);
+    uvec4 id1 = texelFetch(u_positionIndices_tex, ivec2(base + 1, 0), 0);
+    uvec4 id2 = texelFetch(u_positionIndices_tex, ivec2(base + 2, 0), 0);
+
+    int idx0 = int(id0.r);
+    int idx1 = int(id1.r);
+    int idx2 = int(id2.r);
+
+    // Reconstruct triangle vertices from positions texture (RGBA32F)
+    vec3 v0 = texelFetch(u_positions_tex, ivec2(idx0, 0), 0).xyz;
+    vec3 v1 = texelFetch(u_positions_tex, ivec2(idx1, 0), 0).xyz;
+    vec3 v2 = texelFetch(u_positions_tex, ivec2(idx2, 0), 0).xyz;
+
+    // Moller-Trumbore intersection
+    vec3 edge1 = v1 - v0;
+    vec3 edge2 = v2 - v0;
+    vec3 pvec = cross(r.dir, edge2);
+    float det = dot(edge1, pvec);
+    if(abs(det) < 1e-6) return false; // Parallel or nearly parallel
+
+    float invDet = 1.0 / det;
+    vec3 tvec = r.orig - v0;
+    float u = dot(tvec, pvec) * invDet;
+    if(u < 0.0 || u > 1.0) return false;
+
+    vec3 qvec = cross(tvec, edge1);
+    float v = dot(r.dir, qvec) * invDet;
+    if(v < 0.0 || u + v > 1.0) return false;
+
+    float t = dot(edge2, qvec) * invDet;
+    if(t < ray_min_distance || t > ray_max_distance) return false;
+
+    h.t = t;
+    h.p = r.orig + r.dir * t;
+
+    vec3 normal = normalize(cross(edge1, edge2));
+    // Triangle material index stored as R32UI texel per triangle
+    uint mat_u = texelFetch(u_triangleMaterials_tex, ivec2(triIndex, 0), 0).r;
+    h.mat = int(mat_u);
+    h.isMesh = true;  // This is a mesh triangle
+    set_front_face(normal, r.dir, h);
+    return true;
+}
+
+bool hit_mesh(MeshInfo mesh, const Ray r, out Hit h){
+    bool has_hit = false;
+    Hit h_aux;
+    h.t = ray_max_distance;
+
+    for(int t_i = mesh.startTriangle; t_i < mesh.startTriangle + mesh.triangleCount; t_i++) {
+        if(hit_mesh_triangle(t_i, r, h_aux)){
+            if(h_aux.t < h.t){
+                h = h_aux;
+            }
+            has_hit = true;
+        }
+    }
+
+    // TODO, TEMPORARY: we'll fetch the materials from the actual .obj file
+    if(has_hit) {
+        h.mat = mesh.materialIndex;  // Overwrite with mesh's material index
+    }
+
+    return has_hit;
 }
 
 //===========================
@@ -379,7 +487,8 @@ vec3 skybox_color_day(Ray r) {
 }
 
 vec3 skybox_color_black(Ray r){
-    return vec3(0.0);
+    // TODO, change back to 0.0
+    return vec3(1.0);
 }
 
 vec3 skybox_color(Ray r){
@@ -474,6 +583,28 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
     return ret;
 }
 
+// Get material by index: scene materials first, then mesh materials from texture
+// TODO: TEMPORARY - always fetch from materials array until we retrieve materials from OBJ file
+Material get_material(int matIdx, bool isMesh) {
+    // if (isMesh) {
+    //     // Fetch from mesh materials texture
+    //     int meshMatIdx = matIdx - NUM_MATERIALS;
+    //     int base = meshMatIdx * 4;  // 4 texels per material (16 floats / 4 = 4)
+    //     vec4 m0 = texelFetch(u_meshMaterials_tex, ivec2(base + 0, 0), 0);
+    //     vec4 m1 = texelFetch(u_meshMaterials_tex, ivec2(base + 1, 0), 0);
+    //     vec4 m2 = texelFetch(u_meshMaterials_tex, ivec2(base + 2, 0), 0);
+    //     vec4 m3 = texelFetch(u_meshMaterials_tex, ivec2(base + 3, 0), 0);
+    //     Material mat;
+    //     mat.albedo_emission = m0;
+    //     mat.specular_color = m1.xyz;
+    //     mat.subsurface_color_ior = vec4(m1.w, m2.xyz);
+    //     mat.lobe_chances = vec4(m2.w, m3.xyz);
+    //     return mat;
+    // } else {
+        return materials[matIdx];
+    // }
+}
+
 //===========================
 // Main functions
 //===========================
@@ -509,18 +640,29 @@ bool hit_scene(Ray r, out Hit h){
         }
     #endif
 
-    // Check for tri hits
+    // Check for UBO triangle hits
     #if NUM_TRIS > 0
         for(int t_i = 0; t_i < NUM_TRIS; t_i++) {
             Triangle tri = triangles[t_i];
-            if(hit_triangle(tri,r,h_aux)){
-                if(h_aux.t<h.t){
-                    h=h_aux;
+            if(hit_triangle(tri, r, h_aux)){
+                if(h_aux.t < h.t){
+                    h = h_aux;
                 }
                 has_hit = true;
             }
         }
     #endif
+
+    // Check for mesh hits
+    for(int m_i = 0; m_i < NUM_MESHES; m_i++) {
+        MeshInfo mesh = meshInfos[m_i];
+        if(hit_mesh(mesh, r, h_aux)){
+            if(h_aux.t < h.t){
+                h = h_aux;
+            }
+            has_hit = true;
+        }
+    }
 
 
 
@@ -528,7 +670,7 @@ bool hit_scene(Ray r, out Hit h){
 }
 
 vec3 get_direct_light(Hit h, float total_t){
-    Material mat = materials[h.mat];
+    Material mat = get_material(h.mat, h.isMesh);
     // 0% diffuse means no point lights
     if(length(mat.albedo_emission.xyz) <= 0.0){
         return vec3(0.0);
@@ -586,7 +728,7 @@ vec3 cast_ray(Ray r){
             // Max distance check
             if(total_t > ray_range.y) break;
 
-            Material mat = materials[h.mat];
+            Material mat = get_material(h.mat, h.isMesh);
 
             // Emissive material & Min distance check
             if(mat.albedo_emission.a > 0.0){
