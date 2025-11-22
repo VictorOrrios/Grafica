@@ -39,7 +39,7 @@ export class Scene {
     public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
 
-    constructor(type:SceneType = SceneType.CORNEL ) {
+    constructor(type:SceneType = SceneType.TESTPLANE ) {
         this.sceneType = type;
     }
 
