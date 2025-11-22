@@ -39,7 +39,7 @@ export class Scene {
     public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
 
-    constructor(type:SceneType = SceneType.TRALALERO /*SceneType.CORNELTRANSIENT*/) {
+    constructor(type:SceneType = SceneType.CORNEL ) {
         this.sceneType = type;
     }
 

@@ -1,4 +1,4 @@
-import parseExr from "parse-exr";
+import parseExr from "./loaders/parse-exr";
 
 
 function float32ToUint8(floatArray:Float32Array) {

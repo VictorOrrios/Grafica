@@ -36,7 +36,6 @@
 	"dependencies": {
 		"math.gl": "^4.1.0",
 		"node": "^25.1.0",
-		"parse-exr": "^1.0.2",
 		"three": "^0.181.2"
 	}
 }
