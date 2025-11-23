@@ -131,9 +131,6 @@ layout(std140) uniform StaticBlock {
     #if NUM_MESHES > 0
         MeshInfo meshInfos[NUM_MESHES];
     #endif
-    /*#if MAX_POINT_LIGHTS > 0
-        // (kept for parity if needed)
-    #endif*/
 };
 
 // Mesh data provided via textures (to avoid large std140 arrays)
@@ -145,14 +142,13 @@ uniform usampler2D u_normalIndices_tex;   // R32UI: one uint per texel
 uniform usampler2D u_uvIndices_tex;       // R32UI: one uint per texel
 uniform usampler2D u_triangleMaterials_tex; // R32UI: material index per triangle
 uniform sampler2D u_meshMaterials_tex;    // RGBA32F: flattened mesh materials
+uniform sampler2D u_bvh_tex;              // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
 
 // TODO: usar (o borrar)
 uniform int u_positions_count;
 uniform int u_uvs_count;
 uniform int u_triangle_count;
 uniform int u_materials_count;
-
-
 
 //===========================
 // RNG Functions
@@ -360,6 +356,22 @@ bool hit_plane(const Plane p, const Ray r, out Hit h){
 // Efficient Triangle functions (using indexed vertex data)
 //===========================
 
+// Helper to fetch from 2D texture as if it were 1D
+// Assumes texture width is 2048
+#define TEX_WIDTH 2048
+
+vec4 fetchTexelFloat(sampler2D tex, int index) {
+    int x = index % TEX_WIDTH;
+    int y = index / TEX_WIDTH;
+    return texelFetch(tex, ivec2(x, y), 0);
+}
+
+uvec4 fetchTexelUint(usampler2D tex, int index) {
+    int x = index % TEX_WIDTH;
+    int y = index / TEX_WIDTH;
+    return texelFetch(tex, ivec2(x, y), 0);
+}
+
 bool hit_triangle(Triangle tri, const Ray r, out Hit h){
     vec3 v0 = tri.v0;
     vec3 v1 = tri.v1;
@@ -398,19 +410,19 @@ bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
     // Each triangle stores 3 uint indices in the u_positionIndices_tex (one uint per texel)
     int base = triIndex * 3;
 
-    // Fetch packed indices (R32UI texture)
-    uvec4 id0 = texelFetch(u_positionIndices_tex, ivec2(base + 0, 0), 0);
-    uvec4 id1 = texelFetch(u_positionIndices_tex, ivec2(base + 1, 0), 0);
-    uvec4 id2 = texelFetch(u_positionIndices_tex, ivec2(base + 2, 0), 0);
+    // Fetch packed indices (R32UI texture) using 2D layout
+    uvec4 id0 = fetchTexelUint(u_positionIndices_tex, base + 0);
+    uvec4 id1 = fetchTexelUint(u_positionIndices_tex, base + 1);
+    uvec4 id2 = fetchTexelUint(u_positionIndices_tex, base + 2);
 
     int idx0 = int(id0.r);
     int idx1 = int(id1.r);
     int idx2 = int(id2.r);
 
     // Reconstruct triangle vertices from positions texture (RGBA32F)
-    vec3 v0 = texelFetch(u_positions_tex, ivec2(idx0, 0), 0).xyz;
-    vec3 v1 = texelFetch(u_positions_tex, ivec2(idx1, 0), 0).xyz;
-    vec3 v2 = texelFetch(u_positions_tex, ivec2(idx2, 0), 0).xyz;
+    vec3 v0 = fetchTexelFloat(u_positions_tex, idx0).xyz;
+    vec3 v1 = fetchTexelFloat(u_positions_tex, idx1).xyz;
+    vec3 v2 = fetchTexelFloat(u_positions_tex, idx2).xyz;
 
     // Moller-Trumbore intersection
     vec3 edge1 = v1 - v0;
@@ -436,33 +448,190 @@ bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
 
     vec3 normal = normalize(cross(edge1, edge2));
     // Triangle material index stored as R32UI texel per triangle
-    uint mat_u = texelFetch(u_triangleMaterials_tex, ivec2(triIndex, 0), 0).r;
+    uint mat_u = fetchTexelUint(u_triangleMaterials_tex, triIndex).r;
     h.mat = int(mat_u);
     h.isMesh = true;  // This is a mesh triangle
     set_front_face(normal, r.dir, h);
+
+    // Ensure normal points outward from the mesh center (0,0,0)
+    // This fixes issues with computed normals due to geometry precision problems
+    if (dot(h.normal, h.p) < 0.0) {
+        h.normal = -h.normal;
+        h.front_face = !h.front_face;
+    }
     return true;
 }
 
-bool hit_mesh(MeshInfo mesh, const Ray r, out Hit h){
+// Official three-mesh-bvh AABB intersection test
+// https://www.reddit.com/r/opengl/comments/8ntzz5/fast_glsl_ray_box_intersection/
+// https://tavianator.com/2011/ray_box.html
+bool intersectsBounds(vec3 rayOrigin, vec3 rayDirection, vec3 boundsMin, vec3 boundsMax, out float dist) {
+    // Robust inverse direction to avoid Inf * 0 = NaN issues
+    // This is critical for zero-thickness AABBs (common in flat geometry)
+    vec3 dir = rayDirection;
+    if (abs(dir.x) < 1e-15) dir.x = 1e-15 * sign(dir.x);
+    if (abs(dir.y) < 1e-15) dir.y = 1e-15 * sign(dir.y);
+    if (abs(dir.z) < 1e-15) dir.z = 1e-15 * sign(dir.z);
+    vec3 invDir = 1.0 / dir;
+
+    // find intersection distances for each plane
+    vec3 tMinPlane = invDir * (boundsMin - rayOrigin);
+    vec3 tMaxPlane = invDir * (boundsMax - rayOrigin);
+
+    // get the min and max distances from each intersection
+    vec3 tMinHit = min(tMaxPlane, tMinPlane);
+    vec3 tMaxHit = max(tMaxPlane, tMinPlane);
+
+    // get the furthest hit distance
+    vec2 t = max(tMinHit.xx, tMinHit.yz);
+    float t0 = max(t.x, t.y);
+
+    // get the minimum hit distance
+    t = min(tMaxHit.xx, tMaxHit.yz);
+    float t1 = min(t.x, t.y);
+
+    // set distance to 0.0 if the ray starts inside the box
+    dist = max(t0, 0.0);
+
+    return t1 >= dist;
+}
+
+bool intersectsBVHNodeBounds(vec3 rayOrigin, vec3 rayDirection, uint nodeIndex, out float dist) {
+    // Custom BVH Layout:
+    // Texel 0: [minX, minY, minZ, data1]
+    // Texel 1: [maxX, maxY, maxZ, data2]
+    int texelIndex = int(nodeIndex) * 2;
+    vec4 t0 = fetchTexelFloat(u_bvh_tex, texelIndex);
+    vec4 t1 = fetchTexelFloat(u_bvh_tex, texelIndex + 1);
+    
+    vec3 boundsMin = t0.xyz;
+    vec3 boundsMax = t1.xyz;
+    
+    return intersectsBounds(rayOrigin, rayDirection, boundsMin, boundsMax, dist);
+}
+
+// Main BVH traversal function
+bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
+    // Stack for traversal
+    const int BVH_STACK_DEPTH = 64;
+    uint stack[BVH_STACK_DEPTH];
+    int stackPtr = 0;
+    stack[0] = 0u; // Push root node
+    
+    float triangleDistance = ray_max_distance;
+    bool found = false;
+    
+    // Initialize hit record
+    h.t = ray_max_distance;
+    
+    while (stackPtr > -1 && stackPtr < BVH_STACK_DEPTH) {
+        uint currNodeIndex = stack[stackPtr];
+        stackPtr--;
+        
+        // Fetch node data
+        int texelIndex = int(currNodeIndex) * 2;
+        vec4 t0 = fetchTexelFloat(u_bvh_tex, texelIndex);
+        vec4 t1 = fetchTexelFloat(u_bvh_tex, texelIndex + 1);
+        
+        vec3 boundsMin = t0.xyz;
+        vec3 boundsMax = t1.xyz;
+        float data1 = t0.w; // leftChildIndex (internal) OR triangleOffset (leaf)
+        float data2 = t1.w; // rightChildIndex (internal) OR -triangleCount (leaf)
+        
+        // Check bounds intersection
+        float boundsHitDistance;
+        if (!intersectsBounds(r.orig, r.dir, boundsMin, boundsMax, boundsHitDistance) 
+            || boundsHitDistance > triangleDistance) {
+            continue;
+        }
+        
+        // Leaf detection: data2 is negative for leaves
+        bool isLeaf = data2 < 0.0;
+        
+        if (isLeaf) {
+            // Leaf node: test triangles
+            uint count = uint(-data2);
+            uint offset = uint(data1);
+            
+            // Test all triangles in this leaf
+            for (uint i = 0u; i < count; i++) {
+                int triIdx = mesh.startTriangle + int(offset + i);
+                Hit h_aux;
+                
+                if (hit_mesh_triangle(triIdx, r, h_aux) && h_aux.t < triangleDistance) {
+                    triangleDistance = h_aux.t;
+                    h = h_aux;
+                    found = true;
+                }
+            }
+        } else {
+            // Internal node
+            uint leftIndex = uint(data1);
+            uint rightIndex = uint(data2);
+            
+            // Determine split axis dynamically based on bounds shape
+            // (Matches builder's logic: split along longest axis)
+            vec3 size = boundsMax - boundsMin;
+            int axis = 0;
+            if (size.y > size.x) axis = 1;
+            if (size.z > (axis == 0 ? size.x : size.y)) axis = 2;
+            
+            // Determine traversal order
+            bool leftToRight = r.dir[axis] >= 0.0;
+            uint c1 = leftToRight ? leftIndex : rightIndex;
+            uint c2 = leftToRight ? rightIndex : leftIndex;
+            
+            // Push children to stack
+            // Push far child first so near child is processed next
+            stackPtr++;
+            if (stackPtr < BVH_STACK_DEPTH) {
+                stack[stackPtr] = c2;
+            }
+            
+            stackPtr++;
+            if (stackPtr < BVH_STACK_DEPTH) {
+                stack[stackPtr] = c1;
+            }
+        }
+    }
+    
+    // Set material if we found a hit
+    if (found) {
+        h.mat = mesh.materialIndex;
+    }
+    
+    return found;
+}
+
+// Legacy brute-force version (kept for debugging/comparison)
+bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, out Hit h){
     bool has_hit = false;
     Hit h_aux;
     h.t = ray_max_distance;
 
-    for(int t_i = mesh.startTriangle; t_i < mesh.startTriangle + mesh.triangleCount; t_i++) {
-        if(hit_mesh_triangle(t_i, r, h_aux)){
+    for(int i = 0; i < mesh.triangleCount; i++){
+        int triIdx = mesh.startTriangle + i;
+        if(hit_mesh_triangle(triIdx, r, h_aux)){
             if(h_aux.t < h.t){
                 h = h_aux;
+                has_hit = true;
             }
-            has_hit = true;
         }
     }
 
-    // TODO, TEMPORARY: we'll fetch the materials from the actual .obj file
     if(has_hit) {
-        h.mat = mesh.materialIndex;  // Overwrite with mesh's material index
+        h.mat = mesh.materialIndex;
     }
 
     return has_hit;
+}
+
+// Main hit_mesh function - uses BVH traversal
+bool hit_mesh(MeshInfo mesh, const Ray r, out Hit h){
+    // Temporarily use brute force to verify all triangles are visible
+    // return hit_mesh_bruteforce(mesh, r, h);
+    // BVH with fixes:
+    return hit_mesh_with_bvh(mesh, r, h);
 }
 
 //===========================
@@ -487,12 +656,12 @@ vec3 skybox_color_day(Ray r) {
 }
 
 vec3 skybox_color_black(Ray r){
-    // TODO, change back to 0.0
-    return vec3(1.0);
+    return vec3(0.0);
 }
 
 vec3 skybox_color(Ray r){
-    return skybox_color_black(r);
+    // TODO, change back to skybox_color_black
+    return skybox_color_day(r);
 }
 
 //===========================
@@ -654,17 +823,17 @@ bool hit_scene(Ray r, out Hit h){
     #endif
 
     // Check for mesh hits
-    for(int m_i = 0; m_i < NUM_MESHES; m_i++) {
-        MeshInfo mesh = meshInfos[m_i];
-        if(hit_mesh(mesh, r, h_aux)){
-            if(h_aux.t < h.t){
-                h = h_aux;
+    #if NUM_MESHES > 0
+        for(int m_i = 0; m_i < NUM_MESHES; m_i++) {
+            MeshInfo mesh = meshInfos[m_i];
+            if(hit_mesh(mesh, r, h_aux)){
+                if(h_aux.t < h.t){
+                    h = h_aux;
+                }
+                has_hit = true;
             }
-            has_hit = true;
         }
-    }
-
-
+    #endif
 
     return has_hit;
 }

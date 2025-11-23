@@ -22,7 +22,7 @@ export class Renderer {
 
     public spp: number = 3;
     public rr_chance: number = 0.666;
-    public range_numbers: number[] = [0.0,100000.0];
+    public range_numbers: number[] = [0.0, 100000.0];
     public kernel_sigma: number = 0.0;
 
     constructor(gl: WebGL2RenderingContext, scene: Scene) {
@@ -40,7 +40,7 @@ export class Renderer {
     public async initShaders(): Promise<WebGLProgram> {
 
         let fragmentModified = fragmentSource;
-        
+
         fragmentModified = fragmentModified.replace("__NUM_MATERIALS__", this.scene.materialVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_SPHERES__", this.scene.sphereVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_PLANES__", this.scene.planeVec.length.toString())
@@ -83,9 +83,9 @@ export class Renderer {
             throw new Error("Error linking shaders: " + this.gl.getProgramInfoLog(program));
         }
 
-        console.log("Info on vertex:"+this.gl.getShaderInfoLog(this.vertexShader));
-        console.log("Info on fragment:"+this.gl.getShaderInfoLog(this.fragmentShader));
-        console.log("Info on program:"+this.gl.getProgramInfoLog(program));
+        console.log("Info on vertex:" + this.gl.getShaderInfoLog(this.vertexShader));
+        console.log("Info on fragment:" + this.gl.getShaderInfoLog(this.fragmentShader));
+        console.log("Info on program:" + this.gl.getProgramInfoLog(program));
 
 
         return program;
@@ -191,7 +191,7 @@ export class Renderer {
                 this.gl.uniform1i(location, value[0]);
                 break;
         }
-        this.attachments.set(name,location);
+        this.attachments.set(name, location);
         return location
     }
 
@@ -214,6 +214,7 @@ export class Renderer {
 
         // Upload textures (positions RGBA32F) on reserved units
         // Units: 2 = positions, 3 = normals, 4 = uvs, 5 = positionIndices, 6 = triangleMaterials, 7 = meshMaterials
+        // TODO, reorganize indices
         if (meshBuffers.positions.length > 0) {
             console.log("Uploading mesh positions, count:", meshBuffers.positions.length / 4);
             this.initTextureRGBA32F('u_positions_tex', meshBuffers.positions, 2);
@@ -263,6 +264,11 @@ export class Renderer {
             if (loc) gl.uniform1i(loc, meshBuffers.materialsCount);
         }
 
+        if (meshBuffers.bvh.length > 0) {
+            console.log("Uploading BVH, count:", meshBuffers.bvh.length);
+            this.initTextureRGBA32F('u_bvh_tex', meshBuffers.bvh, 10);
+        }
+
     }
 
     private initTextureBuffer(name: string, data: Float32Array, index: number) {
@@ -305,7 +311,19 @@ export class Renderer {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
         const texels = Math.max(1, data.length / 4);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, texels, 1, 0, gl.RGBA, gl.FLOAT, data);
+        const width = 2048;
+        const height = Math.ceil(texels / width);
+
+        // Pad data to fill the texture if necessary
+        const paddedLength = width * height * 4;
+        const paddedData = paddedLength > data.length
+            ? new Float32Array(paddedLength)
+            : data;
+        if (paddedLength > data.length) {
+            paddedData.set(data);
+        }
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, paddedData);
         const loc = gl.getUniformLocation(this.program, name);
         if (loc) gl.uniform1i(loc, unit);
     }
@@ -321,7 +339,19 @@ export class Renderer {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
         const texels = Math.max(1, data.length / 2);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG32F, texels, 1, 0, gl.RG, gl.FLOAT, data);
+        const width = 2048;
+        const height = Math.ceil(texels / width);
+
+        // Pad data to fill the texture if necessary
+        const paddedLength = width * height * 2;
+        const paddedData = paddedLength > data.length
+            ? new Float32Array(paddedLength)
+            : data;
+        if (paddedLength > data.length) {
+            paddedData.set(data);
+        }
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG32F, width, height, 0, gl.RG, gl.FLOAT, paddedData);
         const loc = gl.getUniformLocation(this.program, name);
         if (loc) gl.uniform1i(loc, unit);
     }
@@ -337,7 +367,19 @@ export class Renderer {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
         const texels = Math.max(1, data.length);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32UI, texels, 1, 0, gl.RED_INTEGER, gl.UNSIGNED_INT, data);
+        const width = 2048;
+        const height = Math.ceil(texels / width);
+
+        // Pad data to fill the texture if necessary
+        const paddedLength = width * height;
+        const paddedData = paddedLength > data.length
+            ? new Uint32Array(paddedLength)
+            : data;
+        if (paddedLength > data.length) {
+            paddedData.set(data);
+        }
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32UI, width, height, 0, gl.RED_INTEGER, gl.UNSIGNED_INT, paddedData);
         const loc = gl.getUniformLocation(this.program, name);
         if (loc) gl.uniform1i(loc, unit);
     }
@@ -408,8 +450,8 @@ export class Renderer {
         gl.uniform1f(this.getLocation("rr_chance"), this.rr_chance);
 
         // Ray ranges
-        gl.uniform3f(this.getLocation("ray_range"), 
-        this.range_numbers[0], this.range_numbers[1], (this.range_numbers[0]+this.range_numbers[1])/2.0);
+        gl.uniform3f(this.getLocation("ray_range"),
+            this.range_numbers[0], this.range_numbers[1], (this.range_numbers[0] + this.range_numbers[1]) / 2.0);
 
         // Kernel sigma
         gl.uniform1f(this.getLocation("kernel_sigma"), this.kernel_sigma);

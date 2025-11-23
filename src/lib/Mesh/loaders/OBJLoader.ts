@@ -1,6 +1,6 @@
 import { Vector3 } from "math.gl";
-import { Triangle } from "../Primitives/Triangle";
-import { Mesh } from "../Primitives/Mesh";
+import { Triangle } from "../../Primitives/Triangle";
+import { Mesh } from "../../Primitives/Mesh";
 
 /**
  * OBJ File Loader
@@ -22,7 +22,7 @@ export class OBJLoader {
 
         for (const line of lines) {
             const trimmed = line.trim();
-            
+
             // Skip empty lines and comments
             if (!trimmed || trimmed.startsWith('#')) continue;
 
@@ -59,7 +59,7 @@ export class OBJLoader {
                     for (let i = 1; i < parts.length; i++) {
                         const vertexData = parts[i].split('/');
                         const vertexIndex = parseInt(vertexData[0]) - 1; // OBJ indices are 1-based
-                        
+
                         if (!isNaN(vertexIndex) && vertexIndex >= 0 && vertexIndex < vertices.length) {
                             faceVertices.push(vertexIndex);
                         }
