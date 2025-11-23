@@ -7,6 +7,10 @@ export interface ExtractedMaterial {
     id: number;
     color: [number, number, number];
     emission: [number, number, number];
+    specular: [number, number, number];
+    ior: number;
+    diffuseMap?: string;
+    specularMap?: string;
 }
 
 export interface EfficientMeshData {
@@ -37,7 +41,16 @@ export class ThreeJSOBJLoader {
         const loader = new OBJLoader();
         const mtlLoader = new MTLLoader();
 
-        // Load materials first if possible (simplified here)
+        // Load materials from MTL file
+        let materialsLib: any = {};
+        try {
+            const mtlUrl = url.replace('.obj', '.mtl');
+            materialsLib = await mtlLoader.loadAsync(mtlUrl);
+            console.log("Materials loaded:", materialsLib);
+            loader.setMaterials(materialsLib);
+        } catch (e) {
+            console.warn('MTL not found or failed to load:', e);
+        }
 
         const object = await loader.loadAsync(url);
 
@@ -55,23 +68,41 @@ export class ThreeJSOBJLoader {
             materials: []
         };
 
+        // Extract materials from materialsInfo
+        const materialNameToIndex = new Map<string, number>();
+        for (const matName in materialsLib.materialsInfo) {
+            const info = materialsLib.materialsInfo[matName];
+            const idx = extracted.materials.length;
+            materialNameToIndex.set(matName, idx);
+
+            const color: [number, number, number] = info.kd ? [info.kd[0], info.kd[1], info.kd[2]] : [0.8, 0.8, 0.8];
+            const emission: [number, number, number] = info.ke ? [info.ke[0], info.ke[1], info.ke[2]] : [0, 0, 0];
+            const specular: [number, number, number] = info.ks ? [info.ks[0], info.ks[1], info.ks[2]] : [0, 0, 0];
+            const ior = info.ni ? parseFloat(info.ni) : 1.5;
+            const diffuseMap = info.map_kd;
+            const specularMap = info.map_ks;
+
+            extracted.materials.push({ id: idx, color, emission, specular, ior, diffuseMap, specularMap });
+        }
+
         // Map to deduplicate vertices
         const vertexMap = new Map<string, number>();
 
-        // Default material
-        extracted.materials.push({
-            id: 0,
-            color: [0.8, 0.8, 0.8],
-            emission: [0, 0, 0]
-        });
-
-        object.traverse((child) => {
+        object.traverse((child: any) => {
             if (child instanceof THREE.Mesh) {
                 const geometry = child.geometry;
                 const material = child.material;
 
-                // Handle materials... (simplified)
-                let matIndex = 0;
+                // Handle materials
+                let matIndex = 0; // default
+
+                if (material instanceof THREE.Material) {
+                    matIndex = materialNameToIndex.get(material.name) || 0;
+                } else if (Array.isArray(material)) {
+                    // Handle material arrays (take first material)
+                    const mat = material[0];
+                    matIndex = mat ? (materialNameToIndex.get(mat.name) || 0) : 0;
+                }
 
                 if (geometry) {
                     const posAttr = geometry.attributes.position;
@@ -124,6 +155,19 @@ export class ThreeJSOBJLoader {
                 }
             }
         });
+
+        console.log("Extracted materials:", extracted.materials);
+
+        // Add default material if no materials were extracted
+        if (extracted.materials.length === 0) {
+            extracted.materials.push({
+                id: 0,
+                color: [0.8, 0.8, 0.8],
+                emission: [0, 0, 0],
+                specular: [0, 0, 0],
+                ior: 1.5
+            });
+        }
 
         // Convert to typed arrays
         const positions = new Float32Array(extracted.positions);
@@ -211,20 +255,20 @@ export class ThreeJSOBJLoader {
                     materialsFloat[mo++] = material.color[2];
                     materialsFloat[mo++] = material.emission[0] > 0 || material.emission[1] > 0 || material.emission[2] > 0 ? 1.0 : 0.0;
 
-                    materialsFloat[mo++] = 0.0; // Specular R
-                    materialsFloat[mo++] = 0.0; // Specular G
-                    materialsFloat[mo++] = 0.0; // Specular B
+                    materialsFloat[mo++] = material.specular[0];
+                    materialsFloat[mo++] = material.specular[1];
+                    materialsFloat[mo++] = material.specular[2];
                     materialsFloat[mo++] = 0.0; // Padding
 
-                    materialsFloat[mo++] = 0.0; // IOR/Subsurface
-                    materialsFloat[mo++] = 0.0;
-                    materialsFloat[mo++] = 0.0;
-                    materialsFloat[mo++] = 0.0;
+                    materialsFloat[mo++] = 0.0; // Subsurface R
+                    materialsFloat[mo++] = 0.0; // Subsurface G
+                    materialsFloat[mo++] = 0.0; // Subsurface B
+                    materialsFloat[mo++] = material.ior;
 
                     materialsFloat[mo++] = 1.0; // Diffuse chance
-                    materialsFloat[mo++] = 0.0;
-                    materialsFloat[mo++] = 0.0;
-                    materialsFloat[mo++] = 0.0;
+                    materialsFloat[mo++] = 0.0; // Metalic chance
+                    materialsFloat[mo++] = 0.0; // Dielectric chance
+                    materialsFloat[mo++] = 1.0; // Sum
                 }
 
                 return {
