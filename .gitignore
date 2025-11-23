@@ -50,4 +50,4 @@ Thumbs.db
 *.hdr
 *.exr
 
-static/models/*
+static/models*
