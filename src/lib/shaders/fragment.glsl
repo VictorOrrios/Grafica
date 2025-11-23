@@ -424,42 +424,49 @@ bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
     vec3 v1 = fetchTexelFloat(u_positions_tex, idx1).xyz;
     vec3 v2 = fetchTexelFloat(u_positions_tex, idx2).xyz;
 
-    // Moller-Trumbore intersection
-    vec3 edge1 = v1 - v0;
-    vec3 edge2 = v2 - v0;
-    vec3 pvec = cross(r.dir, edge2);
-    float det = dot(edge1, pvec);
-    if(abs(det) < 1e-6) return false; // Parallel or nearly parallel
+        // Fetch vertex normals from texture
+        vec3 n0 = fetchTexelFloat(u_normals_tex, idx0).xyz;
+        vec3 n1 = fetchTexelFloat(u_normals_tex, idx1).xyz;
+        vec3 n2 = fetchTexelFloat(u_normals_tex, idx2).xyz;
 
-    float invDet = 1.0 / det;
-    vec3 tvec = r.orig - v0;
-    float u = dot(tvec, pvec) * invDet;
-    if(u < 0.0 || u > 1.0) return false;
+        // Moller-Trumbore intersection
+        vec3 edge1 = v1 - v0;
+        vec3 edge2 = v2 - v0;
+        vec3 pvec = cross(r.dir, edge2);
+        float det = dot(edge1, pvec);
+        if(abs(det) < 1e-6) return false; // Parallel or nearly parallel
 
-    vec3 qvec = cross(tvec, edge1);
-    float v = dot(r.dir, qvec) * invDet;
-    if(v < 0.0 || u + v > 1.0) return false;
+        float invDet = 1.0 / det;
+        vec3 tvec = r.orig - v0;
+        float u = dot(tvec, pvec) * invDet;
+        if(u < 0.0 || u > 1.0) return false;
 
-    float t = dot(edge2, qvec) * invDet;
-    if(t < ray_min_distance || t > ray_max_distance) return false;
+        vec3 qvec = cross(tvec, edge1);
+        float v = dot(r.dir, qvec) * invDet;
+        if(v < 0.0 || u + v > 1.0) return false;
 
-    h.t = t;
-    h.p = r.orig + r.dir * t;
+        float t = dot(edge2, qvec) * invDet;
+        if(t < ray_min_distance || t > ray_max_distance) return false;
 
-    vec3 normal = normalize(cross(edge1, edge2));
-    // Triangle material index stored as R32UI texel per triangle
-    uint mat_u = fetchTexelUint(u_triangleMaterials_tex, triIndex).r;
-    h.mat = int(mat_u);
-    h.isMesh = true;  // This is a mesh triangle
-    set_front_face(normal, r.dir, h);
+        h.t = t;
+        h.p = r.orig + r.dir * t;
 
-    // Ensure normal points outward from the mesh center (0,0,0)
-    // This fixes issues with computed normals due to geometry precision problems
-    if (dot(h.normal, h.p) < 0.0) {
-        h.normal = -h.normal;
-        h.front_face = !h.front_face;
-    }
-    return true;
+        // Interpolate normal using barycentric coordinates
+        float w = 1.0 - u - v;
+        vec3 interpolatedNormal = normalize(n0 * w + n1 * u + n2 * v);
+        h.normal = interpolatedNormal;
+        // Triangle material index stored as R32UI texel per triangle
+        uint mat_u = fetchTexelUint(u_triangleMaterials_tex, triIndex).r;
+        h.mat = int(mat_u);
+        h.isMesh = true;  // This is a mesh triangle
+        set_front_face(interpolatedNormal, r.dir, h);
+
+        // Ensure normal points outward from the mesh center (0,0,0)
+        if (dot(h.normal, h.p) < 0.0) {
+            h.normal = -h.normal;
+            h.front_face = !h.front_face;
+        }
+        return true;
 }
 
 // Official three-mesh-bvh AABB intersection test

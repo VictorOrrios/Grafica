@@ -43,10 +43,14 @@ export class ThreeJSOBJLoader {
 
         const extracted: {
             positions: number[],
+            normals: number[],
+            uvs: number[],
             triangles: { v0: number, v1: number, v2: number, materialIndex: number }[],
             materials: ExtractedMaterial[]
         } = {
             positions: [],
+            normals: [],
+            uvs: [],
             triangles: [],
             materials: []
         };
@@ -71,18 +75,33 @@ export class ThreeJSOBJLoader {
 
                 if (geometry) {
                     const posAttr = geometry.attributes.position;
+                    const normalAttr = geometry.attributes.normal;
+                    const uvAttr = geometry.attributes.uv;
                     const indexAttr = geometry.index;
 
                     const getVertexIndex = (localIdx: number) => {
                         const x = posAttr.getX(localIdx);
                         const y = posAttr.getY(localIdx);
                         const z = posAttr.getZ(localIdx);
-                        const key = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
+                        let nx = 0, ny = 0, nz = 0;
+                        if (normalAttr) {
+                            nx = normalAttr.getX(localIdx);
+                            ny = normalAttr.getY(localIdx);
+                            nz = normalAttr.getZ(localIdx);
+                        }
+                        let u = 0, v = 0;
+                        if (uvAttr) {
+                            u = uvAttr.getX(localIdx);
+                            v = uvAttr.getY(localIdx);
+                        }
+                        const key = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}|${nx.toFixed(6)},${ny.toFixed(6)},${nz.toFixed(6)}|${u.toFixed(6)},${v.toFixed(6)}`;
 
                         if (vertexMap.has(key)) return vertexMap.get(key)!;
 
                         const newIdx = extracted.positions.length / 3;
                         extracted.positions.push(x, y, z);
+                        extracted.normals.push(nx, ny, nz);
+                        extracted.uvs.push(u, v);
                         vertexMap.set(key, newIdx);
                         return newIdx;
                     };
@@ -108,8 +127,15 @@ export class ThreeJSOBJLoader {
 
         // Convert to typed arrays
         const positions = new Float32Array(extracted.positions);
+        const normals = new Float32Array(extracted.normals);
+        const uvs = new Float32Array(extracted.uvs);
+        const numVertices = positions.length / 3;
         const initialIndices = new Uint32Array(extracted.triangles.length * 3);
         const initialMaterials = new Uint32Array(extracted.triangles.length);
+
+        console.log("Extracted positions", positions);
+        console.log("Extracted normals", normals);
+        console.log("Extracted uvs", uvs);
 
         for (let i = 0; i < extracted.triangles.length; i++) {
             initialIndices[i * 3] = extracted.triangles[i].v0;
@@ -118,17 +144,7 @@ export class ThreeJSOBJLoader {
             initialMaterials[i] = extracted.triangles[i].materialIndex;
         }
 
-        // Generate default normals (0, 1, 0)
-        const numVertices = positions.length / 3;
-        const normals = new Float32Array(numVertices * 3);
-        for (let i = 0; i < numVertices; i++) {
-            normals[i * 3 + 0] = 0.0;
-            normals[i * 3 + 1] = 1.0;
-            normals[i * 3 + 2] = 0.0;
-        }
-
-        // Generate default UVs (0, 0)
-        const uvs = new Float32Array(numVertices * 2);
+        // Normals and UVs are extracted directly from OBJ geometry above; no additional calculation needed.
 
         console.log(`Building Custom BVH for ${extracted.triangles.length} triangles...`);
 
