@@ -810,11 +810,11 @@ export class Scene {
             // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/tetrahedron/pyramid.obj");
             // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/hexahedron/scene.obj");
             // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/dodecahedron/dodecahedron.obj");
-            // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj");
+            const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj");
             // const tralaleroMesh = await ThreeJSOBJLoader.load("/models/obj/skull/skull.obj");
             // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/vaca/optim/LP.obj");
             // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/goldfish/goldfish.obj");
-            const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/glowfish/Glowfish.obj");
+            // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/glowfish/Glowfish.obj");
             this.addEfficientMeshData(tralaleroMesh);
             console.log("✓ Tralalero mesh loaded successfully");
         } catch (error) {
