@@ -19,8 +19,12 @@ export class Quad {
     }
 
     public serialize(material:number): Float32Array {
-        return Float32Array.of(...this.t1.serialize(), material, 
-        ...this.t2.serialize(), material);
+        const t1 = this.t1.serialize(material);
+        const t2 = this.t2.serialize(material);
+        const ret = new Float32Array(t1.length + t2.length);
+        ret.set(t1, 0);
+        ret.set(t2, t1.length);
+        return ret;
     }
 
     public toString(): string {

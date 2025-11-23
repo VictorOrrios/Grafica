@@ -1,4 +1,4 @@
-import { Mesh } from "../Primitives/Mesh";
+import { Mesh } from "../../Primitives/Mesh";
 import { OBJLoader } from "./OBJLoader";
 import { FBXLoader } from "./FBXLoader";
 import { SyncFileLoader } from "./SyncFileLoader";
@@ -19,10 +19,10 @@ export class MeshLoader {
         switch (format) {
             case 'obj':
                 return OBJLoader.parse(content, name || 'mesh');
-            
+
             case 'fbx':
                 return FBXLoader.parse(content, name || 'mesh');
-            
+
             default:
                 throw new Error(`Unsupported mesh format: ${format}`);
         }
@@ -37,11 +37,11 @@ export class MeshLoader {
     public static async load(url: string, name?: string): Promise<Mesh> {
         const content = await SyncFileLoader.loadText(url);
         const format = this.detectFormat(url);
-        
+
         if (!format) {
             throw new Error(`Cannot detect format from URL: ${url}`);
         }
-        
+
         return this.parse(content, format, name || this.extractName(url));
     }
 
@@ -59,7 +59,7 @@ export class MeshLoader {
      * @param files - Array of {content, format, name}
      * @returns Array of Mesh objects
      */
-    public static parseMultiple(files: Array<{content: string, format: 'obj' | 'fbx', name?: string}>): Mesh[] {
+    public static parseMultiple(files: Array<{ content: string, format: 'obj' | 'fbx', name?: string }>): Mesh[] {
         return files.map(file => this.parse(file.content, file.format, file.name));
     }
 

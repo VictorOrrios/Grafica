@@ -3,6 +3,7 @@ import { Triangle } from "./Triangle";
 
 /**
  * Mesh - A collection of triangles representing a 3D model
+ * TODO, remove
  */
 export class Mesh {
     public triangles: Triangle[] = [];
@@ -37,7 +38,7 @@ export class Mesh {
      * Transform all triangles (translate)
      */
     public translate(offset: Vector3): void {
-        this.triangles = this.triangles.map(tri => 
+        this.triangles = this.triangles.map(tri =>
             new Triangle(
                 tri.v0.clone().add(offset),
                 tri.v1.clone().add(offset),
@@ -50,7 +51,7 @@ export class Mesh {
      * Transform all triangles (scale)
      */
     public scale(scale: Vector3): void {
-        this.triangles = this.triangles.map(tri => 
+        this.triangles = this.triangles.map(tri =>
             new Triangle(
                 tri.v0.clone().multiply(scale),
                 tri.v1.clone().multiply(scale),

@@ -1,6 +1,6 @@
 import { Vector3 } from "math.gl";
-import { Triangle } from "../Primitives/Triangle";
-import { Mesh } from "../Primitives/Mesh";
+import { Triangle } from "../../Primitives/Triangle";
+import { Mesh } from "../../Primitives/Mesh";
 
 /**
  * FBX File Loader
@@ -26,7 +26,7 @@ export class FBXLoader {
 
         // FBX ASCII format has a hierarchical structure
         // We'll look for Vertices and PolygonVertexIndex sections
-        
+
         // Extract vertices
         const verticesMatch = content.match(/Vertices:\s*\*\d+\s*\{[^}]*a:\s*([^}]+)\}/);
         if (verticesMatch) {
@@ -42,21 +42,21 @@ export class FBXLoader {
         const indicesMatch = content.match(/PolygonVertexIndex:\s*\*\d+\s*\{[^}]*a:\s*([^}]+)\}/);
         if (indicesMatch) {
             const indexData = indicesMatch[1].split(',').map(v => parseInt(v.trim()));
-            
+
             // In FBX, negative indices mark the end of a polygon
             let currentPoly: number[] = [];
             for (const idx of indexData) {
                 if (idx < 0) {
                     // End of polygon marker (index is -(realIndex + 1))
                     currentPoly.push(-(idx + 1));
-                    
+
                     // Triangulate polygon
                     if (currentPoly.length >= 3) {
                         for (let i = 1; i < currentPoly.length - 1; i++) {
                             const v0 = vertices[currentPoly[0]];
                             const v1 = vertices[currentPoly[i]];
                             const v2 = vertices[currentPoly[i + 1]];
-                            
+
                             if (v0 && v1 && v2) {
                                 mesh.addTriangle(new Triangle(v0, v1, v2));
                             }

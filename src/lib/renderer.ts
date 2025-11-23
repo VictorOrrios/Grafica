@@ -22,7 +22,7 @@ export class Renderer {
 
     public spp: number = 3;
     public rr_chance: number = 0.666;
-    public range_numbers: number[] = [0.0,100000.0];
+    public range_numbers: number[] = [0.0, 100000.0];
     public kernel_sigma: number = 0.0;
     public aperture_radius: number = 0.0;
     public focal_distance: number = 1.0;
@@ -42,11 +42,36 @@ export class Renderer {
     public async initShaders(): Promise<WebGLProgram> {
 
         let fragmentModified = fragmentSource;
+
         fragmentModified = fragmentModified.replace("__NUM_MATERIALS__", this.scene.materialVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_SPHERES__", this.scene.sphereVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_PLANES__", this.scene.planeVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_TRIANGLES__", this.scene.triangleVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_POINT_LIGHTS__", this.scene.pointLightVec.length.toString())
+        fragmentModified = fragmentModified.replace("__NUM_MESHES__", this.scene.meshDataVec.length.toString())
+
+        // Add mesh data constants
+        let totalPositions = 0;
+        let totalNormals = 0;
+        let totalUVs = 0;
+        let totalTriangles = 0;
+        let totalMaterials = 0;
+
+        this.scene.meshDataVec.forEach(meshData => {
+            // TODO, check if floor or ceil
+            totalPositions += meshData.positions.length / 3; // Convert from float count to vertex count
+            totalNormals += meshData.normals.length / 3;
+            totalUVs += meshData.uvs.length / 2;
+            totalTriangles += meshData.positionIndices.length / 3; // Convert from index count to triangle count
+            totalMaterials += meshData.materials.length;
+        });
+
+        console.log("Total mesh data:");
+        console.log("Positions:", totalPositions);
+        console.log("Normals:", totalNormals);
+        console.log("UVs:", totalUVs);
+        console.log("Triangles:", totalTriangles);
+        console.log("Materials:", totalMaterials);
 
         this.vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexSource);
         this.fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentModified);
@@ -60,9 +85,9 @@ export class Renderer {
             throw new Error("Error linking shaders: " + this.gl.getProgramInfoLog(program));
         }
 
-        console.log("Info on vertex:"+this.gl.getShaderInfoLog(this.vertexShader));
-        console.log("Info on fragment:"+this.gl.getShaderInfoLog(this.fragmentShader));
-        console.log("Info on program:"+this.gl.getProgramInfoLog(program));
+        console.log("Info on vertex:" + this.gl.getShaderInfoLog(this.vertexShader));
+        console.log("Info on fragment:" + this.gl.getShaderInfoLog(this.fragmentShader));
+        console.log("Info on program:" + this.gl.getProgramInfoLog(program));
 
 
         return program;
@@ -165,24 +190,83 @@ export class Renderer {
                 this.gl.uniform1i(location, value[0]);
                 break;
         }
-        this.attachments.set(name,location);
+        this.attachments.set(name, location);
         return location
     }
 
     private initStorageBuffers() {
         const gl = this.gl;
 
+        // Static UBO (materials, spheres, planes, triangles, lights)
         const data = this.scene.serializeStaticBlock();
-
         console.log(`Initializing static buffer storage:`, data);
-
-        const sphereUBO = gl.createBuffer();
-        gl.bindBuffer(gl.UNIFORM_BUFFER, sphereUBO);
+        const staticUBO = gl.createBuffer();
+        gl.bindBuffer(gl.UNIFORM_BUFFER, staticUBO);
         gl.bufferData(gl.UNIFORM_BUFFER, data, gl.DYNAMIC_DRAW);
         const blockIndex = gl.getUniformBlockIndex(this.program, 'StaticBlock');
         const bindingPoint = 1;
         gl.uniformBlockBinding(this.program, blockIndex, bindingPoint);
-        gl.bindBufferBase(gl.UNIFORM_BUFFER, bindingPoint, sphereUBO);
+        gl.bindBufferBase(gl.UNIFORM_BUFFER, bindingPoint, staticUBO);
+
+        // Mesh textures: get concatenated buffers from scene
+        const meshBuffers = this.scene.getMeshTextureBuffers();
+
+        // Upload textures (positions RGBA32F) on reserved units
+        // Units: 2 = positions, 3 = normals, 4 = uvs, 5 = positionIndices, 6 = triangleMaterials, 7 = meshMaterials
+        // TODO, reorganize indices
+        if (meshBuffers.positions.length > 0) {
+            console.log("Uploading mesh positions, count:", meshBuffers.positions.length / 4);
+            this.initTextureRGBA32F('u_positions_tex', meshBuffers.positions, 2);
+            const loc = gl.getUniformLocation(this.program, 'u_positions_count');
+            if (loc) gl.uniform1i(loc, meshBuffers.positions.length / 4);
+        }
+
+        if (meshBuffers.normals.length > 0) {
+            console.log("Uploading mesh normals, count:", meshBuffers.normals.length / 4);
+            this.initTextureRGBA32F('u_normals_tex', meshBuffers.normals, 3);
+        }
+
+        if (meshBuffers.uvs.length > 0) {
+            console.log("Uploading mesh uvs, count:", meshBuffers.uvs.length / 2);
+            this.initTextureRG32F('u_uvs_tex', meshBuffers.uvs, 4);
+            const loc = gl.getUniformLocation(this.program, 'u_uvs_count');
+            if (loc) gl.uniform1i(loc, meshBuffers.uvs.length / 2);
+        }
+
+        if (meshBuffers.positionIndices.length > 0) {
+            console.log("Uploading mesh position indices, count:", meshBuffers.positionIndices.length);
+            this.initTextureR32UI('u_positionIndices_tex', meshBuffers.positionIndices, 5);
+            const loc = gl.getUniformLocation(this.program, 'u_triangle_count');
+            if (loc) gl.uniform1i(loc, meshBuffers.positionIndices.length / 3);
+        }
+
+        if (meshBuffers.normalIndices && meshBuffers.normalIndices.length > 0) {
+            console.log("Uploading mesh normal indices, count:", meshBuffers.normalIndices.length);
+            this.initTextureR32UI('u_normalIndices_tex', meshBuffers.normalIndices, 8);
+        }
+
+        if (meshBuffers.uvIndices && meshBuffers.uvIndices.length > 0) {
+            console.log("Uploading mesh uv indices, count:", meshBuffers.uvIndices.length);
+            this.initTextureR32UI('u_uvIndices_tex', meshBuffers.uvIndices, 9);
+        }
+
+        if (meshBuffers.triangleMaterials.length > 0) {
+            console.log("Uploading mesh triangle materials, count:", meshBuffers.triangleMaterials.length);
+            console.log("Mesh triangle indices sample:", meshBuffers.triangleMaterials.slice(0, 64));
+            this.initTextureR32UI('u_triangleMaterials_tex', meshBuffers.triangleMaterials, 6);
+        }
+
+        if (meshBuffers.materialsFloat.length > 0) {
+            console.log("Uploading mesh materials, count:", meshBuffers.materialsCount);
+            this.initTextureRGBA32F('u_meshMaterials_tex', meshBuffers.materialsFloat, 7);
+            const loc = gl.getUniformLocation(this.program, 'u_materials_count');
+            if (loc) gl.uniform1i(loc, meshBuffers.materialsCount);
+        }
+
+        if (meshBuffers.bvh.length > 0) {
+            console.log("Uploading BVH, count:", meshBuffers.bvh.length);
+            this.initTextureRGBA32F('u_bvh_tex', meshBuffers.bvh, 10);
+        }
 
     }
 
@@ -213,6 +297,90 @@ export class Renderer {
         let location = gl.getUniformLocation(this.program, name);
         if (!location) console.warn(name, "location returned null");
         gl.uniform1i(location, index);
+    }
+
+    private initTextureRGBA32F(name: string, data: Float32Array, unit: number) {
+        const gl = this.gl;
+        const tex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        const texels = Math.max(1, data.length / 4);
+        const width = 2048;
+        const height = Math.ceil(texels / width);
+
+        // Pad data to fill the texture if necessary
+        const paddedLength = width * height * 4;
+        const paddedData = paddedLength > data.length
+            ? new Float32Array(paddedLength)
+            : data;
+        if (paddedLength > data.length) {
+            paddedData.set(data);
+        }
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, paddedData);
+        const loc = gl.getUniformLocation(this.program, name);
+        if (loc) gl.uniform1i(loc, unit);
+    }
+
+    private initTextureRG32F(name: string, data: Float32Array, unit: number) {
+        const gl = this.gl;
+        const tex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        const texels = Math.max(1, data.length / 2);
+        const width = 2048;
+        const height = Math.ceil(texels / width);
+
+        // Pad data to fill the texture if necessary
+        const paddedLength = width * height * 2;
+        const paddedData = paddedLength > data.length
+            ? new Float32Array(paddedLength)
+            : data;
+        if (paddedLength > data.length) {
+            paddedData.set(data);
+        }
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG32F, width, height, 0, gl.RG, gl.FLOAT, paddedData);
+        const loc = gl.getUniformLocation(this.program, name);
+        if (loc) gl.uniform1i(loc, unit);
+    }
+
+    private initTextureR32UI(name: string, data: Uint32Array, unit: number) {
+        const gl = this.gl;
+        const tex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        const texels = Math.max(1, data.length);
+        const width = 2048;
+        const height = Math.ceil(texels / width);
+
+        // Pad data to fill the texture if necessary
+        const paddedLength = width * height;
+        const paddedData = paddedLength > data.length
+            ? new Uint32Array(paddedLength)
+            : data;
+        if (paddedLength > data.length) {
+            paddedData.set(data);
+        }
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32UI, width, height, 0, gl.RED_INTEGER, gl.UNSIGNED_INT, paddedData);
+        const loc = gl.getUniformLocation(this.program, name);
+        if (loc) gl.uniform1i(loc, unit);
     }
 
     private initFrameAcummulation() {
@@ -281,8 +449,8 @@ export class Renderer {
         gl.uniform1f(this.getLocation("rr_chance"), this.rr_chance);
 
         // Ray ranges
-        gl.uniform3f(this.getLocation("ray_range"), 
-        this.range_numbers[0], this.range_numbers[1], (this.range_numbers[0]+this.range_numbers[1])/2.0);
+        gl.uniform3f(this.getLocation("ray_range"),
+            this.range_numbers[0], this.range_numbers[1], (this.range_numbers[0] + this.range_numbers[1]) / 2.0);
 
         // Kernel sigma
         gl.uniform1f(this.getLocation("kernel_sigma"), this.kernel_sigma);
