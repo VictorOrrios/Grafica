@@ -21,7 +21,6 @@ precision highp usampler2D;
 #define minimun_atenuation 0.0
 #define PI 3.14159265359
 #define E_NUMBER 2.71828182845
-#define BVH_DEBUG_DEPTH 100
 
 //===========================
 // Enum defines
@@ -138,18 +137,14 @@ layout(std140) uniform StaticBlock {
 };
 
 
-uniform sampler2D u_positions_tex;          // RGBA32F: xyz
-uniform sampler2D u_normals_tex;            // RGBA32F: xyz
-//uniform sampler2D u_uvs_tex;              // RG32F: uv
-uniform usampler2D u_positionIndices_tex;   // R32UI: one uint per texel
-uniform usampler2D u_triangleMaterials_tex; // R32UI: material index per triangle
-uniform sampler2D u_bvh_tex;                // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
+uniform sampler2D u_positions_tex;
+uniform sampler2D u_normals_tex;
+uniform usampler2D u_positionIndices_tex;
+uniform usampler2D u_triangleMaterials_tex;
+uniform sampler2D u_bvh_tex;    // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
 
-// TODO: usar (o borrar)
-uniform int u_positions_count;
-uniform int u_uvs_count;
-uniform int u_triangle_count;
-uniform int u_materials_count;
+uniform int u_vertex_count;
+
 
 //===========================
 // RNG Functions
@@ -474,6 +469,7 @@ bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
     set_front_face(interpolatedNormal, r.dir, h);
 
     // Ensure normal points outward from the mesh center (0,0,0)
+    // TODO: revise this
     if (dot(h.normal, h.p) < 0.0) {
         h.normal = -h.normal;
         h.front_face = !h.front_face;
@@ -568,15 +564,6 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
                 }
             }
         } else {
-            if(stackPtr >= BVH_DEBUG_DEPTH){
-                h.mat = mesh.materialIndex;
-                h.t = boundsHitDistance;
-                h.p = r.orig + r.dir*boundsHitDistance;
-                h.front_face = true;
-                h.isMesh = false;
-                h.normal = vec3(0.0);
-                return true;
-            }
             // Internal node
             uint leftIndex = uint(data1);
             uint rightIndex = uint(data2);

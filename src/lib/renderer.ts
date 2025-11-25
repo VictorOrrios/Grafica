@@ -211,42 +211,29 @@ export class Renderer {
     }
 
     private initStorageTextures(){
-        const gl = this.gl;
         const meshBuffers = this.scene.getMeshTextureBuffers();
         let nextTextureBinding = 2;
 
+        this.initUniform("u_positions_count",0,[meshBuffers.positions.length / 3]);
+
         if (meshBuffers.positions.length > 0) {
-            this.initTextureRGBA32F('u_positions_tex', meshBuffers.positions, nextTextureBinding++);
-            this.initUniform("u_positions_count",0,[meshBuffers.positions.length / 4]);
-        }
+            this.initTextureBuffer('u_positions_tex', meshBuffers.positions, nextTextureBinding++, 3);
 
-        if (meshBuffers.normals.length > 0) {
-            console.log("Uploading mesh normals, count:", meshBuffers.normals.length / 4);
-            this.initTextureRGBA32F('u_normals_tex', meshBuffers.normals, nextTextureBinding++);
-        }
+            this.initTextureBuffer('u_normals_tex', meshBuffers.normals, nextTextureBinding++, 3);
 
+            this.initTextureBuffer('u_positionIndices_tex', meshBuffers.positionIndices, nextTextureBinding++, 2);
 
-        if (meshBuffers.positionIndices.length > 0) {
-            console.log("Uploading mesh position indices, count:", meshBuffers.positionIndices.length);
-            this.initTextureR32UI('u_positionIndices_tex', meshBuffers.positionIndices, nextTextureBinding++);
-            const loc = gl.getUniformLocation(this.program, 'u_triangle_count');
-            if (loc) gl.uniform1i(loc, meshBuffers.positionIndices.length / 3);
-        }
+            this.initTextureBuffer('u_triangleMaterials_tex', meshBuffers.triangleMaterials, nextTextureBinding++, 2);
 
-        if (meshBuffers.triangleMaterials.length > 0) {
-            console.log("Uploading mesh triangle materials, count:", meshBuffers.triangleMaterials.length);
-            console.log("Mesh triangle indices sample:", meshBuffers.triangleMaterials.slice(0, 64));
-            this.initTextureR32UI('u_triangleMaterials_tex', meshBuffers.triangleMaterials, nextTextureBinding++);
-        }
-
-        if (meshBuffers.bvh.length > 0) {
-            console.log("Uploading BVH, count:", meshBuffers.bvh.length);
-            this.initTextureRGBA32F('u_bvh_tex', meshBuffers.bvh, nextTextureBinding++);
+            this.initTextureBuffer('u_bvh_tex', meshBuffers.bvh, nextTextureBinding++, 3);
         }
     }
 
-    private initTextureBuffer(name: string, data: Float32Array, index: number) {
-        if (data.length === 0) return;
+    private initTextureBuffer(name: string,data: Float32Array|Uint32Array, index: number, texture_type:number = 0) {
+        if (data.length === 0){
+            console.warn("Tried creating a texture without data!")
+            return;
+        };
         const gl = this.gl;
         const storageVec = gl.createTexture();
         console.log(`Initializing storage buffer for ${name}:`, data);
@@ -258,105 +245,39 @@ export class Renderer {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-        gl.texImage2D(
-            gl.TEXTURE_2D,
-            0,
-            gl.R32F,
-            data.length, 1,     // width = n, height = 1
-            0,
-            gl.RED,
-            gl.FLOAT,
-            data
-        );
+        //const maxSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+        const width = 2048;
+        let texels, height, texelLenght, internalformat, format, type:number;
+
+        switch(texture_type){
+            default:
+            // R32F
+            case 0: texelLenght = 1; internalformat = gl.R32F; format = gl.RED; type = gl.FLOAT; break;
+            // RGB32F
+            case 1: texelLenght = 3; internalformat = gl.RGB32F; format = gl.RGB; type = gl.FLOAT; break;
+            // R32UI
+            case 2: texelLenght = 1; internalformat = gl.R32UI; format = gl.RED_INTEGER; type = gl.UNSIGNED_INT; break;
+            // RGBA32F
+            case 3: texelLenght = 4; internalformat = gl.RGBA32F; format = gl.RGBA; type = gl.FLOAT; break;
+        }
+
+        texels = data.length/texelLenght;
+        height = Math.ceil(texels / width);
+        const paddedLength = width * height * texelLenght;
+        let paddedData = data;
+        if(paddedLength > data.length){
+            if(data instanceof Float32Array) paddedData = new Float32Array(paddedLength);
+            if(data instanceof Uint32Array) paddedData = new Uint32Array(paddedLength);
+            paddedData.set(data);
+        }
+
+        gl.texImage2D(gl.TEXTURE_2D,0,internalformat,width,height,0,format,type,paddedData);
 
         let location = gl.getUniformLocation(this.program, name);
         if (!location) console.warn(name, "location returned null");
         gl.uniform1i(location, index);
     }
 
-    private initTextureRGBA32F(name: string, data: Float32Array, unit: number) {
-        const gl = this.gl;
-        const tex = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + unit);
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        const texels = Math.max(1, data.length / 4);
-        const width = 2048;
-        const height = Math.ceil(texels / width);
-
-        // Pad data to fill the texture if necessary
-        const paddedLength = width * height * 4;
-        const paddedData = paddedLength > data.length
-            ? new Float32Array(paddedLength)
-            : data;
-        if (paddedLength > data.length) {
-            paddedData.set(data);
-        }
-
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, paddedData);
-        const loc = gl.getUniformLocation(this.program, name);
-        if (loc) gl.uniform1i(loc, unit);
-    }
-
-    private initTextureRG32F(name: string, data: Float32Array, unit: number) {
-        const gl = this.gl;
-        const tex = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + unit);
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        const texels = Math.max(1, data.length / 2);
-        const width = 2048;
-        const height = Math.ceil(texels / width);
-
-        // Pad data to fill the texture if necessary
-        const paddedLength = width * height * 2;
-        const paddedData = paddedLength > data.length
-            ? new Float32Array(paddedLength)
-            : data;
-        if (paddedLength > data.length) {
-            paddedData.set(data);
-        }
-
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG32F, width, height, 0, gl.RG, gl.FLOAT, paddedData);
-        const loc = gl.getUniformLocation(this.program, name);
-        if (loc) gl.uniform1i(loc, unit);
-    }
-
-    private initTextureR32UI(name: string, data: Uint32Array, unit: number) {
-        const gl = this.gl;
-        const tex = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + unit);
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        const texels = Math.max(1, data.length);
-        const width = 2048;
-        const height = Math.ceil(texels / width);
-
-        // Pad data to fill the texture if necessary
-        const paddedLength = width * height;
-        const paddedData = paddedLength > data.length
-            ? new Uint32Array(paddedLength)
-            : data;
-        if (paddedLength > data.length) {
-            paddedData.set(data);
-        }
-
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32UI, width, height, 0, gl.RED_INTEGER, gl.UNSIGNED_INT, paddedData);
-        const loc = gl.getUniformLocation(this.program, name);
-        if (loc) gl.uniform1i(loc, unit);
-    }
 
     private initFrameAcummulation() {
         const gl = this.gl;

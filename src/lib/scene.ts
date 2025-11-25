@@ -786,7 +786,7 @@ export class Scene {
 
         // Load mesh
         try {
-            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull/skull.obj");
+            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj");
             this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
