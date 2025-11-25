@@ -133,6 +133,7 @@ export class Renderer {
         this.initFrameAcummulation();
         //this.initSkyboxBuffer();
         this.initStorageBuffers();
+        this.initStorageTextures();
     }
 
     private initCamera() {
@@ -207,67 +208,41 @@ export class Renderer {
         const bindingPoint = 1;
         gl.uniformBlockBinding(this.program, blockIndex, bindingPoint);
         gl.bindBufferBase(gl.UNIFORM_BUFFER, bindingPoint, staticUBO);
+    }
 
-        // Mesh textures: get concatenated buffers from scene
+    private initStorageTextures(){
+        const gl = this.gl;
         const meshBuffers = this.scene.getMeshTextureBuffers();
+        let nextTextureBinding = 2;
 
-        // Upload textures (positions RGBA32F) on reserved units
-        // Units: 2 = positions, 3 = normals, 4 = uvs, 5 = positionIndices, 6 = triangleMaterials, 7 = meshMaterials
-        // TODO, reorganize indices
         if (meshBuffers.positions.length > 0) {
-            console.log("Uploading mesh positions, count:", meshBuffers.positions.length / 4);
-            this.initTextureRGBA32F('u_positions_tex', meshBuffers.positions, 2);
-            const loc = gl.getUniformLocation(this.program, 'u_positions_count');
-            if (loc) gl.uniform1i(loc, meshBuffers.positions.length / 4);
+            this.initTextureRGBA32F('u_positions_tex', meshBuffers.positions, nextTextureBinding++);
+            this.initUniform("u_positions_count",0,[meshBuffers.positions.length / 4]);
         }
 
         if (meshBuffers.normals.length > 0) {
             console.log("Uploading mesh normals, count:", meshBuffers.normals.length / 4);
-            this.initTextureRGBA32F('u_normals_tex', meshBuffers.normals, 3);
+            this.initTextureRGBA32F('u_normals_tex', meshBuffers.normals, nextTextureBinding++);
         }
 
-        if (meshBuffers.uvs.length > 0) {
-            console.log("Uploading mesh uvs, count:", meshBuffers.uvs.length / 2);
-            this.initTextureRG32F('u_uvs_tex', meshBuffers.uvs, 4);
-            const loc = gl.getUniformLocation(this.program, 'u_uvs_count');
-            if (loc) gl.uniform1i(loc, meshBuffers.uvs.length / 2);
-        }
 
         if (meshBuffers.positionIndices.length > 0) {
             console.log("Uploading mesh position indices, count:", meshBuffers.positionIndices.length);
-            this.initTextureR32UI('u_positionIndices_tex', meshBuffers.positionIndices, 5);
+            this.initTextureR32UI('u_positionIndices_tex', meshBuffers.positionIndices, nextTextureBinding++);
             const loc = gl.getUniformLocation(this.program, 'u_triangle_count');
             if (loc) gl.uniform1i(loc, meshBuffers.positionIndices.length / 3);
-        }
-
-        if (meshBuffers.normalIndices && meshBuffers.normalIndices.length > 0) {
-            console.log("Uploading mesh normal indices, count:", meshBuffers.normalIndices.length);
-            this.initTextureR32UI('u_normalIndices_tex', meshBuffers.normalIndices, 8);
-        }
-
-        if (meshBuffers.uvIndices && meshBuffers.uvIndices.length > 0) {
-            console.log("Uploading mesh uv indices, count:", meshBuffers.uvIndices.length);
-            this.initTextureR32UI('u_uvIndices_tex', meshBuffers.uvIndices, 9);
         }
 
         if (meshBuffers.triangleMaterials.length > 0) {
             console.log("Uploading mesh triangle materials, count:", meshBuffers.triangleMaterials.length);
             console.log("Mesh triangle indices sample:", meshBuffers.triangleMaterials.slice(0, 64));
-            this.initTextureR32UI('u_triangleMaterials_tex', meshBuffers.triangleMaterials, 6);
-        }
-
-        if (meshBuffers.materialsFloat.length > 0) {
-            console.log("Uploading mesh materials, count:", meshBuffers.materialsCount);
-            this.initTextureRGBA32F('u_meshMaterials_tex', meshBuffers.materialsFloat, 7);
-            const loc = gl.getUniformLocation(this.program, 'u_materials_count');
-            if (loc) gl.uniform1i(loc, meshBuffers.materialsCount);
+            this.initTextureR32UI('u_triangleMaterials_tex', meshBuffers.triangleMaterials, nextTextureBinding++);
         }
 
         if (meshBuffers.bvh.length > 0) {
             console.log("Uploading BVH, count:", meshBuffers.bvh.length);
-            this.initTextureRGBA32F('u_bvh_tex', meshBuffers.bvh, 10);
+            this.initTextureRGBA32F('u_bvh_tex', meshBuffers.bvh, nextTextureBinding++);
         }
-
     }
 
     private initTextureBuffer(name: string, data: Float32Array, index: number) {

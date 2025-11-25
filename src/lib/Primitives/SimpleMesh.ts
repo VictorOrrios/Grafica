@@ -5,7 +5,7 @@ import { Triangle } from "./Triangle";
  * Mesh - A collection of triangles representing a 3D model
  * TODO, remove
  */
-export class Mesh {
+export class SimpleMesh {
     public triangles: Triangle[] = [];
     public name: string;
 

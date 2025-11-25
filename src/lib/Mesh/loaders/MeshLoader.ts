@@ -1,4 +1,4 @@
-import { Mesh } from "../../Primitives/Mesh";
+import { SimpleMesh } from "../../Primitives/SimpleMesh";
 import { OBJLoader } from "./OBJLoader";
 import { FBXLoader } from "./FBXLoader";
 import { SyncFileLoader } from "./SyncFileLoader";
@@ -15,7 +15,7 @@ export class MeshLoader {
      * @param name - Optional name for the mesh
      * @returns Mesh object
      */
-    public static parse(content: string, format: 'obj' | 'fbx', name?: string): Mesh {
+    public static parse(content: string, format: 'obj' | 'fbx', name?: string): SimpleMesh {
         switch (format) {
             case 'obj':
                 return OBJLoader.parse(content, name || 'mesh');
@@ -34,7 +34,7 @@ export class MeshLoader {
      * @param name - Optional name for the mesh
      * @returns Promise resolving to Mesh object
      */
-    public static async load(url: string, name?: string): Promise<Mesh> {
+    public static async load(url: string, name?: string): Promise<SimpleMesh> {
         const content = await SyncFileLoader.loadText(url);
         const format = this.detectFormat(url);
 
@@ -43,24 +43,6 @@ export class MeshLoader {
         }
 
         return this.parse(content, format, name || this.extractName(url));
-    }
-
-    /**
-     * Load multiple meshes from URLs (asynchronous)
-     * @param urls - Array of URLs to mesh files
-     * @returns Promise resolving to array of Mesh objects
-     */
-    public static async loadMultiple(urls: string[]): Promise<Mesh[]> {
-        return Promise.all(urls.map(url => this.load(url)));
-    }
-
-    /**
-     * Parse multiple meshes from content (synchronous)
-     * @param files - Array of {content, format, name}
-     * @returns Array of Mesh objects
-     */
-    public static parseMultiple(files: Array<{ content: string, format: 'obj' | 'fbx', name?: string }>): Mesh[] {
-        return files.map(file => this.parse(file.content, file.format, file.name));
     }
 
     /**

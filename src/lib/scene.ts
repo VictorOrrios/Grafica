@@ -5,7 +5,7 @@ import { Material } from "./Primitives/Material";
 import { Plane } from "./Primitives/Plane";
 import { Triangle } from "./Primitives/Triangle";
 import { Quad } from "./Primitives/Quad";
-import { Mesh } from "./Primitives/Mesh";
+import { SimpleMesh } from "./Primitives/SimpleMesh";
 import { MeshLoader } from "./Mesh/loaders/MeshLoader";
 import { PointLight } from "./Lights/PointLight";
 import {
@@ -14,21 +14,14 @@ import {
 } from './Mesh/loaders/ThreeJSOBJLoader';
 
 export enum SceneType {
-    TUNG = 'tung',
-    TRALALERO = 'tralalero',
-    ARTHAS = 'arthas',
     TESTPLANE = 'testplane',
     CORNELEXTRA = 'cornellextra',
     CORNEL = 'cornell',
     CORNELTRANSIENT = 'cornelltransient',
+    SIMPLEMESH = 'simplem',
+    BVHMESH = 'bvhmesh'
 }
 
-enum MeshType {
-    TUNG = 'tung',
-    TRALALERO = 'tralalero',
-    ARTHAS = 'arthas',
-    GLOCK = 'glock',
-}
 
 export class Scene {
     public camera: Camera = new Camera();
@@ -37,23 +30,17 @@ export class Scene {
     public planeVec: { plane: Plane, materialIndex: number }[] = [];
     public triangleVec: { tri: Triangle, materialIndex: number }[] = [];
     public quadVec: { quad: Quad, materialIndex: number }[] = [];
-    public meshVec: { mesh: Mesh, materialIndex: number }[] = [];
+    public simpleMeshVec: { mesh: SimpleMesh, materialIndex: number }[] = [];
     public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
-
-    // Efficient mesh data for GLSL
     public meshDataVec: EfficientMeshData[] = [];
 
-    constructor(type: SceneType = SceneType.TRALALERO /*SceneType.CORNELTRANSIENT*/) {
+    constructor(type: SceneType = SceneType.BVHMESH) {
         this.sceneType = type;
     }
 
     public async setupScene() {
-        if (this.sceneType === SceneType.TUNG) {
-            await this.tungTungTungSahurScene();
-        } else if (this.sceneType === SceneType.TRALALERO) {
-            await this.tralaleroScene();
-        } else if (this.sceneType === SceneType.TESTPLANE) {
+        if (this.sceneType === SceneType.TESTPLANE) {
             this.testplane();
         } else if (this.sceneType === SceneType.CORNEL) {
             this.cornell();
@@ -61,10 +48,11 @@ export class Scene {
             this.cornellextra();
         } else if (this.sceneType === SceneType.CORNELTRANSIENT) {
             this.cornelltransient();
-        } else if (this.sceneType === SceneType.ARTHAS) {
-            await this.arthasScene();
+        } else if (this.sceneType === SceneType.SIMPLEMESH) {
+            await this.simpleMeshScene();
+        } else if (this.sceneType === SceneType.BVHMESH) {
+            await this.bvhMeshScene();
         }
-        // Add other scenes as needed
     }
 
     private addMaterial(material: Material): number {
@@ -99,16 +87,15 @@ export class Scene {
         this.pointLightVec.push(pl);
     }
 
-    /**
-     * Add a mesh to the scene
-     * All triangles from the mesh will be added with the specified material
-     */
-    public addMesh(mesh: Mesh, materialIndex: number) {
-        this.meshVec.push({ mesh, materialIndex });
-        // Add all mesh triangles to the triangle vector
+    public addSimpleMesh(mesh: SimpleMesh, materialIndex: number) {
+        this.simpleMeshVec.push({ mesh, materialIndex });
         mesh.getTriangles().forEach(tri => {
             this.addTriangle(tri, materialIndex);
         });
+    }
+
+    public addEfficientMeshData(data: EfficientMeshData) {
+        this.meshDataVec.push(data);
     }
 
     private testplane() {
@@ -724,15 +711,16 @@ export class Scene {
         this.addPointLight(l1);
     }
 
-    private async tungTungTungSahurScene() {
-        this.camera = new Camera(new Vector3(0.0, -5.0, -4.0));
-        const yellow = this.addMaterial(new Material(
-            new Vector3(1, 1, 0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+    private async simpleMeshScene() {
+        this.camera = new Camera(new Vector3(0.0, -13.0, -10.0));
+        const yellow = this.addMaterial(
+            new Material(
+                new Vector3(1, 1, 0),
+                0,
+                new Vector3(0),
+                new Vector3(0),
+                1.0
+            ));
         const lightBlue = this.addMaterial(
             new Material(new Vector3(0.0, 0.5, 1.0),
                 0,
@@ -746,23 +734,18 @@ export class Scene {
         );
         this.addPlane(p1, lightBlue);
 
-        // Load meshes
+        // Load mesh
         try {
-            const tungMesh = await MeshLoader.load("/models/obj/tung/original/tung.obj", MeshType.TUNG);
-            tungMesh.scale(new Vector3(0.002, 0.002, 0.002));
-            this.addMesh(tungMesh, yellow);
-            console.log("✓ Tung mesh loaded successfully");
-
-            const glockMesh = await MeshLoader.load("/models/obj/glock/original/model.obj", MeshType.GLOCK);
-            glockMesh.translate(new Vector3(0, 1.0, 1.0));
-            this.addMesh(glockMesh, yellow);
-            console.log("✓ Glock mesh loaded successfully");
+            const simpleMesh = await MeshLoader.load("/models/obj/icosahedron/icosahedron.obj", "Icosahedron");
+            simpleMesh.scale(new Vector3(4.0, 4.0, 4.0));
+            this.addSimpleMesh(simpleMesh, yellow);
+            console.log("Simple mesh loaded successfully");
         } catch (error) {
-            console.warn("⚠ Could not load mesh:", error);
+            console.warn("Could not load simple mesh:", error);
         }
     }
 
-    private async tralaleroScene() {
+    private async bvhMeshScene() {
         this.camera = new Camera(new Vector3(0.0, -6.0, -4.0));
         const yellow = this.addMaterial(
             new Material(
@@ -803,64 +786,12 @@ export class Scene {
 
         // Load mesh
         try {
-            /*const tralaleroMesh = await MeshLoader.load("/models/obj/tralalero/original/model.obj", MeshType.TRALALERO);
-            this.addMesh(tralaleroMesh, yellow);*/
-            // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/tralalero/original/model.obj");
-            // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/skull/skull.obj");
-            // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/tetrahedron/pyramid.obj");
-            // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/hexahedron/scene.obj");
-            // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/dodecahedron/dodecahedron.obj");
-            const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj");
-            // const tralaleroMesh = await ThreeJSOBJLoader.load("/models/obj/skull/skull.obj");
-            // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/vaca/optim/LP.obj");
-            // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/goldfish/goldfish.obj");
-            // const tralaleroMesh = await ThreeJSOBJLoader.load("models/obj/glowfish/Glowfish.obj");
-            this.addEfficientMeshData(tralaleroMesh);
-            console.log("✓ Tralalero mesh loaded successfully");
+            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull/skull.obj");
+            this.addEfficientMeshData(bvhMesh);
+            console.log("BVH mesh loaded successfully");
         } catch (error) {
-            console.warn("⚠ Could not load mesh:", error);
+            console.warn("Could not load BVH mesh:", error);
         }
-    }
-
-    private async arthasScene() {
-        this.camera = new Camera(new Vector3(0.0, -13.0, -10.0));
-        const yellow = this.addMaterial(
-            new Material(
-                new Vector3(1, 1, 0),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-        const lightBlue = this.addMaterial(
-            new Material(new Vector3(0.0, 0.5, 1.0),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-        const p1: Plane = new Plane(
-            new Vector3(0.0, 1.0, 0.0),
-            1.0
-        );
-        this.addPlane(p1, lightBlue);
-
-        // Load mesh
-        try {
-            const arthasMesh = await MeshLoader.load("/models/obj/arthas/optim/Arthas.obj", MeshType.ARTHAS);
-            arthasMesh.scale(new Vector3(4.0, 4.0, 4.0));
-            this.addMesh(arthasMesh, yellow);
-            console.log("✓ Arthas mesh loaded successfully");
-        } catch (error) {
-            console.warn("⚠ Could not load mesh:", error);
-        }
-    }
-
-    /**
-     * Add efficient mesh data to the scene
-     */
-    public addEfficientMeshData(data: EfficientMeshData) {
-        this.meshDataVec.push(data);
     }
 
     public serializeStaticBlock(): Float32Array {
@@ -937,34 +868,19 @@ export class Scene {
     }
 
     public serializeMeshInfoVec(): Float32Array {
-        let arr: number[] = [];
-        let triangleStart = 0;
-        // let materialOffset = this.materialVec.length;  // Start after scene materials
+        const matIdx = this.materialVec.length - 1;
+        let start = 0;
+        const out: number[] = [];
 
-        for (const meshData of this.meshDataVec) {
-            const triangleCount = meshData.positionIndices.length / 3;
-
-            // Use a random material index from scene materials for testing
-            // const randomMatIdx = Math.floor(Math.random() * this.materialVec.length);
-            const matIdx = this.materialVec.length - 1;
-            console.log("MeshInfo - triangleCount:", triangleCount);
-            console.log("MeshInfo - matIdx:", matIdx);
-            console.log("MeshInfo - triangleStart:", triangleStart);
-            // std140 pads struct members to vec4 boundaries. MeshInfo contains 3 ints -> occupies 16 bytes (4 floats)
-            // Push an extra padding float (0) so the Uniform Buffer matches the shader's expected size.
-            const ret = new Float32Array([0, 0, 0, 0]);
-            (new Int32Array(ret.buffer))[0] = triangleStart;
-            (new Int32Array(ret.buffer))[1] = triangleCount;
-            (new Int32Array(ret.buffer))[2] = matIdx;
-            // index 3 is padding, already 0
-            arr.push(...ret);
-            triangleStart += triangleCount;
-            // materialOffset += meshData.materials.length;
+        for (const m of this.meshDataVec) {
+            const count = m.positionIndices.length / 3;
+            out.push(start, count, matIdx, 0);
+            start += count;
         }
-        console.log("Serialized mesh info vector length:", arr.length);
-        const ret: Float32Array = new Float32Array(arr);
 
-        return ret;
+        console.log("Serialized mesh info vector length:", out.length);
+
+        return new Float32Array(out);
     }
     /**
      * Returns concatenated mesh texture buffers for all meshes in the scene.
@@ -1009,27 +925,17 @@ export class Scene {
             materialOffset += s.materialsFloat.length / 16;  // 16 floats per material
         }
 
-        // Concatenate arrays
-        const positionsConcat = concatFloat32Arrays(positionsList);
-        const normalsConcat = concatFloat32Arrays(normalsList);
-        const uvsConcat = concatFloat32Arrays(uvsList);
-        const indicesConcat = concatUint32Arrays(indexList);
-        const normalIndicesConcat = concatUint32Arrays(normalIndexList);
-        const uvIndicesConcat = concatUint32Arrays(uvIndexList);
-        const triMatConcat = concatUint32Arrays(triMatList);
-        const materialsConcat = concatFloat32Arrays(materialsList);
-        const bvhConcat = concatFloat32Arrays(bvhList);
 
         return {
-            positions: positionsConcat,
-            normals: normalsConcat,
-            uvs: uvsConcat,
-            positionIndices: indicesConcat,
-            normalIndices: normalIndicesConcat,
-            uvIndices: uvIndicesConcat,
-            triangleMaterials: triMatConcat,
-            materialsFloat: materialsConcat,
-            bvh: bvhConcat,
+            positions: concatFloat32Arrays(positionsList),
+            normals: concatFloat32Arrays(normalsList),
+            uvs: concatFloat32Arrays(uvsList),
+            positionIndices: concatUint32Arrays(indexList),
+            normalIndices: concatUint32Arrays(normalIndexList),
+            uvIndices: concatUint32Arrays(uvIndexList),
+            triangleMaterials: concatUint32Arrays(triMatList),
+            materialsFloat: concatFloat32Arrays(materialsList),
+            bvh: concatFloat32Arrays(bvhList),
             positionsCount,
             trianglesCount,
             materialsCount: materialOffset
@@ -1038,7 +944,6 @@ export class Scene {
 
 }
 
-// Small helpers for concatenation
 function concatFloat32Arrays(arrs: Float32Array[]): Float32Array {
     if (arrs.length === 0) return new Float32Array(0);
     let total = 0;

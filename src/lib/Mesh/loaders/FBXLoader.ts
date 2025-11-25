@@ -1,6 +1,6 @@
 import { Vector3 } from "math.gl";
 import { Triangle } from "../../Primitives/Triangle";
-import { Mesh } from "../../Primitives/Mesh";
+import { SimpleMesh } from "../../Primitives/SimpleMesh";
 
 /**
  * FBX File Loader
@@ -20,8 +20,8 @@ export class FBXLoader {
      * @param name - Name for the mesh
      * @returns Mesh object
      */
-    public static parse(content: string, name: string = "mesh"): Mesh {
-        const mesh = new Mesh(name);
+    public static parse(content: string, name: string = "mesh"): SimpleMesh {
+        const mesh = new SimpleMesh(name);
         const vertices: Vector3[] = [];
 
         // FBX ASCII format has a hierarchical structure

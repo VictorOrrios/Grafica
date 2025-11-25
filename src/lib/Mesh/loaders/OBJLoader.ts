@@ -1,6 +1,6 @@
 import { Vector3 } from "math.gl";
 import { Triangle } from "../../Primitives/Triangle";
-import { Mesh } from "../../Primitives/Mesh";
+import { SimpleMesh } from "../../Primitives/SimpleMesh";
 
 /**
  * OBJ File Loader
@@ -13,12 +13,12 @@ export class OBJLoader {
      * @param name - Name for the mesh
      * @returns Mesh object
      */
-    public static parse(content: string, name: string = "mesh"): Mesh {
+    public static parse(content: string, name: string = "mesh"): SimpleMesh {
         const lines = content.split('\n');
         const vertices: Vector3[] = [];
         const normals: Vector3[] = [];
         const faces: Array<{ vertexIndices: number[] }> = [];
-        const mesh = new Mesh(name);
+        const mesh = new SimpleMesh(name);
 
         for (const line of lines) {
             const trimmed = line.trim();

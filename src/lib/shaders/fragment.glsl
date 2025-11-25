@@ -21,6 +21,7 @@ precision highp usampler2D;
 #define minimun_atenuation 0.0
 #define PI 3.14159265359
 #define E_NUMBER 2.71828182845
+#define BVH_DEBUG_DEPTH 100
 
 //===========================
 // Enum defines
@@ -136,16 +137,13 @@ layout(std140) uniform StaticBlock {
     #endif
 };
 
-// Mesh data provided via textures (to avoid large std140 arrays)
-uniform sampler2D u_positions_tex;        // RGBA32F: xyz, _
-uniform sampler2D u_normals_tex;          // RGBA32F: xyz, _ (optional)
-uniform sampler2D u_uvs_tex;              // RG32F: uv
-uniform usampler2D u_positionIndices_tex; // R32UI: one uint per texel
-uniform usampler2D u_normalIndices_tex;   // R32UI: one uint per texel
-uniform usampler2D u_uvIndices_tex;       // R32UI: one uint per texel
+
+uniform sampler2D u_positions_tex;          // RGBA32F: xyz
+uniform sampler2D u_normals_tex;            // RGBA32F: xyz
+//uniform sampler2D u_uvs_tex;              // RG32F: uv
+uniform usampler2D u_positionIndices_tex;   // R32UI: one uint per texel
 uniform usampler2D u_triangleMaterials_tex; // R32UI: material index per triangle
-uniform sampler2D u_meshMaterials_tex;    // RGBA32F: flattened mesh materials
-uniform sampler2D u_bvh_tex;              // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
+uniform sampler2D u_bvh_tex;                // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
 
 // TODO: usar (o borrar)
 uniform int u_positions_count;
@@ -362,24 +360,8 @@ bool hit_plane(const Plane p, const Ray r, out Hit h){
 }
 
 //===========================
-// Efficient Triangle functions (using indexed vertex data)
+// Triangle functions
 //===========================
-
-// Helper to fetch from 2D texture as if it were 1D
-// Assumes texture width is 2048
-#define TEX_WIDTH 2048
-
-vec4 fetchTexelFloat(sampler2D tex, int index) {
-    int x = index % TEX_WIDTH;
-    int y = index / TEX_WIDTH;
-    return texelFetch(tex, ivec2(x, y), 0);
-}
-
-uvec4 fetchTexelUint(usampler2D tex, int index) {
-    int x = index % TEX_WIDTH;
-    int y = index / TEX_WIDTH;
-    return texelFetch(tex, ivec2(x, y), 0);
-}
 
 bool hit_triangle(Triangle tri, const Ray r, out Hit h){
     vec3 v0 = tri.v0;
@@ -415,6 +397,27 @@ bool hit_triangle(Triangle tri, const Ray r, out Hit h){
     return true;
 }
 
+//===========================
+// Mesh functions
+//===========================
+
+// Helper to fetch from 2D texture as if it were 1D
+// Assumes texture width is 2048
+#define TEX_WIDTH 2048
+
+vec4 fetchTexelFloat(sampler2D tex, int index) {
+    int x = index % TEX_WIDTH;
+    int y = index / TEX_WIDTH;
+    return texelFetch(tex, ivec2(x, y), 0);
+}
+
+uvec4 fetchTexelUint(usampler2D tex, int index) {
+    int x = index % TEX_WIDTH;
+    int y = index / TEX_WIDTH;
+    return texelFetch(tex, ivec2(x, y), 0);
+}
+
+
 bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
     // Each triangle stores 3 uint indices in the u_positionIndices_tex (one uint per texel)
     int base = triIndex * 3;
@@ -433,97 +436,81 @@ bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
     vec3 v1 = fetchTexelFloat(u_positions_tex, idx1).xyz;
     vec3 v2 = fetchTexelFloat(u_positions_tex, idx2).xyz;
 
-        // Fetch vertex normals from texture
-        vec3 n0 = fetchTexelFloat(u_normals_tex, idx0).xyz;
-        vec3 n1 = fetchTexelFloat(u_normals_tex, idx1).xyz;
-        vec3 n2 = fetchTexelFloat(u_normals_tex, idx2).xyz;
+    // Fetch vertex normals from texture
+    vec3 n0 = fetchTexelFloat(u_normals_tex, idx0).xyz;
+    vec3 n1 = fetchTexelFloat(u_normals_tex, idx1).xyz;
+    vec3 n2 = fetchTexelFloat(u_normals_tex, idx2).xyz;
 
-        // Moller-Trumbore intersection
-        vec3 edge1 = v1 - v0;
-        vec3 edge2 = v2 - v0;
-        vec3 pvec = cross(r.dir, edge2);
-        float det = dot(edge1, pvec);
-        if(abs(det) < 1e-6) return false; // Parallel or nearly parallel
+    // Moller-Trumbore intersection
+    vec3 edge1 = v1 - v0;
+    vec3 edge2 = v2 - v0;
+    vec3 pvec = cross(r.dir, edge2);
+    float det = dot(edge1, pvec);
+    if(abs(det) < 1e-6) return false; // Parallel or nearly parallel
 
-        float invDet = 1.0 / det;
-        vec3 tvec = r.orig - v0;
-        float u = dot(tvec, pvec) * invDet;
-        if(u < 0.0 || u > 1.0) return false;
+    float invDet = 1.0 / det;
+    vec3 tvec = r.orig - v0;
+    float u = dot(tvec, pvec) * invDet;
+    if(u < 0.0 || u > 1.0) return false;
 
-        vec3 qvec = cross(tvec, edge1);
-        float v = dot(r.dir, qvec) * invDet;
-        if(v < 0.0 || u + v > 1.0) return false;
+    vec3 qvec = cross(tvec, edge1);
+    float v = dot(r.dir, qvec) * invDet;
+    if(v < 0.0 || u + v > 1.0) return false;
 
-        float t = dot(edge2, qvec) * invDet;
-        if(t < ray_min_distance || t > ray_max_distance) return false;
+    float t = dot(edge2, qvec) * invDet;
+    if(t < ray_min_distance || t > ray_max_distance) return false;
 
-        h.t = t;
-        h.p = r.orig + r.dir * t;
+    h.t = t;
+    h.p = r.orig + r.dir * t;
 
-        // Interpolate normal using barycentric coordinates
-        float w = 1.0 - u - v;
-        vec3 interpolatedNormal = normalize(n0 * w + n1 * u + n2 * v);
-        h.normal = interpolatedNormal;
-        // Triangle material index stored as R32UI texel per triangle
-        uint mat_u = fetchTexelUint(u_triangleMaterials_tex, triIndex).r;
-        h.mat = int(mat_u);
-        h.isMesh = true;  // This is a mesh triangle
-        set_front_face(interpolatedNormal, r.dir, h);
+    // Interpolate normal using barycentric coordinates
+    float w = 1.0 - u - v;
+    vec3 interpolatedNormal = normalize(n0 * w + n1 * u + n2 * v);
+    h.normal = interpolatedNormal;
+    // Triangle material index stored as R32UI texel per triangle
+    uint mat_u = fetchTexelUint(u_triangleMaterials_tex, triIndex).r;
+    h.mat = int(mat_u);
+    h.isMesh = true;  // This is a mesh triangle
+    set_front_face(interpolatedNormal, r.dir, h);
 
-        // Ensure normal points outward from the mesh center (0,0,0)
-        if (dot(h.normal, h.p) < 0.0) {
-            h.normal = -h.normal;
-            h.front_face = !h.front_face;
-        }
-        return true;
+    // Ensure normal points outward from the mesh center (0,0,0)
+    if (dot(h.normal, h.p) < 0.0) {
+        h.normal = -h.normal;
+        h.front_face = !h.front_face;
+    }
+    return true;
 }
 
 // Official three-mesh-bvh AABB intersection test
 // https://www.reddit.com/r/opengl/comments/8ntzz5/fast_glsl_ray_box_intersection/
 // https://tavianator.com/2011/ray_box.html
 bool intersectsBounds(vec3 rayOrigin, vec3 rayDirection, vec3 boundsMin, vec3 boundsMax, out float dist) {
-    // Robust inverse direction to avoid Inf * 0 = NaN issues
-    // This is critical for zero-thickness AABBs (common in flat geometry)
+    // Robust inverse direction
     vec3 dir = rayDirection;
-    if (abs(dir.x) < 1e-15) dir.x = 1e-15 * sign(dir.x);
-    if (abs(dir.y) < 1e-15) dir.y = 1e-15 * sign(dir.y);
-    if (abs(dir.z) < 1e-15) dir.z = 1e-15 * sign(dir.z);
+    //vec3 safeDir = mix(dir, sign(dir) * 1e-15, lessThan(abs(dir), vec3(1e-15)));
     vec3 invDir = 1.0 / dir;
 
-    // find intersection distances for each plane
-    vec3 tMinPlane = invDir * (boundsMin - rayOrigin);
-    vec3 tMaxPlane = invDir * (boundsMax - rayOrigin);
-
-    // get the min and max distances from each intersection
-    vec3 tMinHit = min(tMaxPlane, tMinPlane);
-    vec3 tMaxHit = max(tMaxPlane, tMinPlane);
-
-    // get the furthest hit distance
-    vec2 t = max(tMinHit.xx, tMinHit.yz);
-    float t0 = max(t.x, t.y);
-
-    // get the minimum hit distance
-    t = min(tMaxHit.xx, tMaxHit.yz);
-    float t1 = min(t.x, t.y);
-
-    // set distance to 0.0 if the ray starts inside the box
-    dist = max(t0, 0.0);
-
-    return t1 >= dist;
-}
-
-bool intersectsBVHNodeBounds(vec3 rayOrigin, vec3 rayDirection, uint nodeIndex, out float dist) {
-    // Custom BVH Layout:
-    // Texel 0: [minX, minY, minZ, data1]
-    // Texel 1: [maxX, maxY, maxZ, data2]
-    int texelIndex = int(nodeIndex) * 2;
-    vec4 t0 = fetchTexelFloat(u_bvh_tex, texelIndex);
-    vec4 t1 = fetchTexelFloat(u_bvh_tex, texelIndex + 1);
+    // Calculate intersections per axis
+    vec3 t0 = (boundsMin - rayOrigin) * invDir;
+    vec3 t1 = (boundsMax - rayOrigin) * invDir;
     
-    vec3 boundsMin = t0.xyz;
-    vec3 boundsMax = t1.xyz;
+    // Ensure t0 <= t1 per axis
+    vec3 tMin = min(t0, t1);
+    vec3 tMax = max(t0, t1);
+
+    // Find the overlap between all axes
+    float tEnter = max(max(tMin.x, tMin.y), tMin.z);
+    float tExit = min(min(tMax.x, tMax.y), tMax.z);
+
+    // Check if valid intersection
+    if (tExit < 0.0 || tEnter > tExit) {
+        return false;
+    }
+
+    // Ray starts inside box? Use 0.0 as entry distance
+    dist = max(tEnter, 0.0);
     
-    return intersectsBounds(rayOrigin, rayDirection, boundsMin, boundsMax, dist);
+    return true;
 }
 
 // Main BVH traversal function
@@ -581,6 +568,15 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
                 }
             }
         } else {
+            if(stackPtr >= BVH_DEBUG_DEPTH){
+                h.mat = mesh.materialIndex;
+                h.t = boundsHitDistance;
+                h.p = r.orig + r.dir*boundsHitDistance;
+                h.front_face = true;
+                h.isMesh = false;
+                h.normal = vec3(0.0);
+                return true;
+            }
             // Internal node
             uint leftIndex = uint(data1);
             uint rightIndex = uint(data2);
@@ -642,11 +638,8 @@ bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, out Hit h){
     return has_hit;
 }
 
-// Main hit_mesh function - uses BVH traversal
+// Main hit_mesh function
 bool hit_mesh(MeshInfo mesh, const Ray r, out Hit h){
-    // Temporarily use brute force to verify all triangles are visible
-    // return hit_mesh_bruteforce(mesh, r, h);
-    // BVH with fixes:
     return hit_mesh_with_bvh(mesh, r, h);
 }
 
