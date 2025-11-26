@@ -141,7 +141,7 @@ export class Renderer {
         this.camera_ubo = gl.createBuffer();
         gl.bindBuffer(gl.UNIFORM_BUFFER, this.camera_ubo);
         // std140 is 16 BYTE aligned
-        let data = this.scene.camera.serialize(this.aperture_radius,this.focal_distance);
+        let data = this.scene.camera.serialize(this.aperture_radius, this.focal_distance);
         gl.bufferData(gl.UNIFORM_BUFFER, data, gl.STATIC_DRAW);
         // Link to binding point
         let blockIndex = gl.getUniformBlockIndex(this.program, "Camera");
@@ -210,16 +210,16 @@ export class Renderer {
         gl.bindBufferBase(gl.UNIFORM_BUFFER, bindingPoint, staticUBO);
     }
 
-    private initStorageTextures(){
+    private initStorageTextures() {
         const meshBuffers = this.scene.getMeshTextureBuffers();
         let nextTextureBinding = 2;
 
-        this.initUniform("u_positions_count",0,[meshBuffers.positions.length / 3]);
+        this.initUniform("u_positions_count", 0, [meshBuffers.positions.length / 3]);
 
         if (meshBuffers.positions.length > 0) {
-            this.initTextureBuffer('u_positions_tex', meshBuffers.positions, nextTextureBinding++, 3);
+            this.initTextureBuffer('u_positions_tex', meshBuffers.positions, nextTextureBinding++, 1);
 
-            this.initTextureBuffer('u_normals_tex', meshBuffers.normals, nextTextureBinding++, 3);
+            this.initTextureBuffer('u_normals_tex', meshBuffers.normals, nextTextureBinding++, 1);
 
             this.initTextureBuffer('u_positionIndices_tex', meshBuffers.positionIndices, nextTextureBinding++, 2);
 
@@ -229,8 +229,8 @@ export class Renderer {
         }
     }
 
-    private initTextureBuffer(name: string,data: Float32Array|Uint32Array, index: number, texture_type:number = 0) {
-        if (data.length === 0){
+    private initTextureBuffer(name: string, data: Float32Array | Uint32Array, index: number, texture_type: number = 0) {
+        if (data.length === 0) {
             console.warn("Tried creating a texture without data!")
             return;
         };
@@ -247,9 +247,9 @@ export class Renderer {
 
         //const maxSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
         const width = 2048;
-        let texels, height, texelLenght, internalformat, format, type:number;
+        let texels, height, texelLenght, internalformat, format, type: number;
 
-        switch(texture_type){
+        switch (texture_type) {
             default:
             // R32F
             case 0: texelLenght = 1; internalformat = gl.R32F; format = gl.RED; type = gl.FLOAT; break;
@@ -261,17 +261,17 @@ export class Renderer {
             case 3: texelLenght = 4; internalformat = gl.RGBA32F; format = gl.RGBA; type = gl.FLOAT; break;
         }
 
-        texels = data.length/texelLenght;
+        texels = data.length / texelLenght;
         height = Math.ceil(texels / width);
         const paddedLength = width * height * texelLenght;
         let paddedData = data;
-        if(paddedLength > data.length){
-            if(data instanceof Float32Array) paddedData = new Float32Array(paddedLength);
-            if(data instanceof Uint32Array) paddedData = new Uint32Array(paddedLength);
+        if (paddedLength > data.length) {
+            if (data instanceof Float32Array) paddedData = new Float32Array(paddedLength);
+            if (data instanceof Uint32Array) paddedData = new Uint32Array(paddedLength);
             paddedData.set(data);
         }
 
-        gl.texImage2D(gl.TEXTURE_2D,0,internalformat,width,height,0,format,type,paddedData);
+        gl.texImage2D(gl.TEXTURE_2D, 0, internalformat, width, height, 0, format, type, paddedData);
 
         let location = gl.getUniformLocation(this.program, name);
         if (!location) console.warn(name, "location returned null");
@@ -357,7 +357,7 @@ export class Renderer {
     private updateCameraUBO() {
         const gl = this.gl;
 
-        let data = this.scene.camera.serialize(this.aperture_radius,this.focal_distance);
+        let data = this.scene.camera.serialize(this.aperture_radius, this.focal_distance);
 
         gl.bindBuffer(gl.UNIFORM_BUFFER, this.camera_ubo);
         gl.bufferSubData(gl.UNIFORM_BUFFER, 0, data);

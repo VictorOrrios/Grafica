@@ -22,8 +22,8 @@ export interface EfficientMeshData {
     materials: ExtractedMaterial[];
     bvhData: Float32Array;          // Custom BVH data
     serializeTextures(): {
-        positionsRGBA: Float32Array;
-        normalsRGBA: Float32Array;
+        positionsRGB: Float32Array;
+        normalsRGB: Float32Array;
         uvsRG: Float32Array;
         positionIndices: Uint32Array;
         normalIndices: Uint32Array;
@@ -235,23 +235,11 @@ export class ThreeJSOBJLoader {
                 // This is because we deduplicate vertices based on the combination of 
                 // (position, normal, UV), so each unique combination gets one index.
 
-                // Positions: vec3 -> vec4 (RGBA32F)
-                const positionsRGBA = new Float32Array(numVertices * 4);
-                for (let i = 0; i < numVertices; i++) {
-                    positionsRGBA[i * 4 + 0] = positions[i * 3 + 0];
-                    positionsRGBA[i * 4 + 1] = positions[i * 3 + 1];
-                    positionsRGBA[i * 4 + 2] = positions[i * 3 + 2];
-                    positionsRGBA[i * 4 + 3] = 1.0; // w=1
-                }
+                // Positions: vec3 -> RGB32F (3 floats per vertex instead of 4)
+                const positionsRGB = new Float32Array(positions);
 
-                // Normals: vec3 -> vec4 (RGBA32F)
-                const normalsRGBA = new Float32Array(numVertices * 4);
-                for (let i = 0; i < numVertices; i++) {
-                    normalsRGBA[i * 4 + 0] = normals[i * 3 + 0];
-                    normalsRGBA[i * 4 + 1] = normals[i * 3 + 1];
-                    normalsRGBA[i * 4 + 2] = normals[i * 3 + 2];
-                    normalsRGBA[i * 4 + 3] = 0.0;
-                }
+                // Normals: vec3 -> RGB32F (3 floats per vertex instead of 4)
+                const normalsRGB = new Float32Array(normals);
 
                 // UVs: vec2 (RG32F)
                 const uvsRG = new Float32Array(uvs);
@@ -285,8 +273,8 @@ export class ThreeJSOBJLoader {
                 }
 
                 return {
-                    positionsRGBA,
-                    normalsRGBA,
+                    positionsRGB,
+                    normalsRGB,
                     uvsRG,
                     positionIndices: sharedIndices,
                     normalIndices: sharedIndices,

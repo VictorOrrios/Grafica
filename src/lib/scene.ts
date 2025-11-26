@@ -911,8 +911,8 @@ export class Scene {
             }
             triMatList.push(offsetTriMat);
 
-            positionsList.push(s.positionsRGBA);
-            normalsList.push(s.normalsRGBA);
+            positionsList.push(s.positionsRGB);
+            normalsList.push(s.normalsRGB);
             uvsList.push(s.uvsRG);
             indexList.push(s.positionIndices);
             normalIndexList.push(s.normalIndices);
@@ -920,7 +920,7 @@ export class Scene {
             materialsList.push(s.materialsFloat);
             bvhList.push(s.bvh);
 
-            positionsCount += s.positionsRGBA.length / 4;
+            positionsCount += s.positionsRGB.length / 3;
             trianglesCount += s.positionIndices.length / 3;
             materialOffset += s.materialsFloat.length / 16;  // 16 floats per material
         }

@@ -426,12 +426,12 @@ bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
     int idx1 = int(id1.r);
     int idx2 = int(id2.r);
 
-    // Reconstruct triangle vertices from positions texture (RGBA32F)
+    // Reconstruct triangle vertices from positions texture (RGB32F)
     vec3 v0 = fetchTexelFloat(u_positions_tex, idx0).xyz;
     vec3 v1 = fetchTexelFloat(u_positions_tex, idx1).xyz;
     vec3 v2 = fetchTexelFloat(u_positions_tex, idx2).xyz;
 
-    // Fetch vertex normals from texture
+    // Fetch vertex normals from texture (RGB32F)
     vec3 n0 = fetchTexelFloat(u_normals_tex, idx0).xyz;
     vec3 n1 = fetchTexelFloat(u_normals_tex, idx1).xyz;
     vec3 n2 = fetchTexelFloat(u_normals_tex, idx2).xyz;
