@@ -110,6 +110,10 @@ export class ThreeJSOBJLoader {
                     const uvAttr = geometry.attributes.uv;
                     const indexAttr = geometry.index;
 
+                    // Obtain the index for a vertex (position, normal, uv), that
+                    // will be used to access the corresponding data in the shader
+                    // position, normal, uv share the same index for a single vertex,
+                    // to save GPU costs
                     const getVertexIndex = (localIdx: number) => {
                         const x = posAttr.getX(localIdx);
                         const y = posAttr.getY(localIdx);
@@ -127,8 +131,12 @@ export class ThreeJSOBJLoader {
                         }
                         const key = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}|${nx.toFixed(6)},${ny.toFixed(6)},${nz.toFixed(6)}|${u.toFixed(6)},${v.toFixed(6)}`;
 
+                        // If the vertex already exists, return its index (this will happen when the vertex
+                        // has already been added and it's shared by multiple triangles)
                         if (vertexMap.has(key)) return vertexMap.get(key)!;
 
+                        // Add new vertex data (indices in the three arrays
+                        // (positions, normals, uvs) match for the current vertex)
                         const newIdx = extracted.positions.length / 3;
                         extracted.positions.push(x, y, z);
                         extracted.normals.push(nx, ny, nz);
@@ -137,6 +145,8 @@ export class ThreeJSOBJLoader {
                         return newIdx;
                     };
 
+                    // THREE.Mesh.geometry might have an index attribute
+                    // (we need to build our own indexing system)
                     if (indexAttr) {
                         for (let i = 0; i < indexAttr.count; i += 3) {
                             const idx0 = getVertexIndex(indexAttr.getX(i));
@@ -221,6 +231,10 @@ export class ThreeJSOBJLoader {
             materials: extracted.materials,
             bvhData: bvhData,
             serializeTextures: () => {
+                // UNIFIED INDEXING: We use the same indices for positions, normals, and UVs.
+                // This is because we deduplicate vertices based on the combination of 
+                // (position, normal, UV), so each unique combination gets one index.
+
                 // Positions: vec3 -> vec4 (RGBA32F)
                 const positionsRGBA = new Float32Array(numVertices * 4);
                 for (let i = 0; i < numVertices; i++) {
@@ -239,12 +253,11 @@ export class ThreeJSOBJLoader {
                     normalsRGBA[i * 4 + 3] = 0.0;
                 }
 
-                // UVs: vec2 (RG32F) - already correct format but let's copy
+                // UVs: vec2 (RG32F)
                 const uvsRG = new Float32Array(uvs);
 
-                // Indices: Use the reordered indices
-                const normalIndices = new Uint32Array(finalIndices);
-                const uvIndices = new Uint32Array(finalIndices);
+                // All vertex attributes share the same indices (unified indexing)
+                const sharedIndices = finalIndices;
 
                 // Materials: Flatten to Float32Array (16 floats per material)
                 const materialsFloat = new Float32Array(extracted.materials.length * 16);
@@ -275,9 +288,9 @@ export class ThreeJSOBJLoader {
                     positionsRGBA,
                     normalsRGBA,
                     uvsRG,
-                    positionIndices: finalIndices,
-                    normalIndices,
-                    uvIndices,
+                    positionIndices: sharedIndices,
+                    normalIndices: sharedIndices,
+                    uvIndices: sharedIndices,
                     triangleMaterials: finalMaterials,
                     materialsFloat,
                     bvh: bvhData
