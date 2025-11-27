@@ -462,6 +462,7 @@ bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
     vec3 interpolatedNormal = normalize(n0 * w + n1 * u + n2 * v);
     h.normal = interpolatedNormal;
     // Triangle material index stored as R32UI texel per triangle
+    // TODO, change to R8UI and implement mesh materials
     uint mat_u = fetchTexelUint(u_triangleMaterials_tex, triIndex).r;
     h.mat = int(mat_u);
     h.isMesh = true;  // This is a mesh triangle
