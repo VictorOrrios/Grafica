@@ -769,7 +769,7 @@ export class Scene {
             new Vector3(0.0, 1.0, 0.0),
             3.0
         );
-        this.addPlane(p1, salmon);
+        // this.addPlane(p1, salmon);
 
         const magenta = this.addMaterial(
             new Material(new Vector3(1.0, 0.0, 1.0),
@@ -789,9 +789,9 @@ export class Scene {
 
         // Load mesh
         try {
-            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj");
+            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj", 1.0, new Vector3(0.8, 0.2, 0.0), new Vector3(1.0, 1.0, 1.0));
             // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-salazar/scene.obj");
-            // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/glowfish/Glowfish.obj", 0.085);
+            // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/glowfish/Glowfish.obj", 0.085, new Vector3(0.0, 0.0, 0.0), new Vector3(2.0, 2.0, 2.0));
             this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
@@ -826,7 +826,7 @@ export class Scene {
             // const bvhMesh = await GLTFLoader.load("models/gltf/dragon/scene.gltf", 0.012);
             // NOTE, KEY: ~230K vertices, only used for material loading, USE ONLY WITH RENDER DISABLED (Stop)
             // const bvhMesh = await GLTFLoader.load("models/gltf/dragon_glass/scene.gltf", 0.012);
-            const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf");
+            const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2, new Vector3(0.1, 4.0, 0.7), new Vector3(0.8, 0.2, 0.4));
             this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {

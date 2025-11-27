@@ -468,11 +468,13 @@ bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
     set_front_face(interpolatedNormal, r.dir, h);
 
     // Ensure normal points outward from the mesh center (0,0,0)
-    // TODO: revise this
+    // TODO: REMOVED, since it flips the normals when translating the mesh
+    /*
     if (dot(h.normal, h.p) < 0.0) {
         h.normal = -h.normal;
         h.front_face = !h.front_face;
     }
+    */
     return true;
 }
 

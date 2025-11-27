@@ -17,7 +17,12 @@ export class GLTFLoader extends ThreeJSMeshLoader {
      * @param url - Path to the .gltf or .glb file
      * @returns Processed mesh data ready for the shader (not serialized yet)
      */
-    static async load(url: string, scale: number = 1.0): Promise<EfficientMeshData> {
+    static async load(
+        url: string,
+        scale: number = 1.0,
+        rotation: Vector3 = new Vector3(0, 0, 0),
+        translation: Vector3 = new Vector3(0, 0, 0)
+    ): Promise<EfficientMeshData> {
         const gltfLoader = new THREEGLTFLoader();
 
         // Load GLTF file
@@ -161,6 +166,6 @@ export class GLTFLoader extends ThreeJSMeshLoader {
         console.log("Extracted gltf materials:", materials);
 
         // Process the THREE.Object3D using the base class
-        return this.processTHREEObject(gltf.scene, materialNameToIndex, materials, scale);
+        return this.processTHREEObject(gltf.scene, materialNameToIndex, materials, scale, rotation, translation);
     }
 }

@@ -53,7 +53,9 @@ export class ThreeJSMeshLoader {
         object: THREE.Object3D,
         materialNameToIndex: Map<string, number>,
         materials: ExtractedMaterial[],
-        scale: number = 1.0
+        scale: number = 1.0,
+        rotation: Vector3 = new Vector3(0, 0, 0),
+        translation: Vector3 = new Vector3(0, 0, 0)
     ): Promise<EfficientMeshData> {
         const extracted: {
             positions: number[],
@@ -68,6 +70,33 @@ export class ThreeJSMeshLoader {
             triangles: [],
             materials: materials
         };
+
+        // Create transformation matrix (all done with THREE.js methods)
+        const matrix = new THREE.Matrix4();
+
+        // 1. Scale
+        matrix.makeScale(scale, scale, scale);
+
+        // 2. Rotate (Euler XYZ)
+        const rotationMatrix = new THREE.Matrix4();
+
+        // NOTE: degrees are in RADIANS
+        rotationMatrix.makeRotationFromEuler(new THREE.Euler(
+            rotation[0],
+            rotation[1],
+            rotation[2]
+        ));
+        matrix.premultiply(rotationMatrix);
+
+        // 3. Translate
+        const translationMatrix = new THREE.Matrix4();
+        translationMatrix.makeTranslation(translation[0], translation[1], translation[2]);
+        matrix.premultiply(translationMatrix);
+
+        // Normal matrix (inverse transpose of the rotation part)
+        // Since we have uniform scale, we can just use the rotation part for normals
+        // But to be safe and correct with the API:
+        const normalMatrix = new THREE.Matrix3().getNormalMatrix(matrix);
 
         // Map to deduplicate vertices
         const vertexMap = new Map<string, number>();
@@ -99,14 +128,31 @@ export class ThreeJSMeshLoader {
                     // position, normal, uv share the same index for a single vertex,
                     // to save GPU costs
                     const getVertexIndex = (localIdx: number) => {
-                        const x = posAttr.getX(localIdx) * scale;
-                        const y = posAttr.getY(localIdx) * scale;
-                        const z = posAttr.getZ(localIdx) * scale;
+                        // Apply transformation to position
+                        const pos = new THREE.Vector3(
+                            posAttr.getX(localIdx),
+                            posAttr.getY(localIdx),
+                            posAttr.getZ(localIdx)
+                        );
+                        pos.applyMatrix4(matrix);
+
+                        const x = pos.x;
+                        const y = pos.y;
+                        const z = pos.z;
+
                         let nx = 0, ny = 0, nz = 0;
                         if (normalAttr) {
-                            nx = normalAttr.getX(localIdx);
-                            ny = normalAttr.getY(localIdx);
-                            nz = normalAttr.getZ(localIdx);
+                            // Apply transformation to normal
+                            const norm = new THREE.Vector3(
+                                normalAttr.getX(localIdx),
+                                normalAttr.getY(localIdx),
+                                normalAttr.getZ(localIdx)
+                            );
+                            norm.applyMatrix3(normalMatrix).normalize();
+
+                            nx = norm.x;
+                            ny = norm.y;
+                            nz = norm.z;
                         }
                         let u = 0, v = 0;
                         if (uvAttr) {

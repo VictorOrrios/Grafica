@@ -22,7 +22,12 @@ export class ThreeJSOBJLoader extends ThreeJSMeshLoader {
      * @param url - Path to the .obj file
      * @returns Processed mesh data ready for GPU upload
      */
-    static async load(url: string, scale: number = 1.0): Promise<EfficientMeshData> {
+    static async load(
+        url: string,
+        scale: number = 1.0,
+        rotation: Vector3 = new Vector3(0, 0, 0),
+        translation: Vector3 = new Vector3(0, 0, 0)
+    ): Promise<EfficientMeshData> {
         const objLoader = new THREEOBJLoader();
         const mtlLoader = new MTLLoader();
 
@@ -95,6 +100,6 @@ export class ThreeJSOBJLoader extends ThreeJSMeshLoader {
         }
 
         // Process the THREE.Object3D using the base class
-        return this.processTHREEObject(object, materialNameToIndex, materials, scale);
+        return this.processTHREEObject(object, materialNameToIndex, materials, scale, rotation, translation);
     }
 }
