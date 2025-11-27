@@ -6,12 +6,13 @@ import { Plane } from "./Primitives/Plane";
 import { Triangle } from "./Primitives/Triangle";
 import { Quad } from "./Primitives/Quad";
 import { SimpleMesh } from "./Primitives/SimpleMesh";
-import { MeshLoader } from "./Mesh/loaders/MeshLoader";
+import { MeshLoader } from "./Mesh/loaders/legacy/MeshLoader";
 import { PointLight } from "./Lights/PointLight";
 import {
     ThreeJSOBJLoader,
     type EfficientMeshData
-} from './Mesh/loaders/ThreeJSOBJLoader';
+} from './Mesh/loaders/OBJLoader';
+import { GLTFLoader } from "./Mesh/loaders/GLTFLoader";
 
 export enum SceneType {
     TESTPLANE = 'testplane',
@@ -19,9 +20,9 @@ export enum SceneType {
     CORNEL = 'cornell',
     CORNELTRANSIENT = 'cornelltransient',
     SIMPLEMESH = 'simplem',
-    BVHMESH = 'bvhmesh'
+    BVHMESH = 'bvhmesh',
+    GLTF_BVH = 'glbvh'
 }
-
 
 export class Scene {
     public camera: Camera = new Camera();
@@ -35,7 +36,7 @@ export class Scene {
     public pointLightVec: PointLight[] = [];
     public meshDataVec: EfficientMeshData[] = [];
 
-    constructor(type: SceneType = SceneType.BVHMESH) {
+    constructor(type: SceneType = SceneType.BVHMESH /*SceneType.GLTF_BVH*/) {
         this.sceneType = type;
     }
 
@@ -52,6 +53,8 @@ export class Scene {
             await this.simpleMeshScene();
         } else if (this.sceneType === SceneType.BVHMESH) {
             await this.bvhMeshScene();
+        } else if (this.sceneType === SceneType.GLTF_BVH) {
+            await this.bhvGLTFScene();
         }
     }
 
@@ -786,7 +789,44 @@ export class Scene {
 
         // Load mesh
         try {
-            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj");
+            // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj");
+            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-salazar/scene.obj");
+            // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/glowfish/Glowfish.obj", 0.085);
+            this.addEfficientMeshData(bvhMesh);
+            console.log("BVH mesh loaded successfully");
+        } catch (error) {
+            console.warn("Could not load BVH mesh:", error);
+        }
+    }
+
+    private async bhvGLTFScene() {
+
+        const salmon = this.addMaterial(
+            new Material(new Vector3(1.0, 0.5, 0.4),
+                0,
+                new Vector3(0),
+                new Vector3(0),
+                1.0
+            ));
+
+        const cyan = this.addMaterial(
+            new Material(new Vector3(0.0, 0.5, 1.0),
+                0,
+                new Vector3(0),
+                new Vector3(0),
+                1.0
+            ));
+        const p1: Plane = new Plane(
+            new Vector3(0.0, 1.0, 0.0),
+            3.0
+        );
+        this.addPlane(p1, salmon);
+
+        try {
+            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon/scene.gltf", 0.012);
+            // NOTE, KEY: ~230K vertices, only used for material loading, USE ONLY WITH RENDER DISABLED (Stop)
+            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon_glass/scene.gltf", 0.012);
+            const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf");
             this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
@@ -924,7 +964,6 @@ export class Scene {
             trianglesCount += s.positionIndices.length / 3;
             materialOffset += s.materialsFloat.length / 16;  // 16 floats per material
         }
-
 
         return {
             positions: concatFloat32Arrays(positionsList),

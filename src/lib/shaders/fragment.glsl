@@ -136,7 +136,7 @@ layout(std140) uniform StaticBlock {
     #endif
 };
 
-
+// TODO, meter sampler para el mapa de uv
 uniform sampler2D u_positions_tex;
 uniform sampler2D u_normals_tex;
 uniform usampler2D u_positionIndices_tex;
@@ -144,7 +144,6 @@ uniform usampler2D u_triangleMaterials_tex;
 uniform sampler2D u_bvh_tex;    // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
 
 uniform int u_vertex_count;
-
 
 //===========================
 // RNG Functions

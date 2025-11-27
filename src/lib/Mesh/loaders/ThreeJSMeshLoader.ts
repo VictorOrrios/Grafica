@@ -1,14 +1,14 @@
 import * as THREE from 'three';
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
-import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+import { BVHBuilder } from '../BVH/BVHBuilder';
 
-// Interface for extracted data (matching your Triangle and Material structs)
+import { Material } from '../../Primitives/Material';
+import { Vector3 } from 'math.gl';
+import { DEFAULT_COLOR, DEFAULT_IOR, DEFAULT_SPECULAR, DEFAULT_SUBSURFACE_COLOR } from './constants';
+
+// Interface for extracted Material data (TODO, cambiar a voluntad)
 export interface ExtractedMaterial {
     id: number;
-    color: [number, number, number];
-    emission: [number, number, number];
-    specular: [number, number, number];
-    ior: number;
+    material: Material;
     diffuseMap?: string;
     specularMap?: string;
 }
@@ -34,26 +34,27 @@ export interface EfficientMeshData {
     };
 }
 
-import { BVHBuilder } from '../BVH/BVHBuilder';
-
-export class ThreeJSOBJLoader {
-    static async load(url: string): Promise<EfficientMeshData> {
-        const loader = new OBJLoader();
-        const mtlLoader = new MTLLoader();
-
-        // Load materials from MTL file
-        let materialsLib: any = {};
-        try {
-            const mtlUrl = url.replace('.obj', '.mtl');
-            materialsLib = await mtlLoader.loadAsync(mtlUrl);
-            console.log("Materials loaded:", materialsLib);
-            loader.setMaterials(materialsLib);
-        } catch (e) {
-            console.warn('MTL not found or failed to load:', e);
-        }
-
-        const object = await loader.loadAsync(url);
-
+/**
+ * Base class for loading 3D models using THREE.js loaders.
+ * Handles common mesh processing: vertex deduplication, BVH building, and serialization.
+ * Subclasses use the static processTHREEObject method for common processing.
+ */
+export class ThreeJSMeshLoader {
+    /**
+     * Process a THREE.Object3D and extract mesh data with unified indexing.
+     * This method handles vertex deduplication, BVH construction, and serialization.
+     * 
+     * @param object - The THREE.Object3D to process (from OBJLoader, GLTFLoader, etc.)
+     * @param materialNameToIndex - Map from material name to material index
+     * @param materials - Array of extracted materials
+     * @returns Processed mesh data ready for GPU upload
+     */
+    protected static async processTHREEObject(
+        object: THREE.Object3D,
+        materialNameToIndex: Map<string, number>,
+        materials: ExtractedMaterial[],
+        scale: number = 1.0
+    ): Promise<EfficientMeshData> {
         const extracted: {
             positions: number[],
             normals: number[],
@@ -65,25 +66,8 @@ export class ThreeJSOBJLoader {
             normals: [],
             uvs: [],
             triangles: [],
-            materials: []
+            materials: materials
         };
-
-        // Extract materials from materialsInfo
-        const materialNameToIndex = new Map<string, number>();
-        for (const matName in materialsLib.materialsInfo) {
-            const info = materialsLib.materialsInfo[matName];
-            const idx = extracted.materials.length;
-            materialNameToIndex.set(matName, idx);
-
-            const color: [number, number, number] = info.kd ? [info.kd[0], info.kd[1], info.kd[2]] : [0.8, 0.8, 0.8];
-            const emission: [number, number, number] = info.ke ? [info.ke[0], info.ke[1], info.ke[2]] : [0, 0, 0];
-            const specular: [number, number, number] = info.ks ? [info.ks[0], info.ks[1], info.ks[2]] : [0, 0, 0];
-            const ior = info.ni ? parseFloat(info.ni) : 1.5;
-            const diffuseMap = info.map_kd;
-            const specularMap = info.map_ks;
-
-            extracted.materials.push({ id: idx, color, emission, specular, ior, diffuseMap, specularMap });
-        }
 
         // Map to deduplicate vertices
         const vertexMap = new Map<string, number>();
@@ -115,9 +99,9 @@ export class ThreeJSOBJLoader {
                     // position, normal, uv share the same index for a single vertex,
                     // to save GPU costs
                     const getVertexIndex = (localIdx: number) => {
-                        const x = posAttr.getX(localIdx);
-                        const y = posAttr.getY(localIdx);
-                        const z = posAttr.getZ(localIdx);
+                        const x = posAttr.getX(localIdx) * scale;
+                        const y = posAttr.getY(localIdx) * scale;
+                        const z = posAttr.getZ(localIdx) * scale;
                         let nx = 0, ny = 0, nz = 0;
                         if (normalAttr) {
                             nx = normalAttr.getX(localIdx);
@@ -172,10 +156,13 @@ export class ThreeJSOBJLoader {
         if (extracted.materials.length === 0) {
             extracted.materials.push({
                 id: 0,
-                color: [0.8, 0.8, 0.8],
-                emission: [0, 0, 0],
-                specular: [0, 0, 0],
-                ior: 1.5
+                material: new Material(
+                    DEFAULT_COLOR,
+                    0,
+                    DEFAULT_SPECULAR,
+                    DEFAULT_SUBSURFACE_COLOR,
+                    DEFAULT_IOR
+                )
             });
         }
 
@@ -183,7 +170,7 @@ export class ThreeJSOBJLoader {
         const positions = new Float32Array(extracted.positions);
         const normals = new Float32Array(extracted.normals);
         const uvs = new Float32Array(extracted.uvs);
-        const numVertices = positions.length / 3;
+        // const numVertices = positions.length / 3;
         const initialIndices = new Uint32Array(extracted.triangles.length * 3);
         const initialMaterials = new Uint32Array(extracted.triangles.length);
 
@@ -197,8 +184,6 @@ export class ThreeJSOBJLoader {
             initialIndices[i * 3 + 2] = extracted.triangles[i].v2;
             initialMaterials[i] = extracted.triangles[i].materialIndex;
         }
-
-        // Normals and UVs are extracted directly from OBJ geometry above; no additional calculation needed.
 
         console.log(`Building Custom BVH for ${extracted.triangles.length} triangles...`);
 
@@ -250,26 +235,13 @@ export class ThreeJSOBJLoader {
                 // Materials: Flatten to Float32Array (16 floats per material)
                 const materialsFloat = new Float32Array(extracted.materials.length * 16);
                 let mo = 0;
-                for (const material of extracted.materials) {
-                    materialsFloat[mo++] = material.color[0];
-                    materialsFloat[mo++] = material.color[1];
-                    materialsFloat[mo++] = material.color[2];
-                    materialsFloat[mo++] = material.emission[0] > 0 || material.emission[1] > 0 || material.emission[2] > 0 ? 1.0 : 0.0;
-
-                    materialsFloat[mo++] = material.specular[0];
-                    materialsFloat[mo++] = material.specular[1];
-                    materialsFloat[mo++] = material.specular[2];
-                    materialsFloat[mo++] = 0.0; // Padding
-
-                    materialsFloat[mo++] = 0.0; // Subsurface R
-                    materialsFloat[mo++] = 0.0; // Subsurface G
-                    materialsFloat[mo++] = 0.0; // Subsurface B
-                    materialsFloat[mo++] = material.ior;
-
-                    materialsFloat[mo++] = 1.0; // Diffuse chance
-                    materialsFloat[mo++] = 0.0; // Metalic chance
-                    materialsFloat[mo++] = 0.0; // Dielectric chance
-                    materialsFloat[mo++] = 1.0; // Sum
+                for (const extMat of extracted.materials) {
+                    // TODO, CRITICAL: extract diffuseMap and specularMap,
+                    // and serialize them into a webgl sampler2D
+                    const serialized = extMat.material.serialize();
+                    materialsFloat.set(serialized, mo);
+                    // Tamaño total del material: 16 floats
+                    mo += 16;
                 }
 
                 return {

@@ -1,6 +1,6 @@
 import { Vector3 } from "math.gl";
-import { Triangle } from "../../Primitives/Triangle";
-import { SimpleMesh } from "../../Primitives/SimpleMesh";
+import { Triangle } from "../../../Primitives/Triangle";
+import { SimpleMesh } from "../../../Primitives/SimpleMesh";
 
 /**
  * FBX File Loader

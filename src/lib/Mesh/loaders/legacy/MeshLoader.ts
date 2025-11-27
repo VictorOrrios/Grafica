@@ -1,4 +1,4 @@
-import { SimpleMesh } from "../../Primitives/SimpleMesh";
+import { SimpleMesh } from "../../../Primitives/SimpleMesh";
 import { OBJLoader } from "./OBJLoader";
 import { FBXLoader } from "./FBXLoader";
 import { SyncFileLoader } from "./SyncFileLoader";

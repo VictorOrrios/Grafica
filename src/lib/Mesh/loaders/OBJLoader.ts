@@ -1,104 +1,100 @@
-import { Vector3 } from "math.gl";
-import { Triangle } from "../../Primitives/Triangle";
-import { SimpleMesh } from "../../Primitives/SimpleMesh";
+import * as THREE from 'three';
+import { OBJLoader as THREEOBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+import { Material } from '../../Primitives/Material';
+import { Vector3 } from 'math.gl';
+import { ThreeJSMeshLoader } from './ThreeJSMeshLoader';
+import type { ExtractedMaterial, EfficientMeshData } from './ThreeJSMeshLoader';
+import { DEFAULT_COLOR, DEFAULT_EMISSION, DEFAULT_IOR, DEFAULT_SPECULAR, DEFAULT_SUBSURFACE_COLOR } from './constants';
+
+
+// Re-export types for external use (ERROR otherwise)
+export type { ExtractedMaterial, EfficientMeshData };
 
 /**
- * OBJ File Loader
+ * Loader for OBJ files with optional MTL materials using THREE.js.
+ * Extends ThreeJSMeshLoader to handle OBJ-specific loading logic.
  */
-export class OBJLoader {
+export class ThreeJSOBJLoader extends ThreeJSMeshLoader {
     /**
-     * Parse OBJ file content (synchronous)
-     * Use this after loading the file content yourself
-     * @param content - OBJ file content as string
-     * @param name - Name for the mesh
-     * @returns Mesh object
+     * Load an OBJ file and optional MTL material file.
+     * 
+     * @param url - Path to the .obj file
+     * @returns Processed mesh data ready for GPU upload
      */
-    public static parse(content: string, name: string = "mesh"): SimpleMesh {
-        const lines = content.split('\n');
-        const vertices: Vector3[] = [];
-        const normals: Vector3[] = [];
-        const faces: Array<{ vertexIndices: number[] }> = [];
-        const mesh = new SimpleMesh(name);
+    static async load(url: string, scale: number = 1.0): Promise<EfficientMeshData> {
+        const objLoader = new THREEOBJLoader();
+        const mtlLoader = new MTLLoader();
 
-        for (const line of lines) {
-            const trimmed = line.trim();
+        // Load materials from MTL file
+        let materialsLib: any = {};
+        try {
+            const mtlUrl = url.replace('.obj', '.mtl');
+            materialsLib = await mtlLoader.loadAsync(mtlUrl);
+            console.log("MTL materials loaded:", materialsLib);
+            objLoader.setMaterials(materialsLib);
+        } catch (e) {
+            console.warn('MTL file not found or failed to load:', e);
+        }
 
-            // Skip empty lines and comments
-            if (!trimmed || trimmed.startsWith('#')) continue;
+        // Load OBJ file
+        const object = await objLoader.loadAsync(url);
+        console.debug("OBJ file loaded:", url);
 
-            const parts = trimmed.split(/\s+/);
-            const command = parts[0];
+        // Extract materials from MTL
+        const materials: ExtractedMaterial[] = [];
+        const materialNameToIndex = new Map<string, number>();
 
-            switch (command) {
-                case 'v': {
-                    // Vertex position
-                    const x = parseFloat(parts[1]);
-                    const y = parseFloat(parts[2]);
-                    const z = parseFloat(parts[3]);
-                    if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
-                        vertices.push(new Vector3(x, y, z));
-                    }
-                    break;
-                }
+        for (const matName in materialsLib.materialsInfo) {
+            const info = materialsLib.materialsInfo[matName];
+            const idx = materials.length;
+            materialNameToIndex.set(matName, idx);
 
-                case 'vn': {
-                    // Vertex normal (we'll recalculate, but store for reference)
-                    const x = parseFloat(parts[1]);
-                    const y = parseFloat(parts[2]);
-                    const z = parseFloat(parts[3]);
-                    if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
-                        normals.push(new Vector3(x, y, z).normalize());
-                    }
-                    break;
-                }
+            const color: Vector3 = info.kd ? new Vector3(info.kd[0], info.kd[1], info.kd[2]) : DEFAULT_COLOR;
+            const emission: Vector3 = info.ke ? new Vector3(info.ke[0], info.ke[1], info.ke[2]) : DEFAULT_EMISSION;
+            const specular: Vector3 = info.ks ? new Vector3(info.ks[0], info.ks[1], info.ks[2]) : DEFAULT_SPECULAR;
+            const ior = info.ni ? parseFloat(info.ni) : DEFAULT_IOR;
+            const diffuseMap = info.map_kd;
+            const specularMap = info.map_ks;
 
-                case 'f': {
-                    // Face (polygon) - supports formats: f v1 v2 v3 or f v1/vt1/vn1 v2/vt2/vn2 v3/vt3/vn3
-                    const faceVertices: number[] = [];
+            let subsurface_color = DEFAULT_SUBSURFACE_COLOR;
+            if (info.Tf) {
+                subsurface_color = new Vector3(info.Tf[0], info.Tf[1], info.Tf[2]);
+            }
 
-                    for (let i = 1; i < parts.length; i++) {
-                        const vertexData = parts[i].split('/');
-                        const vertexIndex = parseInt(vertexData[0]) - 1; // OBJ indices are 1-based
+            // NOTE: logic shared with GLTFLoader
+            let is_emissive = false;
+            let albedo_emission = color;
 
-                        if (!isNaN(vertexIndex) && vertexIndex >= 0 && vertexIndex < vertices.length) {
-                            faceVertices.push(vertexIndex);
-                        }
-                    }
-
-                    if (faceVertices.length >= 3) {
-                        faces.push({ vertexIndices: faceVertices });
-                    }
+            for (let i = 0; i < 3; i++) {
+                // KEY: in THREE.js, emissive and albedo are stored in separate fields,
+                // so we need to check if any of the emissive channels is greater than 0
+                // to determine if the material is emissive
+                if (emission[i] > 0) {
+                    is_emissive = true;
+                    albedo_emission = emission;
+                    // Stop looping immediately
                     break;
                 }
             }
+
+            materials.push({
+                id: idx,
+                material: new Material(
+                    albedo_emission,
+                    is_emissive ? 1.0 : -1.0,
+                    specular,
+                    subsurface_color,
+                    ior
+                ),
+                diffuseMap,
+                specularMap
+            });
+
+            console.log("Added OBJ material:", JSON.stringify(materials[materials.length - 1], null, 2));
         }
 
-        // Convert faces to triangles (triangulate quads and n-gons using fan triangulation)
-        for (const face of faces) {
-            const indices = face.vertexIndices;
-
-            // Fan triangulation: split from first vertex
-            for (let i = 1; i < indices.length - 1; i++) {
-                const v0 = vertices[indices[0]];
-                const v1 = vertices[indices[i]];
-                const v2 = vertices[indices[i + 1]];
-
-                if (v0 && v1 && v2) {
-                    mesh.addTriangle(new Triangle(v0, v1, v2));
-                }
-            }
-        }
-
-        console.log(`✓ Parsed OBJ, number of triangles: ${mesh.getTriangles().length}`);
-        return mesh;
-    }
-
-    /**
-     * Extract mesh name from URL
-     */
-    private static extractName(url: string): string {
-        const parts = url.split('/');
-        const filename = parts[parts.length - 1];
-        return filename.replace(/\.(obj|OBJ)$/, '');
+        // Process the THREE.Object3D using the base class
+        return this.processTHREEObject(object, materialNameToIndex, materials, scale);
     }
 }
