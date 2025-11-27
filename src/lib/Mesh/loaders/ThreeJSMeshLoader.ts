@@ -3,7 +3,7 @@ import { BVHBuilder } from '../BVH/BVHBuilder';
 
 import { Material } from '../../Primitives/Material';
 import { Vector3 } from 'math.gl';
-import { DEFAULT_COLOR, DEFAULT_IOR, DEFAULT_SPECULAR, DEFAULT_SUBSURFACE_COLOR } from './constants';
+import { DEFAULT_COLOR, DEFAULT_IOR, DEFAULT_SPECULAR, DEFAULT_SUBSURFACE_COLOR, NormalStrategy } from './constants';
 
 // Interface for extracted Material data (TODO, cambiar a voluntad)
 export interface ExtractedMaterial {
@@ -21,6 +21,7 @@ export interface EfficientMeshData {
     triangleMaterials: Uint32Array; // Material index per triangle
     materials: ExtractedMaterial[];
     bvhData: Float32Array;          // Custom BVH data
+    normalStrategy: NormalStrategy;
     serializeTextures(): {
         positionsRGB: Float32Array;
         normalsRGB: Float32Array;
@@ -55,7 +56,8 @@ export class ThreeJSMeshLoader {
         materials: ExtractedMaterial[],
         scale: number = 1.0,
         rotation: Vector3 = new Vector3(0, 0, 0),
-        translation: Vector3 = new Vector3(0, 0, 0)
+        translation: Vector3 = new Vector3(0, 0, 0),
+        normalStrategy: NormalStrategy = NormalStrategy.INTERPOLATED
     ): Promise<EfficientMeshData> {
         const extracted: {
             positions: number[],
@@ -261,6 +263,7 @@ export class ThreeJSMeshLoader {
             triangleMaterials: finalMaterials,
             materials: extracted.materials,
             bvhData: bvhData,
+            normalStrategy: normalStrategy,
             serializeTextures: () => {
                 // UNIFIED INDEXING: We use the same indices for positions, normals, and UVs.
                 // This is because we deduplicate vertices based on the combination of 
@@ -269,8 +272,11 @@ export class ThreeJSMeshLoader {
                 // Positions: vec3 -> RGB32F (3 floats per vertex instead of 4)
                 const positionsRGB = new Float32Array(positions);
 
-                // Normals: vec3 -> RGB32F (3 floats per vertex instead of 4)
-                const normalsRGB = new Float32Array(normals);
+                // Normals: vec3 -> RGB32F (3 floats per vertex instead of 4  )
+                // Skip normals for GEOMETRIC strategy (computed in shader)
+                const normalsRGB = normalStrategy === NormalStrategy.GEOMETRIC
+                    ? new Float32Array(0)
+                    : new Float32Array(normals);
 
                 // UVs: vec2 (RG32F)
                 const uvsRG = new Float32Array(uvs);

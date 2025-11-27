@@ -5,7 +5,7 @@ import { Material } from '../../Primitives/Material';
 import { Vector3 } from 'math.gl';
 import { ThreeJSMeshLoader } from './ThreeJSMeshLoader';
 import type { ExtractedMaterial, EfficientMeshData } from './ThreeJSMeshLoader';
-import { DEFAULT_COLOR, DEFAULT_EMISSION, DEFAULT_IOR, DEFAULT_SPECULAR, DEFAULT_SUBSURFACE_COLOR } from './constants';
+import { DEFAULT_COLOR, DEFAULT_EMISSION, DEFAULT_IOR, DEFAULT_SPECULAR, DEFAULT_SUBSURFACE_COLOR, NormalStrategy } from './constants';
 
 
 // Re-export types for external use (ERROR otherwise)
@@ -26,7 +26,8 @@ export class ThreeJSOBJLoader extends ThreeJSMeshLoader {
         url: string,
         scale: number = 1.0,
         rotation: Vector3 = new Vector3(0, 0, 0),
-        translation: Vector3 = new Vector3(0, 0, 0)
+        translation: Vector3 = new Vector3(0, 0, 0),
+        normalStrategy: NormalStrategy = NormalStrategy.INTERPOLATED
     ): Promise<EfficientMeshData> {
         const objLoader = new THREEOBJLoader();
         const mtlLoader = new MTLLoader();
@@ -100,6 +101,6 @@ export class ThreeJSOBJLoader extends ThreeJSMeshLoader {
         }
 
         // Process the THREE.Object3D using the base class
-        return this.processTHREEObject(object, materialNameToIndex, materials, scale, rotation, translation);
+        return this.processTHREEObject(object, materialNameToIndex, materials, scale, rotation, translation, normalStrategy);
     }
 }

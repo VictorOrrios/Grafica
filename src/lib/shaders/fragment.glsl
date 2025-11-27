@@ -61,8 +61,14 @@ struct Triangle {
 struct MeshInfo {
     int startTriangle;
     int triangleCount;
+    // TODO, remove and implement full material system for meshes
     int materialIndex;
+    int normalStrategy; // 0 = Interpolated, 1 = Geometric
+    int normalOffset;   // sum of vertices from prior GEOMETRIC meshes
+    // NOTE: padding is REQUIRED for alignment
+    int pad1, pad2, pad3;
 };
+
 
 struct Ray {
     vec3 orig;
@@ -136,11 +142,14 @@ layout(std140) uniform StaticBlock {
     #endif
 };
 
+// TODO, support for multiple meshes IS NOT GUARANTEED TO WORK RN
 // TODO, meter sampler para el mapa de uv
 uniform sampler2D u_positions_tex;
 uniform sampler2D u_normals_tex;
-uniform usampler2D u_positionIndices_tex;
+uniform usampler2D u_sharedVertexIndices_tex;
+// TODO, change to R8UI and implement mesh materials
 uniform usampler2D u_triangleMaterials_tex;
+// TODO, add bvh offset for each mesh
 uniform sampler2D u_bvh_tex;    // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
 
 uniform int u_vertex_count;
@@ -412,14 +421,14 @@ uvec4 fetchTexelUint(usampler2D tex, int index) {
 }
 
 
-bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
-    // Each triangle stores 3 uint indices in the u_positionIndices_tex (one uint per texel)
+bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normalOffset, out Hit h){
+    // Each triangle stores 3 uint indices in the u_sharedVertexIndices_tex (one uint per texel)
     int base = triIndex * 3;
 
     // Fetch packed indices (R32UI texture) using 2D layout
-    uvec4 id0 = fetchTexelUint(u_positionIndices_tex, base + 0);
-    uvec4 id1 = fetchTexelUint(u_positionIndices_tex, base + 1);
-    uvec4 id2 = fetchTexelUint(u_positionIndices_tex, base + 2);
+    uvec4 id0 = fetchTexelUint(u_sharedVertexIndices_tex, base + 0);
+    uvec4 id1 = fetchTexelUint(u_sharedVertexIndices_tex, base + 1);
+    uvec4 id2 = fetchTexelUint(u_sharedVertexIndices_tex, base + 2);
 
     int idx0 = int(id0.r);
     int idx1 = int(id1.r);
@@ -429,11 +438,6 @@ bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
     vec3 v0 = fetchTexelFloat(u_positions_tex, idx0).xyz;
     vec3 v1 = fetchTexelFloat(u_positions_tex, idx1).xyz;
     vec3 v2 = fetchTexelFloat(u_positions_tex, idx2).xyz;
-
-    // Fetch vertex normals from texture (RGB32F)
-    vec3 n0 = fetchTexelFloat(u_normals_tex, idx0).xyz;
-    vec3 n1 = fetchTexelFloat(u_normals_tex, idx1).xyz;
-    vec3 n2 = fetchTexelFloat(u_normals_tex, idx2).xyz;
 
     // Moller-Trumbore intersection
     vec3 edge1 = v1 - v0;
@@ -457,25 +461,29 @@ bool hit_mesh_triangle(int triIndex, const Ray r, out Hit h){
     h.t = t;
     h.p = r.orig + r.dir * t;
 
-    // Interpolate normal using barycentric coordinates
-    float w = 1.0 - u - v;
-    vec3 interpolatedNormal = normalize(n0 * w + n1 * u + n2 * v);
-    h.normal = interpolatedNormal;
+    vec3 finalNormal;
+
+    if (normalStrategy == 1) {
+        // GEOMETRIC (Flat shading)
+        finalNormal = normalize(cross(edge1, edge2));
+    } else {
+        // INTERPOLATED (Smooth shading)
+        // Fetch vertex normals from texture using normalOffset
+        vec3 n0 = fetchTexelFloat(u_normals_tex, idx0 - normalOffset).xyz;
+        vec3 n1 = fetchTexelFloat(u_normals_tex, idx1 - normalOffset).xyz;
+        vec3 n2 = fetchTexelFloat(u_normals_tex, idx2 - normalOffset).xyz;
+
+        // Interpolate normal using barycentric coordinates
+        float w = 1.0 - u - v;
+        finalNormal = normalize(n0 * w + n1 * u + n2 * v);
+    }
+
+    h.normal = finalNormal;
     // Triangle material index stored as R32UI texel per triangle
-    // TODO, change to R8UI and implement mesh materials
     uint mat_u = fetchTexelUint(u_triangleMaterials_tex, triIndex).r;
     h.mat = int(mat_u);
     h.isMesh = true;  // This is a mesh triangle
-    set_front_face(interpolatedNormal, r.dir, h);
-
-    // Ensure normal points outward from the mesh center (0,0,0)
-    // TODO: REMOVED, since it flips the normals when translating the mesh
-    /*
-    if (dot(h.normal, h.p) < 0.0) {
-        h.normal = -h.normal;
-        h.front_face = !h.front_face;
-    }
-    */
+    set_front_face(finalNormal, r.dir, h);
     return true;
 }
 
@@ -559,7 +567,7 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
                 int triIdx = mesh.startTriangle + int(offset + i);
                 Hit h_aux;
                 
-                if (hit_mesh_triangle(triIdx, r, h_aux) && h_aux.t < triangleDistance) {
+                if (hit_mesh_triangle(triIdx, r, mesh.normalStrategy, mesh.normalOffset, h_aux) && h_aux.t < triangleDistance) {
                     triangleDistance = h_aux.t;
                     h = h_aux;
                     found = true;
@@ -612,7 +620,7 @@ bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, out Hit h){
 
     for(int i = 0; i < mesh.triangleCount; i++){
         int triIdx = mesh.startTriangle + i;
-        if(hit_mesh_triangle(triIdx, r, h_aux)){
+        if(hit_mesh_triangle(triIdx, r, mesh.normalStrategy, mesh.normalOffset, h_aux)){
             if(h_aux.t < h.t){
                 h = h_aux;
                 has_hit = true;

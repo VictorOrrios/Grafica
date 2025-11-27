@@ -9,3 +9,8 @@ export const DEFAULT_SUBSURFACE_COLOR: Vector3 = new Vector3(0, 0, 0);
 // NOTE: could be 0.0, set like this in case the corresponding THREE.js
 // ior field is missing (and the material is dielectric)
 export const DEFAULT_IOR: number = 1.5;
+
+export enum NormalStrategy {
+    INTERPOLATED = 0,
+    GEOMETRIC = 1
+}

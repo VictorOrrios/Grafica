@@ -221,7 +221,7 @@ export class Renderer {
 
             this.initTextureBuffer('u_normals_tex', meshBuffers.normals, nextTextureBinding++, 1);
 
-            this.initTextureBuffer('u_positionIndices_tex', meshBuffers.positionIndices, nextTextureBinding++, 2);
+            this.initTextureBuffer('u_sharedVertexIndices_tex', meshBuffers.positionIndices, nextTextureBinding++, 2);
 
             this.initTextureBuffer('u_triangleMaterials_tex', meshBuffers.triangleMaterials, nextTextureBinding++, 2);
 

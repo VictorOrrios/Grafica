@@ -4,6 +4,7 @@ import { Camera } from "./camera";
 import { Material } from "./Primitives/Material";
 import { Plane } from "./Primitives/Plane";
 import { Triangle } from "./Primitives/Triangle";
+import { NormalStrategy } from "./Mesh/loaders/constants";
 import { Quad } from "./Primitives/Quad";
 import { SimpleMesh } from "./Primitives/SimpleMesh";
 import { MeshLoader } from "./Mesh/loaders/legacy/MeshLoader";
@@ -36,7 +37,7 @@ export class Scene {
     public pointLightVec: PointLight[] = [];
     public meshDataVec: EfficientMeshData[] = [];
 
-    constructor(type: SceneType = SceneType.BVHMESH /*SceneType.GLTF_BVH*/) {
+    constructor(type: SceneType = /*SceneType.BVHMESH*/ SceneType.GLTF_BVH) {
         this.sceneType = type;
     }
 
@@ -789,9 +790,9 @@ export class Scene {
 
         // Load mesh
         try {
-            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj", 1.0, new Vector3(0.8, 0.2, 0.0), new Vector3(1.0, 1.0, 1.0));
+            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj", 1.0, new Vector3(0.8, 0.2, 0.0), new Vector3(1.0, 1.0, 1.0), NormalStrategy.GEOMETRIC);
             // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-salazar/scene.obj");
-            // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/glowfish/Glowfish.obj", 0.085, new Vector3(0.0, 0.0, 0.0), new Vector3(2.0, 2.0, 2.0));
+            // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/glowfish/Glowfish.obj", 0.085, new Vector3(0.0, 0.0, 0.0), new Vector3(2.0, 2.0, 2.0), NormalStrategy.GEOMETRIC);
             this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
@@ -823,10 +824,13 @@ export class Scene {
         this.addPlane(p1, salmon);
 
         try {
-            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon/scene.gltf", 0.012);
+            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon/scene.gltf", 0.012, new Vector3(0.0, 0.0, 0.0), new Vector3(0.0, 0.0, 0.0), NormalStrategy.GEOMETRIC);
             // NOTE, KEY: ~230K vertices, only used for material loading, USE ONLY WITH RENDER DISABLED (Stop)
             // const bvhMesh = await GLTFLoader.load("models/gltf/dragon_glass/scene.gltf", 0.012);
-            const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2, new Vector3(0.1, 4.0, 0.7), new Vector3(0.8, 0.2, 0.4));
+            // const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2, new Vector3(0.1, 4.0, 0.7), new Vector3(0.2, 0.2, 0.2), NormalStrategy.GEOMETRIC);
+            const bvhMesh = await GLTFLoader.load("models/gltf/venus_statue/scene.gltf", 0.05, new Vector3(0.0, 3.14, 0.0), new Vector3(0.0, 0.0, 0.0), NormalStrategy.GEOMETRIC);
+            // const bvhMesh = await GLTFLoader.load("models/gltf/priest/scene.gltf", 0.01, new Vector3(0.0, 1.55, 3.14), new Vector3(-0.15, 0.2, 0.0), NormalStrategy.GEOMETRIC);
+            // const bvhMesh = await GLTFLoader.load("models/gltf/stanford_dragon_pbr/scene.gltf", 0.002, new Vector3(0.0, 3.14, 0.0), new Vector3(0.0, 0.0, 0.0), NormalStrategy.GEOMETRIC);
             this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
@@ -910,11 +914,22 @@ export class Scene {
     public serializeMeshInfoVec(): Float32Array {
         const matIdx = this.materialVec.length - 1;
         let start = 0;
+        let normalOffset = 0;
         const out: number[] = [];
 
         for (const m of this.meshDataVec) {
             const count = m.positionIndices.length / 3;
-            out.push(start, count, matIdx, 0);
+
+            // Serialize 8 ints per mesh (std140 alignment for struct arrays)
+            // MeshInfo: startTriangle, triangleCount, materialIndex, normalStrategy,
+            //           normalOffset, pad1, pad2, pad3
+            out.push(start, count, matIdx, m.normalStrategy, normalOffset, 0, 0, 0);
+
+            // Update normalOffset: accumulate vertices from GEOMETRIC meshes
+            if (m.normalStrategy === NormalStrategy.GEOMETRIC) {
+                normalOffset += m.positions.length / 3;  // vertex count
+            }
+
             start += count;
         }
 
@@ -952,7 +967,9 @@ export class Scene {
             triMatList.push(offsetTriMat);
 
             positionsList.push(s.positionsRGB);
-            normalsList.push(s.normalsRGB);
+            if (s.normalsRGB.length > 0) {
+                normalsList.push(s.normalsRGB);
+            }
             uvsList.push(s.uvsRG);
             indexList.push(s.positionIndices);
             normalIndexList.push(s.normalIndices);
