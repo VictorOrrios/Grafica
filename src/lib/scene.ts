@@ -789,8 +789,8 @@ export class Scene {
 
         // Load mesh
         try {
-            // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj");
-            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-salazar/scene.obj");
+            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj");
+            // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-salazar/scene.obj");
             // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/glowfish/Glowfish.obj", 0.085);
             this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
