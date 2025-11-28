@@ -302,7 +302,7 @@ export class Renderer {
     private async initSkyboxBuffer() {
         const gl = this.gl;
         // All images taken from: https://polyhaven.com
-        const image = await loadEXRImage("charolettenbrunn_park_4k.exr", 1.0)
+        const image = await loadEXRImage("modern_evening_street_4k.exr", 1.0)
 
         let tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE1);

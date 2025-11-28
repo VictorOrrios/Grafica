@@ -7,10 +7,15 @@ export class Material{
     public specular_color:Vector3 = new Vector3(0);
     public subsurface_color:Vector3 = new Vector3(0);
     public ior:number = 1.0;
+    public roughness:number = 1.0;
+    public metalness:number = 0.0;
+    public trs_weight:number = 0.0;
 
     constructor(albedo:Vector3, emission:number, 
         specular_color:Vector3, 
-        subsurface_color:Vector3, ior:number){
+        subsurface_color:Vector3, ior:number = 1.5,
+        roughness:number = 1.0, metalness:number = 0.0, trs_weight:number = 0.0
+    ){
 
         // Check for sum of channel bigger than 1
         for (let i = 0; i < 3; i++) {
@@ -34,34 +39,21 @@ export class Material{
         this.specular_color = specular_color;
         this.subsurface_color = subsurface_color;
         this.ior = ior;
+        this.roughness = roughness;
+        this.metalness = metalness;
+        this.trs_weight = trs_weight;
     }
 
     private static getMaxComponent(v:Vector3):number{
         return Math.max(v.x,v.y,v.z); 
     }
 
-    private getLobeChances():Vector4{
-        let pd = Material.getMaxComponent(this.albedo);
-        let ps = Material.getMaxComponent(this.specular_color);
-        let pt = Material.getMaxComponent(this.subsurface_color);
-        let sum = pd+ps+pt;
-        
-        /*
-        pd /= sum;
-        ps /= sum;
-        pt /= sum;
-        */
-
-        return new Vector4(pd,ps,pt,sum);
-    }
-
     public serialize():Float32Array{
-        const lobe_chances = this.getLobeChances();
         return new Float32Array([
             this.albedo.x, this.albedo.y, this.albedo.z, this.emission,
             this.specular_color.x, this.specular_color.y, this.specular_color.z, 0,
             this.subsurface_color.x, this.subsurface_color.y, this.subsurface_color.z, this.ior,
-            lobe_chances.x, lobe_chances.y, lobe_chances.z, lobe_chances.w
+            this.roughness, this.metalness, this.trs_weight, 0.0
         ]);
     }
 

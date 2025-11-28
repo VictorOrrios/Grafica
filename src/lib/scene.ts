@@ -36,14 +36,16 @@ export class Scene {
     public pointLightVec: PointLight[] = [];
     public meshDataVec: EfficientMeshData[] = [];
 
-    constructor(type: SceneType = SceneType.BVHMESH /*SceneType.GLTF_BVH*/) {
+    constructor(type: SceneType = SceneType.TESTPLANE) {
         this.sceneType = type;
     }
 
     public async setupScene() {
         if (this.sceneType === SceneType.TESTPLANE) {
             this.testplane();
-        } else if (this.sceneType === SceneType.CORNEL) {
+        } 
+        /*
+        else if (this.sceneType === SceneType.CORNEL) {
             this.cornell();
         } else if (this.sceneType === SceneType.CORNELEXTRA) {
             this.cornellextra();
@@ -56,6 +58,7 @@ export class Scene {
         } else if (this.sceneType === SceneType.GLTF_BVH) {
             await this.bhvGLTFScene();
         }
+        */
     }
 
     private addMaterial(material: Material): number {
@@ -104,67 +107,60 @@ export class Scene {
     private testplane() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
 
-        const m1 = this.addMaterial(new Material(
-            new Vector3(1.0, 0.0, 0.0),
-            0,
+        const red = this.addMaterial(new Material(
+            new Vector3(1.0, 0.0, 0.0),0,
             new Vector3(0),
-            new Vector3(0),
-            1.0
+            new Vector3(0),1.5
         ));
 
-        const m2 = this.addMaterial(new Material(
-            new Vector3(0.0, 1.0, 0.0),
-            0,
+        const green = this.addMaterial(new Material(
+            new Vector3(0.0, 1.0, 0.0),0,
             new Vector3(0),
-            new Vector3(0),
-            1.0
+            new Vector3(0),1.5
         ));
 
-        const m3 = this.addMaterial(new Material(
-            new Vector3(0.0, 0.5, 1.0),
-            0,
+        const blue = this.addMaterial(new Material(
+            new Vector3(0.0, 0.0, 1.0),0,
             new Vector3(0),
-            new Vector3(0),
-            1.0
+            new Vector3(0),1.5
         ));
 
-        const m4 = this.addMaterial(new Material(
-            new Vector3(0.9, 0.9, 0.0),
-            0,
+        const yellow = this.addMaterial(new Material(
+            new Vector3(1.0, 1.0, 0.0),0,
             new Vector3(0),
-            new Vector3(0),
-            1.0
+            new Vector3(0),1.5
         ));
 
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
             1.0);
-        this.addSphere(s1, m1);
+        this.addSphere(s1, red);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
             2.0);
-        this.addSphere(s2, m2);
+        this.addSphere(s2, green);
 
         const s3 = new Sphere(
             new Vector3(4.0, 1.0, -6.0),
             2.0);
-        this.addSphere(s3, m2);
+        this.addSphere(s3, green);
 
         const t1: Triangle = new Triangle(
             new Vector3(-3.0, 0.5, 2.0),
             new Vector3(-6.0, 0.0, 0.0),
             new Vector3(-4.5, 2.5, -2.0),
         );
-        this.addTriangle(t1, m4);
+        this.addTriangle(t1, yellow);
 
         const p1: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
             1.0
         );
-        this.addPlane(p1, m3);
+        this.addPlane(p1, blue);
     }
 
+    /*
     private cornell() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 3.5));
 
@@ -833,6 +829,7 @@ export class Scene {
             console.warn("Could not load BVH mesh:", error);
         }
     }
+        */
 
     public serializeStaticBlock(): Float32Array {
         const data: number[] = [];

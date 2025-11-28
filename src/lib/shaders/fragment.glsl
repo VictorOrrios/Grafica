@@ -30,15 +30,18 @@ precision highp usampler2D;
 #define METALIC 2
 #define DIELECTRIC 3
 
+
 //===========================
 // Type definitions
 //===========================
 
 struct Material {
-    vec4 albedo_emission;
-    vec3 specular_color;
-    vec4 subsurface_color_ior;
-    vec4 lobe_chances; // diffuse/metalic/dielectric/sum 
+    vec4 albedo_emission;                   // xyz = albedo* base color, w = emission power* (0.0 == no light)
+    vec3 specular_color;                    // xyz = specular color for highlights (metals)
+    vec4 subsurface_color_ior;              // xyz = subsurface color for transmision (dielectrics), w = index of refraction
+    vec3 roughness_metalness_transmision;   // x = roughness* 0.0 = smooth / 1.0 = rough
+                                            // y = metalness* 0.0 = dielectric / 1.0 = metalic
+                                            // z = transmision weight  0.0 = opaque
 };
 
 struct Sphere {
@@ -672,79 +675,125 @@ float fresnel_dielectric(float cos_theta_i, float eta) {
     return F0 + (1.0 - F0) * pow(1.0 - cos_theta_i, 5.0);
 }
 
-vec3 sample_mat_direction(inout Material mat, vec3 Vin, Hit h, out int type){
-    float r = random();
-    float sum = mat.lobe_chances.w;
-    if(bounce_count > 2){
-        sum += 1.0 - rr_chance;
-    }
-    if(sum > 1.0){
-        mat.lobe_chances.x /= sum;
-        mat.lobe_chances.y /= sum;
-        mat.lobe_chances.z /= sum;
+
+// Aligns a local direction vector X to world space using normal N as reference
+vec3 align_to_world(vec3 X, vec3 N){
+    vec3 up;
+    // Aproximation for speed, not 100% orthonormal when N is near +Z
+    if(abs(N.z) > 0.9999999){
+        up = vec3(1.0,0.0,0.0);
+    }else{
+        up = vec3(0.0,0.0,1.0);
     }
 
-    float sum_chance = mat.lobe_chances.x;
-    if(r <= sum_chance){
-        type = DIFFUSE;
-        return random_vec_on_hemisphere(h.normal);
-    }
-    sum_chance += mat.lobe_chances.y;
+    vec3 T = normalize(cross(up,N));
+    vec3 B =    (N,T);
 
-    if(r <= sum_chance){
-        type = METALIC;
-        return reflect(Vin,h.normal);
-    }
-    sum_chance += mat.lobe_chances.z;
+    return T*X.x + B*X.y + N*X.z;
+}
 
-    if(r <= sum_chance){
-        float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
-        float cos_theta = abs(dot(Vin,h.normal));
-        float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
-        bool cannot_refract = eta * sin_theta > 1.0;
-        if(cannot_refract){
-            type = METALIC;
-            return reflect(Vin,h.normal);
-        }else{
-            type = DIELECTRIC;
-            return refract(Vin,h.normal,eta);
-        }
-    }
+// Sampling the visible hemisphere as half vectors
+// https://cdrdv2-public.intel.com/782052/sampling-visible-ggx-normals.pdf
+vec3 sample_vndf_hemisphere(vec2 u, vec3 wi){
+    // sample a spherical cap in (-wi.z, 1]
+    float phi = 2.0 * PI * u.x;
+    float z = fma((1.0f - u.y), (1.0f + wi.z), -wi.z);
+    float sinTheta = sqrt(clamp(1.0f - z * z, 0.0f, 1.0f));
+    float x = sinTheta * cos(phi);
+    float y = sinTheta * sin(phi);
+    vec3 c = vec3(x, y, z);
+    // compute halfway direction;
+    vec3 h = c + wi;
+    // return without normalization (as this is done later)
+    return h;
+}
 
-    type = NONE;
-    return vec3(0.0);
+// Samples a GGX-distributed microfacet normal and returns the half direction H
+// https://cdrdv2-public.intel.com/782052/sampling-visible-ggx-normals.pdf
+vec3 sample_ggx(float roughness, vec3 V, vec3 N){
+    vec2 u = vec2(random(),random());
+    // TODO: Supports anisotropic sampling, might be interesting to use it
+    vec2 alpha = vec2(roughness * roughness);
+
+    // warp to the hemisphere configuration
+    vec3 wiStd = normalize(vec3(V.xy * alpha, V.z));
+    // sample the hemisphere
+    vec3 wmStd = sample_vndf_hemisphere(u,wiStd);
+    // warp back to the ellipsoid configuration
+    vec3 wm = normalize(vec3(wmStd.xy * alpha, wmStd.z));
+    // transform to world space
+    vec3 H = normalize(align_to_world(wm,N));
+    // TODO: check if this needs a dir sign check
+    if (dot(V, H) < 0.0) H = -H;
+    return H;
+}
+
+// Samples a reflected direction of V into N 
+vec3 sample_r(Material mat, vec3 V, vec3 N, out vec3 H){
+    H = sample_ggx(mat.roughness,V,N);
+    return reflect(-V,H);
+}
+
+// Samples a refracted direction of V into N 
+vec3 sample_t(Material mat, float eta, vec3 V, vec3 N, out vec3 H, out bool reflected){
+    H = sample_ggx(mat.roughness,V,N);
+
+    float cos_theta = min(1.0,dot(V,H));
+    float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
+    bool cannot_refract = eta * sin_theta > 1.0;
+
+    float reflectance = fresnel_dielectric(cos_theta,eta);
+
+    reflected = cannot_refract || reflectance > random();
+    return reflected ? reflect(-V,H) : refract(-V,H,eta);
 }
 
 vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
-    vec3 ret;
-    int type;
+    bool reflected;
+    vec3 ret, H;
 
-    Vout = sample_mat_direction(mat,Vin,h,type);
+    vec3 V = -Vin;
+    vec3 N = rec.normal;
 
-    ret = mat.albedo_emission.rgb;
-    
-    switch(type){
-        case NONE:
-            ret = vec3(0.0);
-            break; 
-        case DIFFUSE:
-            /*
-            vec3 fr = mat.albedo_emission.rgb/PI;
-            pdf = abs(dot(Vout,h.normal))/PI;
-            */
-            ret /= mat.lobe_chances.x;
-            break;
-        case METALIC:
-            ret += mat.specular_color.rgb;
-            ret /= mat.lobe_chances.y;
-            break;
+    float ri = rec.front_face ? 1.0/mat.ior : mat.ior;
 
-        case DIELECTRIC:
-            if(!h.front_face) h.t *= mat.subsurface_color_ior.w;
-            ret += mat.subsurface_color_ior.rgb;
-            ret /= mat.lobe_chances.z;
-            break;
+    reflected = mat.roughness_metalness_transmision.z < random();
+    if(reflected){
+        Vout = normalize(sample_r(mat, V, rec.normal, H));
+    }else{
+        Vout = normalize(sample_t(mat,ri, V, rec.normal, H, reflected));
     }
+    
+    float NdotL = dot(L,N);
+    float NdotV = dot(V,N);
+    float VdotH = dot(V,H);
+    float NdotH = dot(N,H);
+    
+    float dielectric_F0 = (1.0 - ri) / (1.0 + ri);
+    vec3 dielectric_F0_vec = vec3(dielectric_F0*dielectric_F0);
+
+    vec3 F0 = mix(dielectric_F0_vec, mat.albedo.xyz, mat.metallic);
+    
+    vec3 f_diffuse = mat.albedo.xyz / PI;
+
+    float alpha = mat.roughness * mat.roughness;
+    float D = ggx_distribution(alpha,N,H);
+    float G = G1_GGX(L,N,H,alpha) * G1_GGX(V,N,H,alpha);
+    vec3  F = reflectance(VdotH, F0);
+
+    float ks = max(max(F.r, F.g), F.b);
+    float kd = (1.0 - ks) * (1.0 - mat.metallic);
+
+    float jacobian = 1.0 / max(0.00001,(4.0*NdotV*NdotL));
+    
+    vec3 f_specular = mat.specular_tint.rgb * D*G*F * jacobian ;
+
+    float pdf_specular = clamp(D * NdotH * jacobian,0.0,1.0);
+    float pdf_diffuse = clamp(NdotL / PI,0.0,1.0);
+    pdf = kd * pdf_diffuse + ks * pdf_specular;
+
+    return kd*f_diffuse + f_specular;
+
 
     return ret;
 }
@@ -844,6 +893,7 @@ vec3 get_direct_light(Hit h, float total_t){
     Hit aux;
     vec3 ret = vec3(0);
 
+    /*
     #if NUM_POINT_LIGHTS > 0
         for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
             PointLight l = point_lights[i];
@@ -870,6 +920,7 @@ vec3 get_direct_light(Hit h, float total_t){
             }
         }
     #endif
+    */
 
     return ret;
 }
