@@ -65,10 +65,10 @@ struct MeshInfo {
     int materialIndex;
     int normalStrategy; // 0 = Interpolated, 1 = Geometric
     int normalOffset;   // sum of vertices from prior GEOMETRIC meshes
+    int bvhOffset;      // Index of the root node in u_bvh_tex
     // NOTE: padding is REQUIRED for alignment
-    int pad1, pad2, pad3;
+    int pad2, pad3;
 };
-
 
 struct Ray {
     vec3 orig;
@@ -81,7 +81,7 @@ struct PointLight {
 };
 
 // Hit information record
-struct Hit{
+struct Hit {
     vec3 p;             // Where it happend
     vec3 normal;        // The normal where it hit
     int mat;            // Material index of the object it hit
@@ -522,10 +522,13 @@ bool intersectsBounds(vec3 rayOrigin, vec3 rayDirection, vec3 boundsMin, vec3 bo
 // Main BVH traversal function
 bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
     // Stack for traversal
+    // Stack for BVH traversal (max depth 64)
     const int BVH_STACK_DEPTH = 64;
-    uint stack[BVH_STACK_DEPTH];
+    int stack[BVH_STACK_DEPTH];
     int stackPtr = 0;
-    stack[0] = 0u; // Push root node
+    // mesh.bvhOffset is in nodes, but we need to convert to child index (also in nodes)
+    // The root node index for this mesh is mesh.bvhOffset
+    stack[stackPtr++] = mesh.bvhOffset; // Push root node index
     
     float triangleDistance = ray_max_distance;
     bool found = false;
@@ -533,21 +536,18 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
     // Initialize hit record
     h.t = ray_max_distance;
     
-    while (stackPtr > -1 && stackPtr < BVH_STACK_DEPTH) {
-        uint currNodeIndex = stack[stackPtr];
-        stackPtr--;
+    while (stackPtr > 0) {
+        int currNodeIndex = stack[--stackPtr];
         
-        // Fetch node data
-        int texelIndex = int(currNodeIndex) * 2;
+        int texelIndex = currNodeIndex * 2;
         vec4 t0 = fetchTexelFloat(u_bvh_tex, texelIndex);
         vec4 t1 = fetchTexelFloat(u_bvh_tex, texelIndex + 1);
         
         vec3 boundsMin = t0.xyz;
         vec3 boundsMax = t1.xyz;
-        float data1 = t0.w; // leftChildIndex (internal) OR triangleOffset (leaf)
-        float data2 = t1.w; // rightChildIndex (internal) OR -triangleCount (leaf)
+        float data1 = t0.w;
+        float data2 = t1.w;
         
-        // Check bounds intersection
         float boundsHitDistance;
         if (!intersectsBounds(r.orig, r.dir, boundsMin, boundsMax, boundsHitDistance) 
             || boundsHitDistance > triangleDistance) {
@@ -559,12 +559,13 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
         
         if (isLeaf) {
             // Leaf node: test triangles
-            uint count = uint(-data2);
-            uint offset = uint(data1);
+            int count = int(-data2);
+            int offset = int(data1);
             
             // Test all triangles in this leaf
-            for (uint i = 0u; i < count; i++) {
-                int triIdx = mesh.startTriangle + int(offset + i);
+            for (int i = 0; i < count; i++) {
+                // offset is local to the mesh (from BVH), so we need mesh.startTriangle
+                int triIdx = mesh.startTriangle + (offset + i);
                 Hit h_aux;
                 
                 if (hit_mesh_triangle(triIdx, r, mesh.normalStrategy, mesh.normalOffset, h_aux) && h_aux.t < triangleDistance) {
@@ -574,12 +575,15 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
                 }
             }
         } else {
-            // Internal node
-            uint leftIndex = uint(data1);
-            uint rightIndex = uint(data2);
+            // Internal node - child indices are LOCAL to this mesh (in nodes)
+            int leftIndex = int(data1);
+            int rightIndex = int(data2);
+            
+            // Convert to GLOBAL node indices by adding mesh.bvhOffset
+            int globalLeft = mesh.bvhOffset + leftIndex;
+            int globalRight = mesh.bvhOffset + rightIndex;
             
             // Determine split axis dynamically based on bounds shape
-            // (Matches builder's logic: split along longest axis)
             vec3 size = boundsMax - boundsMin;
             int axis = 0;
             if (size.y > size.x) axis = 1;
@@ -587,19 +591,13 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
             
             // Determine traversal order
             bool leftToRight = r.dir[axis] >= 0.0;
-            uint c1 = leftToRight ? leftIndex : rightIndex;
-            uint c2 = leftToRight ? rightIndex : leftIndex;
+            int c1 = leftToRight ? globalLeft : globalRight;
+            int c2 = leftToRight ? globalRight : globalLeft;
             
-            // Push children to stack
-            // Push far child first so near child is processed next
-            stackPtr++;
-            if (stackPtr < BVH_STACK_DEPTH) {
-                stack[stackPtr] = c2;
-            }
-            
-            stackPtr++;
-            if (stackPtr < BVH_STACK_DEPTH) {
-                stack[stackPtr] = c1;
+            // Push children to stack (far child first, near child second)
+            if (stackPtr + 1 < BVH_STACK_DEPTH) {
+                stack[stackPtr++] = c2;
+                stack[stackPtr++] = c1;
             }
         }
     }
@@ -638,6 +636,7 @@ bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, out Hit h){
 // Main hit_mesh function
 bool hit_mesh(MeshInfo mesh, const Ray r, out Hit h){
     return hit_mesh_with_bvh(mesh, r, h);
+    // return hit_mesh_bruteforce(mesh, r, h);
 }
 
 //===========================
@@ -827,7 +826,6 @@ bool hit_scene(Ray r, out Hit h){
         }
     #endif
 
-    // Check for mesh hits
     #if NUM_MESHES > 0
         for(int m_i = 0; m_i < NUM_MESHES; m_i++) {
             MeshInfo mesh = meshInfos[m_i];

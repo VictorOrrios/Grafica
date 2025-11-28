@@ -810,6 +810,30 @@ export class Scene {
                 1.0
             ));
 
+        const greenish = this.addMaterial(
+            new Material(new Vector3(0.6, 0.99, 0.25),
+                0,
+                new Vector3(0),
+                new Vector3(0),
+                1.0
+            ));
+
+        const magenta = this.addMaterial(
+            new Material(new Vector3(1.0, 0.0, 1.0),
+                0,
+                new Vector3(0),
+                new Vector3(0),
+                1.0
+            ));
+
+        const lemonchiffon = this.addMaterial(
+            new Material(new Vector3(1.0, 0.99, 0.25),
+                0,
+                new Vector3(0),
+                new Vector3(0),
+                1.0
+            ));
+
         const cyan = this.addMaterial(
             new Material(new Vector3(0.0, 0.5, 1.0),
                 0,
@@ -828,10 +852,18 @@ export class Scene {
             // NOTE, KEY: ~230K vertices, only used for material loading, USE ONLY WITH RENDER DISABLED (Stop)
             // const bvhMesh = await GLTFLoader.load("models/gltf/dragon_glass/scene.gltf", 0.012);
             // const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2, new Vector3(0.1, 4.0, 0.7), new Vector3(0.2, 0.2, 0.2), NormalStrategy.GEOMETRIC);
-            const bvhMesh = await GLTFLoader.load("models/gltf/venus_statue/scene.gltf", 0.05, new Vector3(0.0, 3.14, 0.0), new Vector3(0.0, 0.0, 0.0), NormalStrategy.GEOMETRIC);
             // const bvhMesh = await GLTFLoader.load("models/gltf/priest/scene.gltf", 0.01, new Vector3(0.0, 1.55, 3.14), new Vector3(-0.15, 0.2, 0.0), NormalStrategy.GEOMETRIC);
-            // const bvhMesh = await GLTFLoader.load("models/gltf/stanford_dragon_pbr/scene.gltf", 0.002, new Vector3(0.0, 3.14, 0.0), new Vector3(0.0, 0.0, 0.0), NormalStrategy.GEOMETRIC);
-            this.addEfficientMeshData(bvhMesh);
+            // this.addEfficientMeshData(bvhMesh);
+
+            const venusMesh = await GLTFLoader.load("models/gltf/venus_statue/scene.gltf", 0.05, new Vector3(0.0, 3.14, 0.0), new Vector3(-0.25, 0.0, 0.0), NormalStrategy.GEOMETRIC);
+            const stanfordDragonMesh = await GLTFLoader.load("models/gltf/stanford_dragon_pbr/scene.gltf", 0.002, new Vector3(0.0, 0.0, 0.0), new Vector3(0.25, 0.0, 0.0), NormalStrategy.INTERPOLATED);
+            this.addEfficientMeshData(venusMesh);
+            this.addEfficientMeshData(stanfordDragonMesh);
+
+            const dodecahedron = await GLTFLoader.load("models/gltf/dodecahedron/scene.gltf", 0.1, new Vector3(0.0, 0.0, 0.0), new Vector3(0.4, 0.0, 0.0), NormalStrategy.GEOMETRIC);
+            const icosahedron = await GLTFLoader.load("models/gltf/icosahedron/scene.gltf", 0.1, new Vector3(0.0, 0.0, 0.0), new Vector3(-0.3, 0.0, 0.0), NormalStrategy.GEOMETRIC);
+            /*this.addEfficientMeshData(dodecahedron);
+            this.addEfficientMeshData(icosahedron);*/
             console.log("BVH mesh loaded successfully");
         } catch (error) {
             console.warn("Could not load BVH mesh:", error);
@@ -912,31 +944,48 @@ export class Scene {
     }
 
     public serializeMeshInfoVec(): Float32Array {
-        const matIdx = this.materialVec.length - 1;
         let start = 0;
         let normalOffset = 0;
-        const out: number[] = [];
+        let bvhOffset = 0;
 
+        // KEY, CRITICAL: must be an Int32Array, otherwise (Float32Array) it will store 0.0
+        // for ints with value 0 and Float.MAX for ints with value > 0 
+        const out: Int32Array = new Int32Array(this.meshDataVec.length * 8);
+
+        let i = 0;
         for (const m of this.meshDataVec) {
             const count = m.positionIndices.length / 3;
 
+            // TODO, implement actual materials system
+            // NOTE, CRITICAL: we'll have to calculate the offsets for the materials of each mesh,
+            // AND for the uv's as well
+            // TODO, add uv offset as well
+            let matIdx = Math.floor(Math.random() * this.materialVec.length); // this.materialVec.length - 1;
+            matIdx = matIdx > 0 ? this.materialVec.length - 1 : 1;
+
             // Serialize 8 ints per mesh (std140 alignment for struct arrays)
             // MeshInfo: startTriangle, triangleCount, materialIndex, normalStrategy,
-            //           normalOffset, pad1, pad2, pad3
-            out.push(start, count, matIdx, m.normalStrategy, normalOffset, 0, 0, 0);
+            //           normalOffset, bvhOffset, pad2, pad3
+            out.set([start, count, matIdx, m.normalStrategy, normalOffset, bvhOffset, 0, 0], i);
 
-            // Update normalOffset: accumulate vertices from GEOMETRIC meshes
+            i += 8;
+
+            // Update normalOffset: accumulate vertices from prior GEOMETRIC meshes
+            // These are the "missing" normals that we need to subtract from indices
             if (m.normalStrategy === NormalStrategy.GEOMETRIC) {
                 normalOffset += m.positions.length / 3;  // vertex count
             }
 
+            // Update bvhOffset: accumulate nodes (8 floats per node)
+            bvhOffset += m.bvhData.length / 8;
+
+            // Update start: accumulate triangles
             start += count;
         }
 
-        console.log("Serialized mesh info vector length:", out.length);
-
-        return new Float32Array(out);
+        return new Float32Array(out.buffer);
     }
+
     /**
      * Returns concatenated mesh texture buffers for all meshes in the scene.
      */
@@ -954,6 +1003,7 @@ export class Scene {
         let positionsCount = 0;
         let trianglesCount = 0;
         let materialOffset = 0;
+        let bvhNodeOffset = 0;
 
         for (const meshData of this.meshDataVec) {
             const s = meshData.serializeTextures();
@@ -971,11 +1021,26 @@ export class Scene {
                 normalsList.push(s.normalsRGB);
             }
             uvsList.push(s.uvsRG);
-            indexList.push(s.positionIndices);
+
+            // Offset position indices by cumulative vertex count (positionsCount)
+            // This ensures indices are global in the concatenated u_sharedVertexIndices_tex
+            const offsetIndices = new Uint32Array(s.positionIndices.length);
+            for (let i = 0; i < s.positionIndices.length; i++) {
+                offsetIndices[i] = s.positionIndices[i] + positionsCount;
+            }
+            console.log(`Mesh indices offset by ${positionsCount}, first 9 indices:`, offsetIndices.slice(0, 9));
+            indexList.push(offsetIndices);
+
             normalIndexList.push(s.normalIndices);
             uvIndexList.push(s.uvIndices);
             materialsList.push(s.materialsFloat);
+            // Offset BVH indices
+            // We do NOT offset indices here anymore, we do it in the shader (cleaner)
+            // Just copy the data
             bvhList.push(s.bvh);
+            console.log(`BVH for mesh (first 16 floats):`, s.bvh.slice(0, 16));
+            bvhNodeOffset += s.bvh.length / 8;
+            console.log("BVH node offset after increment: ", bvhNodeOffset);
 
             positionsCount += s.positionsRGB.length / 3;
             trianglesCount += s.positionIndices.length / 3;

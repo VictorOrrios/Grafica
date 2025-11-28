@@ -49,6 +49,7 @@ export class Renderer {
         fragmentModified = fragmentModified.replace("__NUM_TRIANGLES__", this.scene.triangleVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_POINT_LIGHTS__", this.scene.pointLightVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_MESHES__", this.scene.meshDataVec.length.toString())
+        // console.log("Num meshes: " + this.scene.meshDataVec.length)
 
         // Add mesh data constants
         let totalPositions = 0;
