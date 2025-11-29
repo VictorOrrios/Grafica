@@ -109,25 +109,26 @@ export class Scene {
 
         const red = this.addMaterial(new Material(
             new Vector3(1.0, 0.0, 0.0),0,
-            new Vector3(0),
-            new Vector3(0),1.5
+            new Vector3(1.0, 1.0, 1.0),
+            new Vector3(0),1.5,
+            0.5,0.0,0.0
         ));
 
         const green = this.addMaterial(new Material(
             new Vector3(0.0, 1.0, 0.0),0,
+            new Vector3(1.0, 1.0, 1.0),
             new Vector3(0),
-            new Vector3(0),1.5
         ));
 
         const blue = this.addMaterial(new Material(
             new Vector3(0.0, 0.0, 1.0),0,
-            new Vector3(0),
+            new Vector3(1.0, 1.0, 1.0),
             new Vector3(0),1.5
         ));
 
         const yellow = this.addMaterial(new Material(
             new Vector3(1.0, 1.0, 0.0),0,
-            new Vector3(0),
+            new Vector3(1.0, 1.0, 1.0),
             new Vector3(0),1.5
         ));
 

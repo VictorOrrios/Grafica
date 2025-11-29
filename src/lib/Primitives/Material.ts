@@ -17,18 +17,6 @@ export class Material{
         roughness:number = 1.0, metalness:number = 0.0, trs_weight:number = 0.0
     ){
 
-        // Check for sum of channel bigger than 1
-        for (let i = 0; i < 3; i++) {
-            let t = 0;
-            t += albedo[i];
-            t += specular_color[i];
-            t += subsurface_color[i];
-            if(t>1){
-                console.warn("Material with no phisical correlation found",
-                    albedo,emission,specular_color,subsurface_color,ior)
-            }
-        }
-
         // Check for dielectric with 0% specular
         if(subsurface_color.len() > 0.0 && specular_color.len() === 0.0){
             console.warn("Dielectric material with 0% specular coeficient found");
@@ -48,12 +36,18 @@ export class Material{
         return Math.max(v.x,v.y,v.z); 
     }
 
+    private static dielectricF0(ri:number):number{
+        let F0 = (1.0 - ri) / (1.0 + ri);
+        return F0*F0;
+    }
+
     public serialize():Float32Array{
         return new Float32Array([
             this.albedo.x, this.albedo.y, this.albedo.z, this.emission,
-            this.specular_color.x, this.specular_color.y, this.specular_color.z, 0,
+            this.specular_color.x, this.specular_color.y, this.specular_color.z, 0.0,
             this.subsurface_color.x, this.subsurface_color.y, this.subsurface_color.z, this.ior,
-            this.roughness, this.metalness, this.trs_weight, 0.0
+            this.roughness, this.metalness, this.trs_weight, 0.0,
+            this.roughness*this.roughness, Material.dielectricF0(1.0/this.ior), Material.dielectricF0(this.ior), 0.0
         ]);
     }
 
