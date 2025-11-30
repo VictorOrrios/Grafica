@@ -42,9 +42,10 @@ struct Material {
     vec4 albedo_emission;                   // xyz = albedo* base color, w = emission power* (0.0 == no light)
     vec3 specular_color;                    // xyz = specular color for highlights (metals)
     vec4 subsurface_color_ior;              // xyz = subsurface color for transmision (dielectrics), w = index of refraction
-    vec3 roughness_metalness_transmision;   // x = roughness* 0.0 = smooth / 1.0 = rough
+    vec4 rou_met_trs_ref;                   // x = roughness* 0.0 = smooth / 1.0 = rough
                                             // y = metalness* 0.0 = dielectric / 1.0 = metalic
-                                            // z = transmision weight  0.0 = opaque
+                                            // z = transmision weight  0.0 = opaque / 1.0 = transparent
+                                            // w = reflectance 0.0 = low / 0.5 = normal / 1.0 = high
     vec3 precomputed_values;                // x = alpha* = roughness*roughness
                                             // y = dielectric F0 in going
                                             // z = dielectric F0 out going
@@ -715,8 +716,9 @@ vec3 skybox_color_image(Ray r){
 }
 
 vec3 skybox_color_day(Ray r) {
-    const vec3 horizon_color = vec3(0.231, 0.756, 0.945);
-    const vec3 zenith_color = vec3(1.0);
+    const float power = 1.0;
+    const vec3 horizon_color = vec3(0.231, 0.756, 0.945) * power;
+    const vec3 zenith_color = vec3(1.0) * power;
 
     vec3 dir_unit = normalize(r.dir);
     float a = 0.5 * (dir_unit.y + 1.0); 
@@ -731,7 +733,7 @@ vec3 skybox_color_black(Ray r){
 }
 
 vec3 skybox_color(Ray r){
-    return skybox_color_day(r);
+    return skybox_color_image(r);
 }
 
 //===========================
@@ -746,43 +748,29 @@ float fresnel_dielectric(float cos_theta_i, float eta) {
 }
 
 // Fresnel-Schlick aproximation to reflectance
-float reflectance(float cos_theta, float F0) {
-    return clamp(F0 + (1.0 - F0) * pow(1.0 - cos_theta, 5.0), 0.0, 1.0);
-}
 vec3 reflectance(float cos_theta, vec3 F0) {
-    return clamp(F0 + (1.0 - F0) * pow(1.0 - cos_theta, 5.0), 0.0, 1.0);
+    return F0 + (1.0 - F0) * pow(1.0 - cos_theta, 5.0);
 }
-
 
 // Normal distribution function. GGX
-float ggx_distribution(float alpha, vec3 N, vec3 H){
+float ggx_distribution(float NoH, float alpha){
     float alpha_squared = alpha * alpha;
-    float dot_product = dot(N, H);
-    if(dot_product == 0.0) dot_product = 0.000001;
-    float x = dot_product * dot_product * (alpha_squared - 1.0) + 1.0;
-    return alpha_squared / (PI * x * x);
+    float b = NoH * NoH * (alpha_squared - 1.0) + 1.0;
+    return alpha_squared * INV_PI / (b * b);
 }
 
+float G1_GGX_Schlick(float AoB, float k) {
+    return max(AoB, 1e-5) / (AoB * (1.0 - k) + k);
+}
 
-// Geometry shadowing function. GGX
-float G1_GGX(vec3 v, vec3 N, vec3 H, float alpha){
-    float voN = dot(v, N);
-    if(voN == 0.0) voN = 0.0000001;
-    float voH = dot(v, H);
-
-    //if(voH/voN < 0.0) return 0.0;
-
-    float tan_theta_x = tan(acos(voN));
-    float alpha_tan = alpha * tan_theta_x;
-    
-    return 2.0 / (1.0 + sqrt(1.0 + alpha_tan * alpha_tan));
+float G_Smith(float NoV, float NoL, float alpha) {
+    float k = alpha/2.0;
+    return G1_GGX_Schlick(NoV, k) * G1_GGX_Schlick(NoL, k);
 }
 
 
 vec3 align_to_world(vec3 X, vec3 N){
     vec3 up = vec3(0.0,0.0,1.0);
-    if(dot(X,N)>0.99) up = vec3(1.0,0.0,0.0);;
-
 
     vec3 T = normalize(cross(up,N));
     vec3 B = cross(N,T);
@@ -790,58 +778,17 @@ vec3 align_to_world(vec3 X, vec3 N){
     return T*X.x + B*X.y + N*X.z;
 }
 
-
-vec3 sphere_to_cartesian(float theta, float phi){
-    float sin_t = sin(theta);
-    return vec3(
-        sin_t*cos(phi),
-        sin_t*sin(phi),
-        cos(theta)
-    );
-}
-
-// Sampling the visible hemisphere as half vectors
-// https://cdrdv2-public.intel.com/782052/sampling-visible-ggx-normals.pdf
-vec3 sample_vndf_hemisphere(vec2 u, vec3 wi){
-    // sample a spherical cap in (-wi.z, 1]
-    float phi = TWO_PI * u.x;
-    float z = (1.0 - u.y) * (1.0 + wi.z) - wi.z;
-    float sinTheta = sqrt(clamp(1.0 - z * z, 0.0, 1.0));
-    float x = sinTheta * cos(phi);
-    float y = sinTheta * sin(phi);
-    vec3 c = vec3(x, y, z);
-    // compute halfway direction;
-    vec3 h = c + wi;
-    // return without normalization (as this is done later)
-    return h;
-}
-
-// Samples a GGX-distributed microfacet normal and returns the half direction H
-// https://cdrdv2-public.intel.com/782052/sampling-visible-ggx-normals.pdf
-vec3 sample_ggx(float alpha_f, vec3 V, vec3 N){
-    vec2 u = vec2(random(),random());
-    // TODO: Supports anisotropic sampling, might be interesting to use it
-    vec2 alpha = vec2(alpha_f);
-
-    // warp to the hemisphere configuration
-    vec3 wiStd = normalize(vec3(V.xy * alpha, V.z));
-    // sample the hemisphere
-    vec3 wmStd = sample_vndf_hemisphere(u,wiStd);
-    // warp back to the ellipsoid configuration
-    vec3 wm = normalize(vec3(wmStd.xy * alpha, wmStd.z));
-    // transform to world space and normalize
-    return normalize(align_to_world(wm,N));
-}
-
-vec3 sample_ggx_2(float roughness, vec3 V, vec3 N){
+vec3 sample_ggx(float alpha, vec3 V, vec3 N){
     float e1 = random(), e2 = random();
-    float alpha = roughness * roughness;
-    //float theta = atan(alpha * sqrt(e1) / max(0.000001,sqrt(1.0 - e1)));
-    float theta = acos(sqrt( (1.0 - e1) / (1.0 + (alpha - 1.0)*e1) ));
-    //float theta = atan(sqrt(-alpha*log(1.0-e1)));
+
+    float cos_theta = sqrt((1.0 - e1) / (1.0 + (alpha - 1.0) * e1));
+    float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
     float phi = 2.0 * PI * e2;
 
-    vec3 H_tan = sphere_to_cartesian(theta, phi);
+    float cos_p = cos(phi);
+    float sin_p = sin(phi);
+    vec3 H_tan = vec3(sin_theta * cos_p, sin_theta * sin_p, cos_theta);
+
     vec3 H = align_to_world(H_tan,N);
     if (dot(V, H) < 0.0) H = -H;
     return normalize(H);
@@ -849,12 +796,13 @@ vec3 sample_ggx_2(float roughness, vec3 V, vec3 N){
 
 
 // Samples a reflected direction of V into N 
-vec3 sample_r(Material mat, vec3 V, vec3 N, out vec3 H){
-    H = sample_ggx(mat.precomputed_values.x,V,N);
+vec3 sample_r(float alpha, vec3 V, vec3 N, out vec3 H){
+    H = sample_ggx(alpha,V,N);
     return reflect(-V,H);
 }
 
 // Samples a refracted direction of V into N 
+    /*
 vec3 sample_t(Material mat, float F0, float eta, vec3 V, vec3 N, out vec3 H){
     H = sample_ggx(mat.precomputed_values.x,V,N);
 
@@ -867,6 +815,7 @@ vec3 sample_t(Material mat, float F0, float eta, vec3 V, vec3 N, out vec3 H){
     return cannot_refract || reflectance > random() ? 
         reflect(-V,H) : refract(-V,H,eta);
 }
+    */
 
 vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
@@ -874,60 +823,42 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     vec3 V = -Vin;
     vec3 N = h.normal;
-    
-
-    float ri = h.front_face ? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w;
-    float dielectric_F0 = h.front_face ? mat.precomputed_values.y : mat.precomputed_values.z;
-    vec3 dielectric_F0_vec = vec3(dielectric_F0);
-    //float dielectric_F0 = (1.0 - ri) / (1.0 + ri);
-    //vec3 dielectric_F0_vec = vec3(dielectric_F0*dielectric_F0);
-
-
     vec3 H;
-    if(mat.roughness_metalness_transmision.z < random()){
-        Vout = sample_r(mat, V, N, H);
-    }else{
-        Vout = sample_t(mat,dielectric_F0, ri, V, N, H);
-    }
-    Vout = normalize(Vout);
-
-    float NdotVout = dot(Vout,N);
-    float NdotV = dot(V,N);
-    float VdotH = dot(V,H);
-    float NdotH = dot(N,H);
-
-    vec3 F0 = mix(dielectric_F0_vec, mat.albedo_emission.xyz, mat.roughness_metalness_transmision.y);
-    
-    vec3 f_diffuse = mat.albedo_emission.xyz * INV_PI;
-
     float alpha = mat.precomputed_values.x;
-    float D = ggx_distribution(alpha,N,H);
-    float G = G1_GGX(Vout,N,H,alpha) * G1_GGX(V,N,H,alpha);
-    vec3  F = reflectance(VdotH, F0);
 
-    float ks = max(max(F.r, F.g), F.b);
-    float kd = (1.0 - ks) * (1.0 - mat.roughness_metalness_transmision.y);
+    Vout = normalize(sample_r(alpha, V, N, H));
 
-    float denom = max(4.0 * NdotV * NdotVout, 1e-5);
-    float jacobian = 1.0 / denom;
-    
-    vec3 f_specular = mat.specular_color.rgb * (D*G*F) * jacobian;
+    H = normalize(V+Vout);
 
-    float pdf_specular = D * NdotH * jacobian;
-    float pdf_diffuse = NdotVout * INV_PI;
-    float pdf = kd * pdf_diffuse + ks * pdf_specular;
-    pdf = max(pdf,1e-5);
+    float NoV = clamp(dot(N, V), 0.0, 1.0);
+    float NoL = clamp(dot(N, Vout), 0.0, 1.0);
+    float NoH = clamp(dot(N, H), 0.0, 1.0);
+    float VoH = clamp(dot(V, H), 0.0, 1.0);
 
-    vec3 fr = kd*f_diffuse + f_specular;
+    vec3 dielectric_F0_vec = vec3(0.16*mat.rou_met_trs_ref.w*mat.rou_met_trs_ref.w);
+    vec3 F0 = mix(dielectric_F0_vec, mat.albedo_emission.xyz, mat.rou_met_trs_ref.y);
 
-    return max(vec3(0.0),fr * abs(NdotVout) / pdf);
+    vec3  F = reflectance(VoH, F0);
+    float D = ggx_distribution(NoH,alpha);
+    float G = G_Smith(NoV,NoL,alpha);
+
+    vec3 f_specular = (F*D*G) / (4.0 *  max(NoV, 1e-3) * max(NoL, 1e-3));
+
+    vec3 rhoD = mat.albedo_emission.xyz;
+    rhoD *= vec3(1.0) - F;
+    rhoD *= (1.0 - mat.rou_met_trs_ref.y);
+
+    vec3 f_diffuse = rhoD * INV_PI;
+
+    vec3 fr = f_diffuse + f_specular;
+
+    return fr * abs(NoL);
 }
 
 
 //===========================
 // Main functions
 //===========================
-
 
 
 vec3 get_direct_light(Hit h, Material mat, float total_t){
@@ -1004,7 +935,7 @@ vec3 cast_ray(Ray r){
             }
 
             atenuation *= eval_mat(mat,r.dir,h,new_direction);
-            return new_direction;
+            //return atenuation;
             // 0 atennuation check for termination
             if(length(atenuation) <= minimun_atenuation) break;
             
@@ -1071,8 +1002,9 @@ void main() {
     outColor = vec4(samples_sum/float(spp),1.0);
 
     // Post processing
-    //outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
-    outColor.xyz = clamp_color(outColor.xyz);
+    outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
+    //outColor.xyz = gamma_correct(clamp_color(outColor.xyz));
+
     // Alpha channel correction
     outColor.a = 1.0; 
 

@@ -13,6 +13,7 @@ import {
     type EfficientMeshData
 } from './Mesh/loaders/OBJLoader';
 import { GLTFLoader } from "./Mesh/loaders/GLTFLoader";
+import { roughness } from "three/tsl";
 
 export enum SceneType {
     TESTPLANE = 'testplane',
@@ -105,60 +106,95 @@ export class Scene {
     }
 
     private testplane() {
-        this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
+        this.camera = new Camera(new Vector3(0.0, 0.0, 30.0));
 
-        const red = this.addMaterial(new Material(
-            new Vector3(1.0, 0.0, 0.0),0,
-            new Vector3(1.0, 1.0, 1.0),
-            new Vector3(0),1.5,
-            0.5,0.0,0.0
-        ));
+        const samples = 7;
+        const offset = (samples-1.0)*2.5/2;
+        for (let r = 0; r < samples; r++) {
+            for (let m = 0; m < samples; m++) {
+                let mat = this.addMaterial(new Material({
+                    albedo: new Vector3(1.0,0.0,0.0),
+                    roughness: r/(samples-1),
+                    metalness: m/(samples-1),
+                    reflectance: 0.5
+                }));
+                this.addSphere(
+                    new Sphere(
+                        new Vector3(r*2.5-offset, m*2.5-offset, 0.0),
+                        1.0),
+                    mat);
+            }
+        }
 
-        const green = this.addMaterial(new Material(
-            new Vector3(0.0, 1.0, 0.0),0,
-            new Vector3(1.0, 1.0, 1.0),
-            new Vector3(0),
-        ));
+        const white_light = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            emission: 1000.0
+        }));
 
-        const blue = this.addMaterial(new Material(
-            new Vector3(0.0, 0.0, 1.0),0,
-            new Vector3(1.0, 1.0, 1.0),
-            new Vector3(0),1.5
-        ));
+        const s5 = new Sphere(
+            new Vector3(-4.0, 15.0, 30.0),
+            5.0);
+        this.addSphere(s5, white_light);
+        
 
-        const yellow = this.addMaterial(new Material(
-            new Vector3(1.0, 1.0, 0.0),0,
-            new Vector3(1.0, 1.0, 1.0),
-            new Vector3(0),1.5
-        ));
+        /*
+
+        const white_matte = this.addMaterial(new Material({
+            roughness: 0.8,
+        }));
+
+        const red_shiny = this.addMaterial(new Material({
+            albedo: new Vector3(0.972,0.960,0.915),
+            roughness: 0.1,
+            metalness: 0.0,
+            reflectance: 0.5
+        }));
+
+        const white_light = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            emission: 10.0
+        }));
 
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
             1.0);
-        this.addSphere(s1, red);
+        this.addSphere(s1, red_shiny);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
             2.0);
-        this.addSphere(s2, green);
+        //this.addSphere(s2, white_matte);
 
         const s3 = new Sphere(
             new Vector3(4.0, 1.0, -6.0),
             2.0);
-        this.addSphere(s3, green);
+        this.addSphere(s3, white_matte);
+
+        const s4 = new Sphere(
+            new Vector3(-4.0, 1.0, -6.0),
+            2.0);
+        this.addSphere(s4, white_matte);
+
+        const s5 = new Sphere(
+            new Vector3(-4.0, 15.0, -6.0),
+            10.0);
+        //this.addSphere(s5, white_light);
 
         const t1: Triangle = new Triangle(
             new Vector3(-3.0, 0.5, 2.0),
             new Vector3(-6.0, 0.0, 0.0),
             new Vector3(-4.5, 2.5, -2.0),
         );
-        this.addTriangle(t1, yellow);
+        this.addTriangle(t1, white_matte);
 
         const p1: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
             1.0
         );
-        this.addPlane(p1, blue);
+        this.addPlane(p1, white_matte);
+
+        */
+
     }
 
     /*
