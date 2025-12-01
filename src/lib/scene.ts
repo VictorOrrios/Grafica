@@ -106,17 +106,18 @@ export class Scene {
     }
 
     private testplane() {
-        this.camera = new Camera(new Vector3(0.0, 0.0, 30.0));
+        this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
 
+        /*
         const samples = 7;
         const offset = (samples-1.0)*2.5/2;
         for (let r = 0; r < samples; r++) {
             for (let m = 0; m < samples; m++) {
                 let mat = this.addMaterial(new Material({
-                    albedo: new Vector3(1.0,0.0,0.0),
+                    albedo: new Vector3(1.0,1.0,1.0),
                     roughness: r/(samples-1),
                     metalness: m/(samples-1),
-                    reflectance: 0.5
+                    reflectance: 0.5,
                 }));
                 this.addSphere(
                     new Sphere(
@@ -135,19 +136,32 @@ export class Scene {
             new Vector3(-4.0, 15.0, 30.0),
             5.0);
         this.addSphere(s5, white_light);
-        
+        */
 
-        /*
         const white_matte = this.addMaterial(new Material({
             roughness: 0.8,
         }));
 
-        const red_shiny = this.addMaterial(new Material({
-            albedo: new Vector3(1.0,1.0,1.0),
+        const mirror = this.addMaterial(new Material({
             roughness: 0.0,
-            metalness: 1.0,
+            metalness: 1.0
+        }));
+
+        const green_matte = this.addMaterial(new Material({
+            albedo: new Vector3(0.129, 0.388, 0.082),
+            roughness: 1.0,
             reflectance: 0.5
         }));
+
+        const red_shiny = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            subsurface_color: new Vector3(1.0,1.0,1.0),
+            roughness: 0.0,
+            metalness: 0.0,
+            reflectance: 0.5,
+            trs_weight: 1.0
+        }));
+
 
         const white_light = this.addMaterial(new Material({
             albedo: new Vector3(1.0,1.0,1.0),
@@ -167,7 +181,7 @@ export class Scene {
         const s3 = new Sphere(
             new Vector3(4.0, 1.0, -6.0),
             2.0);
-        this.addSphere(s3, white_matte);
+        this.addSphere(s3, mirror);
 
         const s4 = new Sphere(
             new Vector3(-4.0, 1.0, -6.0),
@@ -190,9 +204,7 @@ export class Scene {
             new Vector3(0.0, 1.0, 0.0),
             1.0
         );
-        this.addPlane(p1, white_matte);
-        */
-
+        this.addPlane(p1, green_matte);
     }
 
     /*

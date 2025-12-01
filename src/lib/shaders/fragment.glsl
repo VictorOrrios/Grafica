@@ -739,14 +739,6 @@ vec3 skybox_color(Ray r){
 //===========================
 // Material functions
 //===========================
-
-// Fresnel-Schlick aproximation to reflectance for dielectrics
-float fresnel_dielectric(float cos_theta_i, float eta) {
-    float r0 = (1.0 - eta) / (1.0 + eta);
-    float F0 = r0 * r0;
-    return F0 + (1.0 - F0) * pow(1.0 - cos_theta_i, 5.0);
-}
-
 // Fresnel-Schlick aproximation to reflectance
 vec3 reflectance(float cos_theta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(1.0 - cos_theta, 5.0);
@@ -759,11 +751,29 @@ float ggx_distribution(float NoH, float alpha){
     return alpha_squared * INV_PI / (b * b);
 }
 
+float lambda_GGX(float cos_theta, float alpha2) {
+    if(cos_theta <= 1e-5) return 0.0;
+    
+    float cos2 = cos_theta * cos_theta;
+    float sin2 = 1.0 - cos2;
+    float tan2 = sin2 / cos2;
+    
+    return (-1.0 + sqrt(1.0 + alpha2 * tan2)) * 0.5;
+}
+
+float G_Smith_Full(float NoV, float NoL, float alpha) {
+    float alpha2 = alpha * alpha;
+    float lambda_i = lambda_GGX(abs(NoL), alpha2);
+    float lambda_o = lambda_GGX(abs(NoV), alpha2);
+    
+    return 1.0 / (1.0 + lambda_i + lambda_o);
+}
+
 float G1_GGX_Schlick(float AoB, float k) {
     return max(AoB, 1e-5) / (AoB * (1.0 - k) + k);
 }
 
-float G_Smith(float NoV, float NoL, float alpha) {
+float G_Smith_Fast(float NoV, float NoL, float alpha) {
     float k = alpha/2.0;
     return G1_GGX_Schlick(NoV, k) * G1_GGX_Schlick(NoL, k);
 }
@@ -795,67 +805,83 @@ vec3 sample_ggx(float alpha, vec3 V, vec3 N){
 }
 
 
-// Samples a reflected direction of V into N 
-vec3 sample_r(float alpha, vec3 V, vec3 N, out vec3 H){
-    H = sample_ggx(alpha,V,N);
-    return reflect(-V,H);
-}
-
-// Samples a refracted direction of V into N 
-    /*
-vec3 sample_t(Material mat, float F0, float eta, vec3 V, vec3 N, out vec3 H){
-    H = sample_ggx(mat.precomputed_values.x,V,N);
-
-    float cos_theta = min(1.0,dot(V,H));
-    float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
-    bool cannot_refract = eta * sin_theta > 1.0;
-
-    float reflectance = reflectance(cos_theta,F0);
-
-    return cannot_refract || reflectance > random() ? 
-        reflect(-V,H) : refract(-V,H,eta);
-}
-    */
-
 vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     if(rr_chance < random()) return vec3(0.0);
 
     vec3 V = -Vin;
     vec3 N = h.normal;
-    vec3 H;
     float alpha = mat.precomputed_values.x;
+    vec3 H = sample_ggx(alpha,V,N);
+    
+    float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w;
+    
 
-    Vout = normalize(sample_r(alpha, V, N, H));
+    float NoV = dot(N, V);
+    float NoH = dot(N, H);
+    float VoH = dot(V, H);
 
-    H = normalize(V+Vout);
-
-    float NoV = max(dot(N, V), 1e-5);
-    float NoL = max(dot(N, Vout), 1e-5); 
-    float NoH = max(dot(N, H), 1e-5);
-    float VoH = max(dot(V, H), 1e-5);
+    bool transmissive = mat.rou_met_trs_ref.z > random();
 
     vec3 dielectric_F0_vec = vec3(0.16*mat.rou_met_trs_ref.w*mat.rou_met_trs_ref.w);
-    vec3 F0 = mix(dielectric_F0_vec, mat.albedo_emission.xyz, mat.rou_met_trs_ref.y);
+    vec3 F0 = transmissive ? dielectric_F0_vec
+            : mix(dielectric_F0_vec, mat.albedo_emission.xyz, mat.rou_met_trs_ref.y);
 
-    vec3  F = reflectance(VoH, F0);
+    vec3 F = reflectance(VoH, F0);
+    
+    bool transmited;
+    if(transmissive){
+        float sin_theta = sqrt(1.0 - VoH*VoH);
+        bool cannot_refract = eta * sin_theta > 1.0;
+
+        if(cannot_refract || F.x > random()){
+            Vout = reflect(-V,H);
+            transmited = false;
+        }else{
+            Vout = refract(-V,H,eta);
+            transmited = true;
+        }
+    }else{
+        Vout = reflect(-V,H);
+        transmited = false;
+    }
+
+    float LoH = dot(Vout, H);
+    float LoN = dot(Vout, N);
+
     float D = ggx_distribution(NoH,alpha);
-    float G = G_Smith(NoV,NoL,alpha);
+    float pdf_ggx = (D * abs(NoH)) / (4.0 * max(abs(NoV), 1e-5));
 
-    vec3 f_specular = (F*D*G) / (4.0 *  max(NoV, 1e-3) * max(NoL, 1e-3));
+    if(transmited){
+        float G = G_Smith_Full(abs(NoV), abs(LoN), alpha);
 
-    vec3 rhoD = mat.albedo_emission.xyz;
-    rhoD *= vec3(1.0) - F;
-    rhoD *= (1.0 - mat.rou_met_trs_ref.y);
+        vec3 T = vec3(1.0) - F;
+        
+        float denom = VoH + eta * LoH;
+        float denom2 = max(denom * denom, 1e-10);
+        float jacobian = (eta * eta * abs(LoH * VoH)) / denom2;
 
-    vec3 f_diffuse = rhoD * INV_PI;
+        vec3 btdf = (T * D * G * jacobian) / 
+                    (4.0 * max(abs(NoV), 1e-5) * max(abs(LoN), 1e-5));
 
-    vec3 fr = f_diffuse + f_specular;
+        return mat.subsurface_color_ior.rgb * btdf * abs(LoN) / max(pdf_ggx*jacobian, 1e-5);
 
-    // Russian roulette + ggx sampling pdfs
-    float pdf = rr_chance * D * NoH / (4.0 * max(NoV, 1e-3));
+    }else{
+        float G = G_Smith_Fast(NoV,LoN,alpha);
 
-    return fr * abs(NoL) / max(pdf, 1e-3);
+        vec3 f_specular = (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
+
+        vec3 rhoD = mat.albedo_emission.xyz;
+        rhoD *= vec3(1.0) - F;
+        rhoD *= (1.0 - mat.rou_met_trs_ref.y);
+
+        vec3 f_diffuse = rhoD * INV_PI;
+
+        vec3 fr = f_diffuse + f_specular;
+
+        return fr * max(LoN,1e-5) / max(pdf_ggx, 1e-5);
+    }
+        
 }
 
 
@@ -937,7 +963,7 @@ vec3 cast_ray(Ray r){
                 break; 
             }
 
-            atenuation *= eval_mat(mat,r.dir,h,new_direction);
+            atenuation *= eval_mat(mat,r.dir,h,new_direction) / rr_chance;
             //return atenuation;
             // 0 atennuation check for termination
             if(length(atenuation) <= minimun_atenuation) break;

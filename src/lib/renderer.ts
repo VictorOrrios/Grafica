@@ -20,8 +20,8 @@ export class Renderer {
     private num_frames_acummulated: number = 0;
     private last_frame!: WebGLTexture;
 
-    public spp: number = 3;
-    public rr_chance: number = 0.666;
+    public spp: number = 5;
+    public rr_chance: number = 0.8;
     public range_numbers: number[] = [0.0, 100000.0];
     public kernel_sigma: number = 0.0;
     public aperture_radius: number = 0.0;
