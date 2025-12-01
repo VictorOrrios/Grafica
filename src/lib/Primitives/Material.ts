@@ -37,7 +37,7 @@ export class Material{
             this.ior = p.ior;
         }
         if(p.roughness !== undefined){
-            p.roughness = Math.max(0.05,p.roughness);
+            p.roughness = Math.max(0.005,p.roughness);
             this.roughness = p.roughness;
         }
         if(p.metalness !== undefined){

@@ -830,10 +830,10 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     H = normalize(V+Vout);
 
-    float NoV = clamp(dot(N, V), 0.0, 1.0);
-    float NoL = clamp(dot(N, Vout), 0.0, 1.0);
-    float NoH = clamp(dot(N, H), 0.0, 1.0);
-    float VoH = clamp(dot(V, H), 0.0, 1.0);
+    float NoV = max(dot(N, V), 1e-5);
+    float NoL = max(dot(N, Vout), 1e-5); 
+    float NoH = max(dot(N, H), 1e-5);
+    float VoH = max(dot(V, H), 1e-5);
 
     vec3 dielectric_F0_vec = vec3(0.16*mat.rou_met_trs_ref.w*mat.rou_met_trs_ref.w);
     vec3 F0 = mix(dielectric_F0_vec, mat.albedo_emission.xyz, mat.rou_met_trs_ref.y);
@@ -852,7 +852,10 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     vec3 fr = f_diffuse + f_specular;
 
-    return fr * abs(NoL);
+    // Russian roulette + ggx sampling pdfs
+    float pdf = rr_chance * D * NoH / (4.0 * max(NoV, 1e-3));
+
+    return fr * abs(NoL) / max(pdf, 1e-3);
 }
 
 

@@ -138,15 +138,14 @@ export class Scene {
         
 
         /*
-
         const white_matte = this.addMaterial(new Material({
             roughness: 0.8,
         }));
 
         const red_shiny = this.addMaterial(new Material({
-            albedo: new Vector3(0.972,0.960,0.915),
-            roughness: 0.1,
-            metalness: 0.0,
+            albedo: new Vector3(1.0,1.0,1.0),
+            roughness: 0.0,
+            metalness: 1.0,
             reflectance: 0.5
         }));
 
@@ -192,7 +191,6 @@ export class Scene {
             1.0
         );
         this.addPlane(p1, white_matte);
-
         */
 
     }
