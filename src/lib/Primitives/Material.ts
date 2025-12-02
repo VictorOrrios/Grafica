@@ -58,18 +58,25 @@ export class Material{
         return Math.max(v.x,v.y,v.z); 
     }
 
-    private static dielectricF0(ri:number):number{
-        let F0 = (1.0 - ri) / (1.0 + ri);
-        return F0*F0;
+    public static mix(a: Vector3, b: Vector3, t: number): Vector3 {
+        return new Vector3(
+            a.x * (1 - t) + b.x * t,
+            a.y * (1 - t) + b.y * t,
+            a.z * (1 - t) + b.z * t
+        );
     }
 
     public serialize():Float32Array{
+        let alpha = this.roughness*this.roughness;
+        let f0_dielectric = 0.16 * this.reflectance * this.reflectance;
+        let F0_dielectric = new Vector3(f0_dielectric,f0_dielectric,f0_dielectric);
+        let F0 = Material.mix(F0_dielectric,this.albedo,this.metalness);
         return new Float32Array([
             this.albedo.x, this.albedo.y, this.albedo.z, this.emission,
             this.specular_color.x, this.specular_color.y, this.specular_color.z, 0.0,
             this.subsurface_color.x, this.subsurface_color.y, this.subsurface_color.z, this.ior,
             this.roughness, this.metalness, this.trs_weight, this.reflectance,
-            this.roughness*this.roughness, Material.dielectricF0(1.0/this.ior), Material.dielectricF0(this.ior), 0.0
+            F0.x,F0.y,F0.z,alpha
         ]);
     }
 

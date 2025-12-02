@@ -46,9 +46,8 @@ struct Material {
                                             // y = metalness* 0.0 = dielectric / 1.0 = metalic
                                             // z = transmision weight  0.0 = opaque / 1.0 = transparent
                                             // w = reflectance 0.0 = low / 0.5 = normal / 1.0 = high
-    vec3 precomputed_values;                // x = alpha* = roughness*roughness
-                                            // y = dielectric F0 in going
-                                            // z = dielectric F0 out going
+    vec4 F0_alpha;                          // xyz = precomputed F0 = mix(0.16*reflectance²,albedo,metalness)
+                                            // w = precomputed alpha = roughness*roughness
 };
 
 struct Sphere {
@@ -733,7 +732,7 @@ vec3 skybox_color_black(Ray r){
 }
 
 vec3 skybox_color(Ray r){
-    return skybox_color_image(r);
+    return skybox_color_black(r);
 }
 
 //===========================
@@ -811,7 +810,8 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     vec3 V = -Vin;
     vec3 N = h.normal;
-    float alpha = mat.precomputed_values.x;
+    vec3 F0 = mat.F0_alpha.rgb;
+    float alpha = mat.F0_alpha.w;
     vec3 H = sample_ggx(alpha,V,N);
     
     float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w;
@@ -822,10 +822,6 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
     float VoH = dot(V, H);
 
     bool transmissive = mat.rou_met_trs_ref.z > random();
-
-    vec3 dielectric_F0_vec = vec3(0.16*mat.rou_met_trs_ref.w*mat.rou_met_trs_ref.w);
-    vec3 F0 = transmissive ? dielectric_F0_vec
-            : mix(dielectric_F0_vec, mat.albedo_emission.xyz, mat.rou_met_trs_ref.y);
 
     vec3 F = reflectance(VoH, F0);
     
@@ -889,8 +885,7 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 // Main functions
 //===========================
 
-
-vec3 get_direct_light(Hit h, Material mat, float total_t){
+vec3 get_direct_light(Hit h, Material mat, Ray r, float total_t){
     // 0% diffuse means no point lights
     if(length(mat.albedo_emission.xyz) <= 0.0){
         return vec3(0.0);
@@ -898,7 +893,6 @@ vec3 get_direct_light(Hit h, Material mat, float total_t){
     Hit aux;
     vec3 ret = vec3(0);
 
-    /* TODO: fix NEE with the new sistem
     #if NUM_POINT_LIGHTS > 0
         for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
             PointLight l = point_lights[i];
@@ -915,17 +909,40 @@ vec3 get_direct_light(Hit h, Material mat, float total_t){
 
             float d2 = d*d;
             // Cast a ray from the light source to the hit position
-            Ray r = Ray(h.p,normalize(l.position-h.p));
-            if(!hit_scene(r,aux) || aux.t >= d){
+            Ray r_pl = Ray(h.p,normalize(l.position-h.p));
+            if(!hit_scene(r_pl,aux) || aux.t >= d){
+
+                vec3 F0 = mat.F0_alpha.rgb;
+                float alpha = mat.F0_alpha.w;
+                vec3 V = -r.dir;
+                vec3 H = normalize(V+r_pl.dir);
+                float NoV = dot(h.normal, V);
+                float NoH = dot(h.normal, H);
+                float VoH = dot(V, H);
+                float LoN = dot(r_pl.dir, h.normal);
+
+                vec3  F = reflectance(VoH, F0);
+                float D = ggx_distribution(NoH,alpha);
+                float G = G_Smith_Fast(NoV,LoN,alpha);
+
+                vec3 f_specular = (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
+
+                vec3 radiance = mat.albedo_emission.xyz * l.color_power.xyz * l.color_power.w / d2;
+
+                vec3 rhoD = mat.albedo_emission.xyz;
+                rhoD *= vec3(1.0) - F;
+                rhoD *= (1.0 - mat.rou_met_trs_ref.y);
+
+                vec3 f_diffuse = rhoD * INV_PI;
+
+                vec3 fr = f_diffuse + f_specular;
+
                 ret += apply_kernel(
-                    mat.albedo_emission.xyz / mat.lobe_chances.x
-                    * l.color_power.xyz * l.color_power.w / d2
-                    * abs(dot(r.dir,h.normal)),
+                    radiance * fr * max(LoN,1e-5),
                     total_plus_pl);
             }
         }
     #endif
-    */
 
     return ret;
 }
@@ -952,6 +969,13 @@ vec3 cast_ray(Ray r){
 
             Material mat = materials[h.mat];
 
+            // Get light from all light sources
+            //if(bounce_count == 0){
+            if(true){
+                vec3 direct_light = get_direct_light(h,mat,r,total_t);
+                color += direct_light*atenuation;
+            }
+
             // Emissive material & Min distance check
             if(mat.albedo_emission.a > 0.0){
                 // Min distance check
@@ -967,16 +991,11 @@ vec3 cast_ray(Ray r){
             //return atenuation;
             // 0 atennuation check for termination
             if(length(atenuation) <= minimun_atenuation) break;
+
+            
             
             r.dir = new_direction;
             r.orig = h.p;
-            
-            // Get light from all light sources
-            //if(bounce_count == 0){
-            if(true){
-                vec3 direct_light = get_direct_light(h,mat,total_t);
-                color += direct_light*atenuation;
-            }
         }else{
             // No hit => skybox hit
             color += apply_kernel(

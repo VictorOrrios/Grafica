@@ -206,6 +206,13 @@ export class Scene {
             1.0
         );
         this.addPlane(p1, blue_matte);
+
+        const l1: PointLight = new PointLight(
+            new Vector3(0, 3.0, 0.0),
+            new Vector3(1.0, 1.0, 1.0),
+            20.0
+        );
+        this.addPointLight(l1);
     }
 
     /*
