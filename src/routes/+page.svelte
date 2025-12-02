@@ -234,7 +234,7 @@
                 </div>
 
                 <!-- Frame acummulation toggle -->
-                <div class="space-y-2">
+                <div class="space-y-2 flex gap-4">
                     <Label>Frame acummulation</Label>
                     <Switch bind:checked={frame_acummulation} />
                 </div>

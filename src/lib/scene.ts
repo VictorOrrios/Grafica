@@ -105,7 +105,7 @@ export class Scene {
         this.meshDataVec.push(data);
     }
 
-    private testplane() {
+    private async testplane() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
 
         /*
@@ -147,16 +147,17 @@ export class Scene {
             metalness: 1.0
         }));
 
-        const green_matte = this.addMaterial(new Material({
-            albedo: new Vector3(0.129, 0.388, 0.082),
+        const blue_matte = this.addMaterial(new Material({
+            albedo: new Vector3(0.271, 0.467, 0.78),
             roughness: 1.0,
-            reflectance: 0.5
+            metalness: 0.0,
+            reflectance: 0.0
         }));
 
-        const red_shiny = this.addMaterial(new Material({
-            albedo: new Vector3(1.0,1.0,1.0),
-            subsurface_color: new Vector3(1.0,1.0,1.0),
-            roughness: 0.0,
+        const green_glass = this.addMaterial(new Material({
+            albedo: new Vector3(0.9,1.0,0.9),
+            subsurface_color: new Vector3(0.5,1.0,0.5),
+            roughness: 0.1,
             metalness: 0.0,
             reflectance: 0.5,
             trs_weight: 1.0
@@ -171,7 +172,7 @@ export class Scene {
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
             1.0);
-        this.addSphere(s1, red_shiny);
+        this.addSphere(s1, green_glass);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
@@ -204,7 +205,7 @@ export class Scene {
             new Vector3(0.0, 1.0, 0.0),
             1.0
         );
-        this.addPlane(p1, green_matte);
+        this.addPlane(p1, blue_matte);
     }
 
     /*
