@@ -139,6 +139,11 @@ export class Scene {
         this.addSphere(s5, white_light);
         */
 
+        const white_light = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            emission: 10.0
+        }));
+
         const white_matte = this.addMaterial(new Material({
             roughness: 0.8,
         }));
@@ -165,10 +170,8 @@ export class Scene {
         }));
 
 
-        const white_light = this.addMaterial(new Material({
-            albedo: new Vector3(1.0,1.0,1.0),
-            emission: 10.0
-        }));
+        
+
 
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
@@ -216,14 +219,11 @@ export class Scene {
         //this.addPointLight(l1);
 
         try {
-            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon/scene.gltf", 0.012, new Vector3(0.0, 0.0, 0.0), new Vector3(0.0, 0.0, 0.0), NormalStrategy.GEOMETRIC);
-            // NOTE, KEY: ~230K vertices, only used for material loading, USE ONLY WITH RENDER DISABLED (Stop)
-            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon_glass/scene.gltf", 0.012);
-            const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2);
-            this.addEfficientMeshData(bvhMesh);
-            console.log("BVH mesh loaded successfully");
+            const mesh = await GLTFLoader.load("models/gltf/stanford_dragon_pbr/scene.gltf", 0.03);
+            this.addEfficientMeshData(mesh);
+            console.log("Mesh loaded successfully");
         } catch (error) {
-            console.warn("Could not load BVH mesh:", error);
+            console.warn("Could not load mesh:", error);
         }
     }
 
