@@ -44,7 +44,7 @@ export class Scene {
 
     public async setupScene() {
         if (this.sceneType === SceneType.TESTPLANE) {
-            this.testplane();
+            await this.testplane();
         } 
         /*
         else if (this.sceneType === SceneType.CORNEL) {
@@ -173,7 +173,7 @@ export class Scene {
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
             1.0);
-        this.addSphere(s1, green_glass);
+        //this.addSphere(s1, green_glass);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
@@ -213,7 +213,18 @@ export class Scene {
             new Vector3(1.0, 1.0, 1.0),
             20.0
         );
-        this.addPointLight(l1);
+        //this.addPointLight(l1);
+
+        try {
+            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon/scene.gltf", 0.012, new Vector3(0.0, 0.0, 0.0), new Vector3(0.0, 0.0, 0.0), NormalStrategy.GEOMETRIC);
+            // NOTE, KEY: ~230K vertices, only used for material loading, USE ONLY WITH RENDER DISABLED (Stop)
+            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon_glass/scene.gltf", 0.012);
+            const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2);
+            this.addEfficientMeshData(bvhMesh);
+            console.log("BVH mesh loaded successfully");
+        } catch (error) {
+            console.warn("Could not load BVH mesh:", error);
+        }
     }
 
     /*

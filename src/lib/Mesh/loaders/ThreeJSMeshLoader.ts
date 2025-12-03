@@ -204,6 +204,7 @@ export class ThreeJSMeshLoader {
         if (extracted.materials.length === 0) {
             extracted.materials.push({
                 id: 0,
+                /*
                 material: new Material(
                     DEFAULT_COLOR,
                     0,
@@ -211,6 +212,8 @@ export class ThreeJSMeshLoader {
                     DEFAULT_SUBSURFACE_COLOR,
                     DEFAULT_IOR
                 )
+                */
+               material : new Material({})
             });
         }
 
@@ -290,8 +293,10 @@ export class ThreeJSMeshLoader {
                 for (const extMat of extracted.materials) {
                     // TODO, CRITICAL: extract diffuseMap and specularMap,
                     // and serialize them into a webgl sampler2D
+                    /*
                     const serialized = extMat.material.serialize();
                     materialsFloat.set(serialized, mo);
+                    */
                     // Tamaño total del material: 16 floats
                     mo += 16;
                 }

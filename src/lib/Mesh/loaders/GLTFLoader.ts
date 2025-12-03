@@ -148,6 +148,7 @@ export class GLTFLoader extends ThreeJSMeshLoader {
 
             materials.push({
                 id: idx,
+                /*
                 material: new Material(
                     albedo_emission,
                     // If it's emissive, is_emissive > 0.0
@@ -156,6 +157,8 @@ export class GLTFLoader extends ThreeJSMeshLoader {
                     subsurface_color,
                     ior
                 ),
+                */
+                material: new Material({}),
                 diffuseMap,
                 specularMap
             });

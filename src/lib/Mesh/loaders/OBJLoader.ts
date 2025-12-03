@@ -86,13 +86,17 @@ export class ThreeJSOBJLoader extends ThreeJSMeshLoader {
 
             materials.push({
                 id: idx,
+                /*
                 material: new Material(
                     albedo_emission,
+                    // If it's emissive, is_emissive > 0.0
                     is_emissive ? 1.0 : -1.0,
                     specular,
                     subsurface_color,
                     ior
                 ),
+                */
+                material: new Material({}),
                 diffuseMap,
                 specularMap
             });
