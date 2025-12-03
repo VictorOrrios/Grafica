@@ -14,6 +14,7 @@ import {
     type EfficientMeshData
 } from './Mesh/loaders/OBJLoader';
 import { GLTFLoader } from "./Mesh/loaders/GLTFLoader";
+import { roughness } from "three/tsl";
 
 export enum SceneType {
     TESTPLANE = 'testplane',
@@ -37,14 +38,16 @@ export class Scene {
     public pointLightVec: PointLight[] = [];
     public meshDataVec: EfficientMeshData[] = [];
 
-    constructor(type: SceneType = /*SceneType.BVHMESH*/ SceneType.GLTF_BVH) {
+    constructor(type: SceneType = SceneType.TESTPLANE) {
         this.sceneType = type;
     }
 
     public async setupScene() {
         if (this.sceneType === SceneType.TESTPLANE) {
             this.testplane();
-        } else if (this.sceneType === SceneType.CORNEL) {
+        } 
+        /*
+        else if (this.sceneType === SceneType.CORNEL) {
             this.cornell();
         } else if (this.sceneType === SceneType.CORNELEXTRA) {
             this.cornellextra();
@@ -57,6 +60,7 @@ export class Scene {
         } else if (this.sceneType === SceneType.GLTF_BVH) {
             await this.bhvGLTFScene();
         }
+        */
     }
 
     private addMaterial(material: Material): number {
@@ -102,70 +106,117 @@ export class Scene {
         this.meshDataVec.push(data);
     }
 
-    private testplane() {
+    private async testplane() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
 
-        const m1 = this.addMaterial(new Material(
-            new Vector3(1.0, 0.0, 0.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        /*
+        const samples = 7;
+        const offset = (samples-1.0)*2.5/2;
+        for (let r = 0; r < samples; r++) {
+            for (let m = 0; m < samples; m++) {
+                let mat = this.addMaterial(new Material({
+                    albedo: new Vector3(1.0,1.0,1.0),
+                    roughness: r/(samples-1),
+                    metalness: m/(samples-1),
+                    reflectance: 0.5,
+                }));
+                this.addSphere(
+                    new Sphere(
+                        new Vector3(r*2.5-offset, m*2.5-offset, 0.0),
+                        1.0),
+                    mat);
+            }
+        }
 
-        const m2 = this.addMaterial(new Material(
-            new Vector3(0.0, 1.0, 0.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const white_light = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            emission: 1000.0
+        }));
 
-        const m3 = this.addMaterial(new Material(
-            new Vector3(0.0, 0.5, 1.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const s5 = new Sphere(
+            new Vector3(-4.0, 15.0, 30.0),
+            5.0);
+        this.addSphere(s5, white_light);
+        */
 
-        const m4 = this.addMaterial(new Material(
-            new Vector3(0.9, 0.9, 0.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const white_matte = this.addMaterial(new Material({
+            roughness: 0.8,
+        }));
+
+        const mirror = this.addMaterial(new Material({
+            roughness: 0.0,
+            metalness: 1.0
+        }));
+
+        const blue_matte = this.addMaterial(new Material({
+            albedo: new Vector3(0.271, 0.467, 0.78),
+            roughness: 1.0,
+            metalness: 0.0,
+            reflectance: 0.0
+        }));
+
+        const green_glass = this.addMaterial(new Material({
+            albedo: new Vector3(0.9,1.0,0.9),
+            subsurface_color: new Vector3(0.5,1.0,0.5),
+            roughness: 0.1,
+            metalness: 0.0,
+            reflectance: 0.5,
+            trs_weight: 1.0
+        }));
+
+
+        const white_light = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            emission: 10.0
+        }));
 
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
             1.0);
-        this.addSphere(s1, m1);
+        this.addSphere(s1, green_glass);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
             2.0);
-        this.addSphere(s2, m2);
+        //this.addSphere(s2, white_matte);
 
         const s3 = new Sphere(
             new Vector3(4.0, 1.0, -6.0),
             2.0);
-        this.addSphere(s3, m2);
+        this.addSphere(s3, mirror);
+
+        const s4 = new Sphere(
+            new Vector3(-4.0, 1.0, -6.0),
+            2.0);
+        this.addSphere(s4, white_matte);
+
+        const s5 = new Sphere(
+            new Vector3(-4.0, 15.0, -6.0),
+            10.0);
+        //this.addSphere(s5, white_light);
 
         const t1: Triangle = new Triangle(
             new Vector3(-3.0, 0.5, 2.0),
             new Vector3(-6.0, 0.0, 0.0),
             new Vector3(-4.5, 2.5, -2.0),
         );
-        this.addTriangle(t1, m4);
+        this.addTriangle(t1, white_matte);
 
         const p1: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
             1.0
         );
-        this.addPlane(p1, m3);
+        this.addPlane(p1, blue_matte);
+
+        const l1: PointLight = new PointLight(
+            new Vector3(0, 3.0, 0.0),
+            new Vector3(1.0, 1.0, 1.0),
+            20.0
+        );
+        this.addPointLight(l1);
     }
 
+    /*
     private cornell() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 3.5));
 
@@ -851,24 +902,14 @@ export class Scene {
             // const bvhMesh = await GLTFLoader.load("models/gltf/dragon/scene.gltf", 0.012, new Vector3(0.0, 0.0, 0.0), new Vector3(0.0, 0.0, 0.0), NormalStrategy.GEOMETRIC);
             // NOTE, KEY: ~230K vertices, only used for material loading, USE ONLY WITH RENDER DISABLED (Stop)
             // const bvhMesh = await GLTFLoader.load("models/gltf/dragon_glass/scene.gltf", 0.012);
-            // const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2, new Vector3(0.1, 4.0, 0.7), new Vector3(0.2, 0.2, 0.2), NormalStrategy.GEOMETRIC);
-            // const bvhMesh = await GLTFLoader.load("models/gltf/priest/scene.gltf", 0.01, new Vector3(0.0, 1.55, 3.14), new Vector3(-0.15, 0.2, 0.0), NormalStrategy.GEOMETRIC);
-            // this.addEfficientMeshData(bvhMesh);
-
-            const venusMesh = await GLTFLoader.load("models/gltf/venus_statue/scene.gltf", 0.05, new Vector3(0.0, 3.14, 0.0), new Vector3(-0.25, 0.0, 0.0), NormalStrategy.GEOMETRIC);
-            const stanfordDragonMesh = await GLTFLoader.load("models/gltf/stanford_dragon_pbr/scene.gltf", 0.002, new Vector3(0.0, 0.0, 0.0), new Vector3(0.25, 0.0, 0.0), NormalStrategy.INTERPOLATED);
-            this.addEfficientMeshData(venusMesh);
-            this.addEfficientMeshData(stanfordDragonMesh);
-
-            const dodecahedron = await GLTFLoader.load("models/gltf/dodecahedron/scene.gltf", 0.1, new Vector3(0.0, 0.0, 0.0), new Vector3(0.4, 0.0, 0.0), NormalStrategy.GEOMETRIC);
-            const icosahedron = await GLTFLoader.load("models/gltf/icosahedron/scene.gltf", 0.1, new Vector3(0.0, 0.0, 0.0), new Vector3(-0.3, 0.0, 0.0), NormalStrategy.GEOMETRIC);
-            /*this.addEfficientMeshData(dodecahedron);
-            this.addEfficientMeshData(icosahedron);*/
+            const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2, new Vector3(0.1, 4.0, 0.7), new Vector3(0.8, 0.2, 0.4));
+            this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
             console.warn("Could not load BVH mesh:", error);
         }
     }
+        */
 
     public serializeStaticBlock(): Float32Array {
         const data: number[] = [];

@@ -131,7 +131,13 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.href = url;
-            link.download = `screenshot_${Date.now()}.png`;
+            link.download = `
+            ${Date.now()}
+            ${fps}fps
+            ${renderer.frame_acummulation_on?"TAA":""}
+            ${renderer.spp}spp
+            ${Math.floor(russianRoulette * 1000) / 1000}rr
+            .png`;
 
             document.body.appendChild(link);
             link.click();
@@ -228,7 +234,7 @@
                 </div>
 
                 <!-- Frame acummulation toggle -->
-                <div class="space-y-2">
+                <div class="space-y-2 flex gap-4">
                     <Label>Frame acummulation</Label>
                     <Switch bind:checked={frame_acummulation} />
                 </div>

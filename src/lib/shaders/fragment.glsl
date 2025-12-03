@@ -20,6 +20,9 @@ precision highp usampler2D;
 #define bounce_hard_limit 200
 #define minimun_atenuation 0.0
 #define PI 3.14159265359
+#define TWO_PI 6.28318530718
+#define INV_PI 0.31830988618
+#define INV_TWO_PI 0.15915494309
 #define E_NUMBER 2.71828182845
 
 //===========================
@@ -30,15 +33,21 @@ precision highp usampler2D;
 #define METALIC 2
 #define DIELECTRIC 3
 
+
 //===========================
 // Type definitions
 //===========================
 
 struct Material {
-    vec4 albedo_emission;
-    vec3 specular_color;
-    vec4 subsurface_color_ior;
-    vec4 lobe_chances; // diffuse/metalic/dielectric/sum 
+    vec4 albedo_emission;                   // xyz = albedo* base color, w = emission power* (0.0 == no light)
+    vec3 specular_color;                    // xyz = specular color for highlights (metals)
+    vec4 subsurface_color_ior;              // xyz = subsurface color for transmision (dielectrics), w = index of refraction
+    vec4 rou_met_trs_ref;                   // x = roughness* 0.0 = smooth / 1.0 = rough
+                                            // y = metalness* 0.0 = dielectric / 1.0 = metalic
+                                            // z = transmision weight  0.0 = opaque / 1.0 = transparent
+                                            // w = reflectance 0.0 = low / 0.5 = normal / 1.0 = high
+    vec4 F0_alpha;                          // xyz = precomputed F0 = mix(0.16*reflectance²,albedo,metalness)
+                                            // w = precomputed alpha = roughness*roughness
 };
 
 struct Sphere {
@@ -219,12 +228,12 @@ vec2 sample_square(){
 
 vec2 sample_disc(){
     float r = sqrt(random());
-    float theta = 2.0 * PI * random();
+    float theta = TWO_PI * random();
     return vec2(cos(theta), sin(theta)) * r;
 }
 
 vec3 random_unit_vec(){
-    float phi = 2.0 * PI * random();
+    float phi = TWO_PI * random();
     float theta = acos(2.0 * random() - 1.0);
     float sin_theta = sin(theta);
     return vec3(
@@ -298,7 +307,7 @@ vec3 apply_kernel_clamped_triangle(vec3 color, float t){
 
 vec3 apply_gaussian_kernel(vec3 color, float t){
     float sigma2times2 = 2.0*kernel_sigma*kernel_sigma;
-    float k = 1.0 / sqrt(PI*sigma2times2);
+    float k = inversesqrt(PI*sigma2times2);
     float d_to_center = ray_range.z - t;
     k *= pow(E_NUMBER,-d_to_center*d_to_center/sigma2times2);
     return color*k;
@@ -333,12 +342,12 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
             return false;
     }
 
-    // TODO: Fill out the rest of the hit record
     h.t = d;
     h.p = r.orig+r.dir*d;
     h.mat = s.mat;
     vec3 s_normal = (h.p-s.center_radius.xyz)/s.center_radius.w;
     set_front_face(s_normal,r.dir,h);
+    h.normal = s_normal;
     
     return true;
 }
@@ -640,146 +649,7 @@ bool hit_mesh(MeshInfo mesh, const Ray r, out Hit h){
 }
 
 //===========================
-// Skybox functions
-//===========================
-vec3 skybox_color_image(Ray r){
-    float u = atan(r.dir.z, r.dir.x) / (2.0 * PI) + 0.5;
-    float v = r.dir.y * 0.5 + 0.5;
-    return texture(skybox, vec2(u, v)).rgb;
-}
-
-vec3 skybox_color_day(Ray r) {
-    const vec3 horizon_color = vec3(0.231, 0.756, 0.945);
-    const vec3 zenith_color = vec3(1.0);
-
-    vec3 dir_unit = normalize(r.dir);
-    float a = 0.5 * (dir_unit.y + 1.0); 
-    vec3 sky_gradient = mix(horizon_color, zenith_color, a);
-
-
-    return sky_gradient;
-}
-
-vec3 skybox_color_black(Ray r){
-    return vec3(0.0);
-}
-
-vec3 skybox_color(Ray r){
-    return skybox_color_day(r);
-}
-
-//===========================
-// Material functions
-//===========================
-
-// Fresnel-Schlick aproximation to reflectance for dielectrics
-float fresnel_dielectric(float cos_theta_i, float eta) {
-    float r0 = (1.0 - eta) / (1.0 + eta);
-    float F0 = r0 * r0;
-    return F0 + (1.0 - F0) * pow(1.0 - cos_theta_i, 5.0);
-}
-
-vec3 sample_mat_direction(inout Material mat, vec3 Vin, Hit h, out int type){
-    float r = random();
-    float sum = mat.lobe_chances.w;
-    if(bounce_count > 2){
-        sum += 1.0 - rr_chance;
-    }
-    if(sum > 1.0){
-        mat.lobe_chances.x /= sum;
-        mat.lobe_chances.y /= sum;
-        mat.lobe_chances.z /= sum;
-    }
-
-    float sum_chance = mat.lobe_chances.x;
-    if(r <= sum_chance){
-        type = DIFFUSE;
-        return random_vec_on_hemisphere(h.normal);
-    }
-    sum_chance += mat.lobe_chances.y;
-
-    if(r <= sum_chance){
-        type = METALIC;
-        return reflect(Vin,h.normal);
-    }
-    sum_chance += mat.lobe_chances.z;
-
-    if(r <= sum_chance){
-        float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w; 
-        float cos_theta = abs(dot(Vin,h.normal));
-        float sin_theta = sqrt(1.0 - cos_theta*cos_theta);
-        bool cannot_refract = eta * sin_theta > 1.0;
-        if(cannot_refract){
-            type = METALIC;
-            return reflect(Vin,h.normal);
-        }else{
-            type = DIELECTRIC;
-            return refract(Vin,h.normal,eta);
-        }
-    }
-
-    type = NONE;
-    return vec3(0.0);
-}
-
-vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
-    vec3 ret;
-    int type;
-
-    Vout = sample_mat_direction(mat,Vin,h,type);
-
-    ret = mat.albedo_emission.rgb;
-    
-    switch(type){
-        case NONE:
-            ret = vec3(0.0);
-            break; 
-        case DIFFUSE:
-            /*
-            vec3 fr = mat.albedo_emission.rgb/PI;
-            pdf = abs(dot(Vout,h.normal))/PI;
-            */
-            ret /= mat.lobe_chances.x;
-            break;
-        case METALIC:
-            ret += mat.specular_color.rgb;
-            ret /= mat.lobe_chances.y;
-            break;
-
-        case DIELECTRIC:
-            if(!h.front_face) h.t *= mat.subsurface_color_ior.w;
-            ret += mat.subsurface_color_ior.rgb;
-            ret /= mat.lobe_chances.z;
-            break;
-    }
-
-    return ret;
-}
-
-// Get material by index: scene materials first, then mesh materials from texture
-// TODO: TEMPORARY - always fetch from materials array until we retrieve materials from OBJ file
-Material get_material(int matIdx, bool isMesh) {
-    // if (isMesh) {
-    //     // Fetch from mesh materials texture
-    //     int meshMatIdx = matIdx - NUM_MATERIALS;
-    //     int base = meshMatIdx * 4;  // 4 texels per material (16 floats / 4 = 4)
-    //     vec4 m0 = texelFetch(u_meshMaterials_tex, ivec2(base + 0, 0), 0);
-    //     vec4 m1 = texelFetch(u_meshMaterials_tex, ivec2(base + 1, 0), 0);
-    //     vec4 m2 = texelFetch(u_meshMaterials_tex, ivec2(base + 2, 0), 0);
-    //     vec4 m3 = texelFetch(u_meshMaterials_tex, ivec2(base + 3, 0), 0);
-    //     Material mat;
-    //     mat.albedo_emission = m0;
-    //     mat.specular_color = m1.xyz;
-    //     mat.subsurface_color_ior = vec4(m1.w, m2.xyz);
-    //     mat.lobe_chances = vec4(m2.w, m3.xyz);
-    //     return mat;
-    // } else {
-        return materials[matIdx];
-    // }
-}
-
-//===========================
-// Main functions
+// Scene functions
 //===========================
 
 bool hit_scene(Ray r, out Hit h){
@@ -841,8 +711,187 @@ bool hit_scene(Ray r, out Hit h){
     return has_hit;
 }
 
-vec3 get_direct_light(Hit h, float total_t){
-    Material mat = get_material(h.mat, h.isMesh);
+//===========================
+// Skybox functions
+//===========================
+vec3 skybox_color_image(Ray r){
+    float u = atan(r.dir.z, r.dir.x) * INV_TWO_PI + 0.5;
+    float v = r.dir.y * 0.5 + 0.5;
+    return texture(skybox, vec2(u, v)).rgb;
+}
+
+vec3 skybox_color_day(Ray r) {
+    const float power = 1.0;
+    const vec3 horizon_color = vec3(0.231, 0.756, 0.945) * power;
+    const vec3 zenith_color = vec3(1.0) * power;
+
+    vec3 dir_unit = normalize(r.dir);
+    float a = 0.5 * (dir_unit.y + 1.0); 
+    vec3 sky_gradient = mix(horizon_color, zenith_color, a);
+
+
+    return sky_gradient;
+}
+
+vec3 skybox_color_black(Ray r){
+    return vec3(0.0);
+}
+
+vec3 skybox_color(Ray r){
+    return skybox_color_black(r);
+}
+
+//===========================
+// Material functions
+//===========================
+// Fresnel-Schlick aproximation to reflectance
+vec3 reflectance(float cos_theta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - cos_theta, 5.0);
+}
+
+// Normal distribution function. GGX
+float ggx_distribution(float NoH, float alpha){
+    float alpha_squared = alpha * alpha;
+    float b = NoH * NoH * (alpha_squared - 1.0) + 1.0;
+    return alpha_squared * INV_PI / (b * b);
+}
+
+float lambda_GGX(float cos_theta, float alpha2) {
+    if(cos_theta <= 1e-5) return 0.0;
+    
+    float cos2 = cos_theta * cos_theta;
+    float sin2 = 1.0 - cos2;
+    float tan2 = sin2 / cos2;
+    
+    return (-1.0 + sqrt(1.0 + alpha2 * tan2)) * 0.5;
+}
+
+float G_Smith_Full(float NoV, float NoL, float alpha) {
+    float alpha2 = alpha * alpha;
+    float lambda_i = lambda_GGX(abs(NoL), alpha2);
+    float lambda_o = lambda_GGX(abs(NoV), alpha2);
+    
+    return 1.0 / (1.0 + lambda_i + lambda_o);
+}
+
+float G1_GGX_Schlick(float AoB, float k) {
+    return max(AoB, 1e-5) / (AoB * (1.0 - k) + k);
+}
+
+float G_Smith_Fast(float NoV, float NoL, float alpha) {
+    float k = alpha/2.0;
+    return G1_GGX_Schlick(NoV, k) * G1_GGX_Schlick(NoL, k);
+}
+
+
+vec3 align_to_world(vec3 X, vec3 N){
+    vec3 up = vec3(0.0,0.0,1.0);
+
+    vec3 T = normalize(cross(up,N));
+    vec3 B = cross(N,T);
+
+    return T*X.x + B*X.y + N*X.z;
+}
+
+vec3 sample_ggx(float alpha, vec3 V, vec3 N){
+    float e1 = random(), e2 = random();
+
+    float cos_theta = sqrt((1.0 - e1) / (1.0 + (alpha - 1.0) * e1));
+    float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+    float phi = 2.0 * PI * e2;
+
+    float cos_p = cos(phi);
+    float sin_p = sin(phi);
+    vec3 H_tan = vec3(sin_theta * cos_p, sin_theta * sin_p, cos_theta);
+
+    vec3 H = align_to_world(H_tan,N);
+    if (dot(V, H) < 0.0) H = -H;
+    return normalize(H);
+}
+
+
+vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
+
+    if(rr_chance < random()) return vec3(0.0);
+
+    vec3 V = -Vin;
+    vec3 N = h.normal;
+    vec3 F0 = mat.F0_alpha.rgb;
+    float alpha = mat.F0_alpha.w;
+    vec3 H = sample_ggx(alpha,V,N);
+    
+    float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w;
+    
+
+    float NoV = dot(N, V);
+    float NoH = dot(N, H);
+    float VoH = dot(V, H);
+
+    bool transmissive = mat.rou_met_trs_ref.z > random();
+
+    vec3 F = reflectance(VoH, F0);
+    
+    bool transmited;
+    if(transmissive){
+        float sin_theta = sqrt(1.0 - VoH*VoH);
+        bool cannot_refract = eta * sin_theta > 1.0;
+
+        if(cannot_refract || F.x > random()){
+            Vout = reflect(-V,H);
+            transmited = false;
+        }else{
+            Vout = refract(-V,H,eta);
+            transmited = true;
+        }
+    }else{
+        Vout = reflect(-V,H);
+        transmited = false;
+    }
+
+    float LoH = dot(Vout, H);
+    float LoN = dot(Vout, N);
+
+    float D = ggx_distribution(NoH,alpha);
+    float pdf_ggx = (D * abs(NoH)) / (4.0 * max(abs(NoV), 1e-5));
+
+    if(transmited){
+        float G = G_Smith_Full(abs(NoV), abs(LoN), alpha);
+
+        vec3 T = vec3(1.0) - F;
+        
+        float denom = VoH + eta * LoH;
+        float denom2 = max(denom * denom, 1e-10);
+        float jacobian = (eta * eta * abs(LoH * VoH)) / denom2;
+
+        vec3 btdf = (T * D * G * jacobian) / 
+                    (4.0 * max(abs(NoV), 1e-5) * max(abs(LoN), 1e-5));
+
+        return mat.subsurface_color_ior.rgb * btdf * abs(LoN) / max(pdf_ggx*jacobian, 1e-5);
+
+    }else{
+        float G = G_Smith_Fast(NoV,LoN,alpha);
+
+        vec3 f_specular = (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
+
+        vec3 rhoD = mat.albedo_emission.xyz;
+        rhoD *= vec3(1.0) - F;
+        rhoD *= (1.0 - mat.rou_met_trs_ref.y);
+
+        vec3 f_diffuse = rhoD * INV_PI;
+
+        vec3 fr = f_diffuse + f_specular;
+
+        return fr * max(LoN,1e-5) / max(pdf_ggx, 1e-5);
+    }
+        
+}
+
+
+//===========================
+// Main functions
+//===========================
+
+vec3 get_direct_light(Hit h, Material mat, Ray r, float total_t){
     // 0% diffuse means no point lights
     if(length(mat.albedo_emission.xyz) <= 0.0){
         return vec3(0.0);
@@ -866,12 +915,36 @@ vec3 get_direct_light(Hit h, float total_t){
 
             float d2 = d*d;
             // Cast a ray from the light source to the hit position
-            Ray r = Ray(h.p,normalize(l.position-h.p));
-            if(!hit_scene(r,aux) || aux.t >= d){
+            Ray r_pl = Ray(h.p,normalize(l.position-h.p));
+            if(!hit_scene(r_pl,aux) || aux.t >= d){
+
+                vec3 F0 = mat.F0_alpha.rgb;
+                float alpha = mat.F0_alpha.w;
+                vec3 V = -r.dir;
+                vec3 H = normalize(V+r_pl.dir);
+                float NoV = dot(h.normal, V);
+                float NoH = dot(h.normal, H);
+                float VoH = dot(V, H);
+                float LoN = dot(r_pl.dir, h.normal);
+
+                vec3  F = reflectance(VoH, F0);
+                float D = ggx_distribution(NoH,alpha);
+                float G = G_Smith_Fast(NoV,LoN,alpha);
+
+                vec3 f_specular = (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
+
+                vec3 radiance = mat.albedo_emission.xyz * l.color_power.xyz * l.color_power.w / d2;
+
+                vec3 rhoD = mat.albedo_emission.xyz;
+                rhoD *= vec3(1.0) - F;
+                rhoD *= (1.0 - mat.rou_met_trs_ref.y);
+
+                vec3 f_diffuse = rhoD * INV_PI;
+
+                vec3 fr = f_diffuse + f_specular;
+
                 ret += apply_kernel(
-                    mat.albedo_emission.xyz / mat.lobe_chances.x
-                    * l.color_power.xyz * l.color_power.w / d2
-                    * abs(dot(r.dir,h.normal)),
+                    radiance * fr * max(LoN,1e-5),
                     total_plus_pl);
             }
         }
@@ -900,7 +973,14 @@ vec3 cast_ray(Ray r){
             // Max distance check
             if(total_t > ray_range.y) break;
 
-            Material mat = get_material(h.mat, h.isMesh);
+            Material mat = materials[h.mat];
+
+            // Get light from all light sources
+            //if(bounce_count == 0){
+            if(true){
+                vec3 direct_light = get_direct_light(h,mat,r,total_t);
+                color += direct_light*atenuation;
+            }
 
             // Emissive material & Min distance check
             if(mat.albedo_emission.a > 0.0){
@@ -913,19 +993,15 @@ vec3 cast_ray(Ray r){
                 break; 
             }
 
-            atenuation *= eval_mat(mat,r.dir,h,new_direction);
+            atenuation *= eval_mat(mat,r.dir,h,new_direction) / rr_chance;
+            //return atenuation;
             // 0 atennuation check for termination
             if(length(atenuation) <= minimun_atenuation) break;
+
+            
             
             r.dir = new_direction;
             r.orig = h.p;
-            
-            // Get light from all light sources
-            //if(bounce_count == 0){
-            if(true){
-                vec3 direct_light = get_direct_light(h,total_t);
-                color += direct_light*atenuation;
-            }
         }else{
             // No hit => skybox hit
             color += apply_kernel(
@@ -981,6 +1057,7 @@ void main() {
 
     // Post processing
     outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
+    //outColor.xyz = gamma_correct(clamp_color(outColor.xyz));
 
     // Alpha channel correction
     outColor.a = 1.0; 
