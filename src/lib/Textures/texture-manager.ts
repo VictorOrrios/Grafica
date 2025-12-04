@@ -1,4 +1,4 @@
-import { loadImageUNORM8 } from "./image-loader";
+import { Jimp } from "jimp";
 
 export type TextureBlock = {
     data_512:Uint8Array[],
@@ -10,6 +10,24 @@ export type LoadedTextureInfo = {
     array:number,
     index:number,
 };
+
+
+export async function loadImageUNORM8(path: string): Promise<{
+    width: number;
+    height: number;
+    data: Uint8Array;  // RGB UNORM8
+}> {
+    const img = await Jimp.read(path);
+    const data = new Uint8Array(img.bitmap.data);
+
+    const hasAlpha = false;
+
+    if (hasAlpha) {
+        console.warn("Image with alpha channel detected:",path)
+    }
+
+    return { width: img.bitmap.width, height: img.bitmap.height, data: data };
+}
 
 export class TextureManager{
     private albedo_block:TextureBlock;
