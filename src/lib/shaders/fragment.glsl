@@ -48,6 +48,9 @@ struct Material {
                                             // w = reflectance 0.0 = low / 0.5 = normal / 1.0 = high
     vec4 F0_alpha;                          // xyz = precomputed F0 = mix(0.16*reflectance²,albedo,metalness)
                                             // w = precomputed alpha = roughness*roughness
+    ivec4 albedoTA_rmTA;                    // Values for albedo tex, roughness/metalness map and normal map
+    ivec2 normalTA;                         // T value indicates which texture index on the array
+                                            // A value indicates which texture array to use: 0=512, 1=1024, 2=2048
 };
 
 struct Sphere {
@@ -159,9 +162,11 @@ uniform sampler2D u_bvh_tex;    // RGBA32F: BVH nodes (minX, minY, minZ, maxX, m
 uniform int u_vertex_count;
 
 // Albedo
+/*
 uniform sampler2DArray albedo_512;
 uniform sampler2DArray albedo_1024;
 uniform sampler2DArray albedo_2048;
+*/
 
 //===========================
 // RNG Functions

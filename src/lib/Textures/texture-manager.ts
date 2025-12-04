@@ -6,6 +6,11 @@ export type TextureBlock = {
     data_2048:Uint8Array[],
 };
 
+export type LoadedTextureInfo = {
+    array:number,
+    index:number,
+};
+
 export class TextureManager{
     private albedo_block:TextureBlock;
 
@@ -15,15 +20,11 @@ export class TextureManager{
         };
     }
 
-    public async addAlbedo(path:string):Promise<{
-        array:number, index:number
-    }>{
+    public async addAlbedo(path:string):Promise<LoadedTextureInfo>{
         return await this.addImage(path,this.albedo_block);
     }
 
-    private async addImage(path:string,block:TextureBlock):Promise<{
-        array:number, index:number
-    }> {
+    private async addImage(path:string,block:TextureBlock):Promise<LoadedTextureInfo> {
         let array:number, index:number;
         let {width,height,data} = await loadImageUNORM8(path);
 

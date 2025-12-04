@@ -38,7 +38,7 @@ export class Scene {
     public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
     public meshDataVec: EfficientMeshData[] = [];
-    public tex_manager: TextureManager = new TextureManager();
+    //public tex_manager: TextureManager = new TextureManager();
 
     constructor(type: SceneType = SceneType.TESTPLANE) {
         this.sceneType = type;
@@ -221,8 +221,8 @@ export class Scene {
             // const bvhMesh = await GLTFLoader.load("models/gltf/dragon/scene.gltf", 0.012, new Vector3(0.0, 0.0, 0.0), new Vector3(0.0, 0.0, 0.0), NormalStrategy.GEOMETRIC);
             // NOTE, KEY: ~230K vertices, only used for material loading, USE ONLY WITH RENDER DISABLED (Stop)
             // const bvhMesh = await GLTFLoader.load("models/gltf/dragon_glass/scene.gltf", 0.012);
-            const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2);
-            this.addEfficientMeshData(bvhMesh);
+            //const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2);
+            //this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
             console.warn("Could not load BVH mesh:", error);
