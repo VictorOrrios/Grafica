@@ -151,17 +151,17 @@ layout(std140) uniform StaticBlock {
     #endif
 };
 
-// TODO, support for multiple meshes IS NOT GUARANTEED TO WORK RN
-// TODO, meter sampler para el mapa de uv
 uniform sampler2D u_positions_tex;
 uniform sampler2D u_normals_tex;
 uniform usampler2D u_sharedVertexIndices_tex;
-// TODO, change to R8UI and implement mesh materials
 uniform usampler2D u_triangleMaterials_tex;
-// TODO, add bvh offset for each mesh
 uniform sampler2D u_bvh_tex;    // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
-
 uniform int u_vertex_count;
+
+// Albedo
+uniform sampler2DArray albedo_512;
+uniform sampler2DArray albedo_1024;
+uniform sampler2DArray albedo_2048;
 
 //===========================
 // RNG Functions

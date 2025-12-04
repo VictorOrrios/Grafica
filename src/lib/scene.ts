@@ -15,6 +15,7 @@ import {
 } from './Mesh/loaders/OBJLoader';
 import { GLTFLoader } from "./Mesh/loaders/GLTFLoader";
 import { roughness } from "three/tsl";
+import { TextureManager } from "./Textures/texture-manager";
 
 export enum SceneType {
     TESTPLANE = 'testplane',
@@ -37,6 +38,7 @@ export class Scene {
     public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
     public meshDataVec: EfficientMeshData[] = [];
+    public tex_manager: TextureManager = new TextureManager();
 
     constructor(type: SceneType = SceneType.TESTPLANE) {
         this.sceneType = type;
