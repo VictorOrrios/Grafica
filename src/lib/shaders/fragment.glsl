@@ -1,6 +1,7 @@
 #version 300 es
 precision mediump float;
 precision highp usampler2D;
+precision mediump sampler2DArray;
 //===========================
 // On load constants
 //===========================
@@ -60,6 +61,7 @@ struct Sphere {
 
 struct Plane {
     vec4 normal_distance;   // xyz = The normal of the plane, w = Distance from 0,0,0
+    vec3 tiling;            // xy = uv offset, z = tiling size
     int mat;                // Material index
 };
 
@@ -100,6 +102,7 @@ struct Hit {
     float t;            // The distance from the ray origin to the hit
     bool front_face;    // True if hit is to a front facing surface
     bool isMesh;        // True if hit came from a mesh
+    vec2 uv;            // Texture uv where it hit. (-1,-1) = It doesn't have uvs
 };
 
 
@@ -162,11 +165,10 @@ uniform sampler2D u_bvh_tex;    // RGBA32F: BVH nodes (minX, minY, minZ, maxX, m
 uniform int u_vertex_count;
 
 // Albedo
-/*
 uniform sampler2DArray albedo_512;
 uniform sampler2DArray albedo_1024;
 uniform sampler2DArray albedo_2048;
-*/
+
 
 //===========================
 // RNG Functions
@@ -353,6 +355,7 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
     vec3 s_normal = (h.p-s.center_radius.xyz)/s.center_radius.w;
     set_front_face(s_normal,r.dir,h);
     h.normal = s_normal;
+    h.uv = vec2(-1.0,-1.0);
     
     return true;
 }
@@ -370,6 +373,17 @@ bool hit_plane(const Plane p, const Ray r, out Hit h){
             h.p = r.orig + r.dir * t;
             h.mat = p.mat;
             set_front_face(p.normal_distance.xyz,r.dir,h);
+
+            vec3 tangent   = normalize(abs(p.normal_distance.x) > 0.5 ? vec3(0,1,0) : vec3(1,0,0));
+            vec3 bitangent = normalize(cross(p.normal_distance.xyz, tangent));
+
+            float u = dot(h.p, tangent);
+            float v = dot(h.p, bitangent);
+
+            h.uv = fract(vec2(u, v) * p.tiling.z + p.tiling.xy);
+
+            // TODO: Set normal texture
+
             return true;
         }
     }
@@ -411,6 +425,7 @@ bool hit_triangle(Triangle tri, const Ray r, out Hit h){
     h.mat = int(tri.normal_mat.w);
     h.isMesh = false;  // This is a UBO triangle
     set_front_face(normal, r.dir, h);
+    h.uv = vec2(-1.0,-1.0);
     return true;
 }
 
@@ -498,6 +513,10 @@ bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normal
     h.mat = int(mat_u);
     h.isMesh = true;  // This is a mesh triangle
     set_front_face(finalNormal, r.dir, h);
+
+    // TODO: Set uvs with tri hit
+    h.uv = vec2(-1.0,-1.0);
+
     return true;
 }
 
@@ -749,6 +768,20 @@ vec3 skybox_color(Ray r){
 //===========================
 // Material functions
 //===========================
+vec3 get_albedo(Material mat, vec2 uv){
+    // Check for no texture
+    if(mat.albedoTA_rmTA.x < 0) return mat.albedo_emission.rgb;
+
+    switch(mat.albedoTA_rmTA.y){
+        case 0:
+            return texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb;
+        case 1:
+            return texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb;
+        case 2:
+            return texture(albedo_2048, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb;
+    }
+}
+
 // Fresnel-Schlick aproximation to reflectance
 vec3 reflectance(float cos_theta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(1.0 - cos_theta, 5.0);
@@ -820,6 +853,7 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     if(rr_chance < random()) return vec3(0.0);
 
+    bool has_uvs = h.uv.x >= 0.0;
 
     vec3 V = -Vin;
     vec3 N = h.normal;
@@ -883,7 +917,7 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
         vec3 f_specular = (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
 
-        vec3 rhoD = mat.albedo_emission.xyz;
+        vec3 rhoD = has_uvs? get_albedo(mat,h.uv) : mat.albedo_emission.rgb;
         rhoD *= vec3(1.0) - F;
         rhoD *= (1.0 - mat.rou_met_trs_ref.y);
 
@@ -902,10 +936,6 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 //===========================
 
 vec3 get_direct_light(Hit h, Material mat, Ray r, float total_t){
-    // 0% diffuse means no point lights
-    if(length(mat.albedo_emission.xyz) <= 0.0){
-        return vec3(0.0);
-    }
     Hit aux;
     vec3 ret = vec3(0);
 

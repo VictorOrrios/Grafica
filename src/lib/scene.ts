@@ -15,7 +15,7 @@ import {
 } from './Mesh/loaders/OBJLoader';
 import { GLTFLoader } from "./Mesh/loaders/GLTFLoader";
 import { roughness } from "three/tsl";
-import { TextureManager } from "./Textures/texture-manager";
+import { TextureManager, type LoadedTextureInfo } from "./Textures/texture-manager";
 
 export enum SceneType {
     TESTPLANE = 'testplane',
@@ -38,7 +38,7 @@ export class Scene {
     public sceneType: SceneType;
     public pointLightVec: PointLight[] = [];
     public meshDataVec: EfficientMeshData[] = [];
-    //public tex_manager: TextureManager = new TextureManager();
+    public tex_manager: TextureManager = new TextureManager();
 
     constructor(type: SceneType = SceneType.TESTPLANE) {
         this.sceneType = type;
@@ -141,6 +141,8 @@ export class Scene {
         this.addSphere(s5, white_light);
         */
 
+        
+
         const white_light = this.addMaterial(new Material({
             albedo: new Vector3(1.0,1.0,1.0),
             emission: 10.0
@@ -148,6 +150,13 @@ export class Scene {
 
         const white_matte = this.addMaterial(new Material({
             roughness: 0.8,
+        }));
+
+        const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
+        const brick = this.addMaterial(new Material({
+            roughness: 0.8,
+            albedo_tex_info:brick_albedo
         }));
 
         const mirror = this.addMaterial(new Material({
@@ -178,7 +187,7 @@ export class Scene {
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
             1.0);
-        //this.addSphere(s1, green_glass);
+        this.addSphere(s1, green_glass);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
@@ -205,13 +214,13 @@ export class Scene {
             new Vector3(-6.0, 0.0, 0.0),
             new Vector3(-4.5, 2.5, -2.0),
         );
-        this.addTriangle(t1, white_matte);
+        //this.addTriangle(t1, white_matte);
 
         const p1: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
             1.0
         );
-        this.addPlane(p1, blue_matte);
+        this.addPlane(p1, brick);
 
         const l1: PointLight = new PointLight(
             new Vector3(0, 3.0, 0.0),

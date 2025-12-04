@@ -95,6 +95,7 @@ export class Material{
         let combined = new Float32Array(data.length + idata.length);
         combined.set(data,0);
         combined.set(idata,data.length);
+        console.log("Material:",combined);
         return combined;
     }
 

@@ -13,6 +13,7 @@ export class Renderer {
     private fragmentShader!: WebGLShader;
     private camera_ubo!: WebGLBuffer;
     private attachments: Map<string, WebGLUniformLocation> = new Map();
+    private nextTexBinding:number = 0;
 
     public frame_acummulation_on: boolean = true;
     private num_frames_rendered: number = 0;
@@ -135,6 +136,7 @@ export class Renderer {
         this.initSkyboxBuffer();
         this.initStorageBuffers();
         this.initStorageTextures();
+        this.initMaterialTextures();
     }
 
     private initCamera() {
@@ -211,34 +213,39 @@ export class Renderer {
         gl.bindBufferBase(gl.UNIFORM_BUFFER, bindingPoint, staticUBO);
     }
 
-    private initStorageTextures() {
+    private initStorageTextures():number {
         const meshBuffers = this.scene.getMeshTextureBuffers();
         let nextTextureBinding = 2;
 
         this.initUniform("u_positions_count", 0, [meshBuffers.positions.length / 3]);
 
         if (meshBuffers.positions.length > 0) {
-            this.initTextureBuffer('u_positions_tex', meshBuffers.positions, nextTextureBinding++, 1);
+            this.initTextureBuffer('u_positions_tex', meshBuffers.positions, 1);
 
-            this.initTextureBuffer('u_normals_tex', meshBuffers.normals, nextTextureBinding++, 1);
+            this.initTextureBuffer('u_normals_tex', meshBuffers.normals, 1);
 
-            this.initTextureBuffer('u_sharedVertexIndices_tex', meshBuffers.positionIndices, nextTextureBinding++, 2);
+            this.initTextureBuffer('u_sharedVertexIndices_tex', meshBuffers.positionIndices, 2);
 
-            this.initTextureBuffer('u_triangleMaterials_tex', meshBuffers.triangleMaterials, nextTextureBinding++, 2);
+            this.initTextureBuffer('u_triangleMaterials_tex', meshBuffers.triangleMaterials, 2);
 
-            this.initTextureBuffer('u_bvh_tex', meshBuffers.bvh, nextTextureBinding++, 3);
+            this.initTextureBuffer('u_bvh_tex', meshBuffers.bvh, 3);
         }
+
+        return nextTextureBinding;
     }
 
-    private initTextureBuffer(name: string, data: Float32Array | Uint32Array, index: number, texture_type: number = 0) {
+    
+
+    private initTextureBuffer(name: string, data: Float32Array | Uint32Array, texture_type: number = 0) {
         if (data.length === 0) {
             console.warn("Tried creating a texture without data!")
             return;
         };
         const gl = this.gl;
         const storageVec = gl.createTexture();
+        const texBinding = this.nextTexBinding++;
         console.log(`Initializing storage buffer for ${name}:`, data);
-        gl.activeTexture(gl.TEXTURE0 + index);
+        gl.activeTexture(gl.TEXTURE0 + texBinding);
         gl.bindTexture(gl.TEXTURE_2D, storageVec);
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -276,15 +283,122 @@ export class Renderer {
 
         let location = gl.getUniformLocation(this.program, name);
         if (!location) console.warn(name, "location returned null");
-        gl.uniform1i(location, index);
+        gl.uniform1i(location, texBinding);
     }
+
+    private initMaterialTextures(){
+        const gl = this.gl;
+
+        this.scene.tex_manager.fillEmptyTextures();
+
+        this.initSampler2DArray("albedo_512",this.scene.tex_manager.albedo_block.data_512,512,512,gl.RGB);
+        this.initSampler2DArray("albedo_1024",this.scene.tex_manager.albedo_block.data_1024,1024,1024,gl.RGB);
+        this.initSampler2DArray("albedo_2048",this.scene.tex_manager.albedo_block.data_2048,2048,2048,gl.RGB);
+    }
+
+    public initSampler2DArray(
+        name: string,
+        data: Uint8Array[],
+        width: number,
+        height: number,
+        format: number = this.gl.RGBA,
+    ): WebGLTexture {
+        const gl = this.gl;
+        const depth = data.length;
+        const texBinding = this.nextTexBinding++;
+        console.log("Init sampler2D",name,texBinding)
+        
+        let internalFormat: number;
+        let bytesPerPixel: number;
+        
+        switch (format) {
+            case gl.RGBA:
+                internalFormat = gl.RGBA8;
+                bytesPerPixel = 4;
+                break;
+            case gl.RGB:
+                internalFormat = gl.RGB8;
+                bytesPerPixel = 3;
+                break;
+            case gl.RG:
+                internalFormat = gl.RG8;
+                bytesPerPixel = 2;
+                break;
+            case gl.RED:
+                internalFormat = gl.R8;
+                bytesPerPixel = 1;
+                break;
+            default:
+                throw new Error(`Unsupported format: ${format}`);
+        }
+        
+        // Size validation
+        const expectedSize = width * height * bytesPerPixel;
+        for (let i = 0; i < data.length; i++) {
+            if (data[i].length !== expectedSize) {
+                throw new Error(`${name} Layer ${i} size mismatch. Expected ${expectedSize} bytes, got ${data[i].length} bytes`);
+            }
+        }
+        
+        const texture = gl.createTexture();
+        if (!texture) {
+            throw new Error("Failed to create Sampler2DArray");
+        }
+        
+        gl.activeTexture(gl.TEXTURE0 + texBinding);
+        gl.bindTexture(gl.TEXTURE_3D, texture);
+        
+        // Configurationn
+        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+        
+        gl.texStorage3D(
+            gl.TEXTURE_3D,
+            1,
+            internalFormat,
+            width,
+            height,
+            depth
+        );
+        
+        // Set data
+        for (let layer = 0; layer < depth; layer++) {
+            if (data[layer]) {
+                gl.texSubImage3D(
+                    gl.TEXTURE_3D,
+                    0,
+                    0, 0, layer,
+                    width,
+                    height,
+                    1,
+                    format,
+                    gl.UNSIGNED_BYTE,
+                    data[layer]
+                );
+            }
+        }
+        
+        // Uniform conf
+        const location = gl.getUniformLocation(this.program, name);
+        if (!location) {
+            console.warn(`Uniform ${name} not found`);
+            return texture;
+        }
+        
+        gl.uniform1i(location, texBinding);
+        return texture;
+    }
+
 
 
     private initFrameAcummulation() {
         const gl = this.gl;
 
         this.last_frame = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0);
+        gl.activeTexture(gl.TEXTURE0 + (this.nextTexBinding++));
         gl.bindTexture(gl.TEXTURE_2D, this.last_frame);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -304,16 +418,16 @@ export class Renderer {
         const gl = this.gl;
         // All images taken from: https://polyhaven.com
         const image = await loadEXRImage("citrus_orchard_road_puresky_2k.exr", 2.0)
-
+        const texBinding = this.nextTexBinding++;
         let tex = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE1);
+        gl.activeTexture(gl.TEXTURE0 + texBinding);
         gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, image.width, image.height, 0, gl.RGB, gl.FLOAT, image.data);
         let location = gl.getUniformLocation(this.program, "skybox");
         if (!location) console.warn("getUniformLocation returned null at skybox");
-        gl.uniform1i(location, 1);
+        gl.uniform1i(location, texBinding);
     }
 
     private getLocation(name: string): WebGLUniformLocation {
