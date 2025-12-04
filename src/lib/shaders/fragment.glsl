@@ -755,10 +755,9 @@ vec3 reflectance(float cos_theta, vec3 F0) {
 }
 
 // Normal distribution function. GGX
-float ggx_distribution(float NoH, float alpha){
-    float alpha_squared = alpha * alpha;
-    float b = NoH * NoH * (alpha_squared - 1.0) + 1.0;
-    return alpha_squared * INV_PI / (b * b);
+float ggx_distribution(float NoH, float alpha2){
+    float b = NoH * NoH * (alpha2 - 1.0) + 1.0;
+    return alpha2 * INV_PI / (b * b);
 }
 
 float lambda_GGX(float cos_theta, float alpha2) {
@@ -771,8 +770,7 @@ float lambda_GGX(float cos_theta, float alpha2) {
     return (-1.0 + sqrt(1.0 + alpha2 * tan2)) * 0.5;
 }
 
-float G_Smith_Full(float NoV, float NoL, float alpha) {
-    float alpha2 = alpha * alpha;
+float G_Smith_Full(float NoV, float NoL, float alpha2) {
     float lambda_i = lambda_GGX(abs(NoL), alpha2);
     float lambda_o = lambda_GGX(abs(NoV), alpha2);
     
@@ -784,10 +782,13 @@ float G1_GGX_Schlick(float AoB, float k) {
 }
 
 float G_Smith_Fast(float NoV, float NoL, float alpha) {
-    float k = alpha/2.0;
-    return G1_GGX_Schlick(NoV, k) * G1_GGX_Schlick(NoL, k);
-}
+    float k = alpha * 0.5;
+    float one_k = 1.0 - k;
+    float g1_v = NoV / (NoV * one_k + k);
+    float g1_l = NoL / (NoL * one_k + k);
+    return g1_v * g1_l;
 
+}
 
 vec3 align_to_world(vec3 X, vec3 N){
     vec3 up = vec3(0.0,0.0,1.0);
@@ -819,16 +820,19 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     if(rr_chance < random()) return vec3(0.0);
 
+
     vec3 V = -Vin;
     vec3 N = h.normal;
     vec3 F0 = mat.F0_alpha.rgb;
     float alpha = mat.F0_alpha.w;
+    float alpha2 = alpha*alpha;
     vec3 H = sample_ggx(alpha,V,N);
     
     float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w;
     
 
     float NoV = dot(N, V);
+    float NoVabs = abs(NoV);
     float NoH = dot(N, H);
     float VoH = dot(V, H);
 
@@ -855,12 +859,13 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     float LoH = dot(Vout, H);
     float LoN = dot(Vout, N);
+    float LoNabs = abs(LoN);
 
-    float D = ggx_distribution(NoH,alpha);
-    float pdf_ggx = (D * abs(NoH)) / (4.0 * max(abs(NoV), 1e-5));
+    float D = ggx_distribution(NoH,alpha2);
+    float pdf_ggx = (D * abs(NoH)) / (4.0 * max(NoVabs, 1e-5));
 
     if(transmited){
-        float G = G_Smith_Full(abs(NoV), abs(LoN), alpha);
+        float G = G_Smith_Full(NoVabs, LoNabs, alpha2);
 
         vec3 T = vec3(1.0) - F;
         
@@ -869,9 +874,9 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
         float jacobian = (eta * eta * abs(LoH * VoH)) / denom2;
 
         vec3 btdf = (T * D * G * jacobian) / 
-                    (4.0 * max(abs(NoV), 1e-5) * max(abs(LoN), 1e-5));
+                    (4.0 * max(NoVabs, 1e-5) * max(LoNabs, 1e-5));
 
-        return mat.subsurface_color_ior.rgb * btdf * abs(LoN) / max(pdf_ggx*jacobian, 1e-5);
+        return mat.subsurface_color_ior.rgb * btdf * LoNabs / max(pdf_ggx*jacobian, 1e-5);
 
     }else{
         float G = G_Smith_Fast(NoV,LoN,alpha);
@@ -925,6 +930,7 @@ vec3 get_direct_light(Hit h, Material mat, Ray r, float total_t){
 
                 vec3 F0 = mat.F0_alpha.rgb;
                 float alpha = mat.F0_alpha.w;
+                float alpha2 = alpha*alpha;
                 vec3 V = -r.dir;
                 vec3 H = normalize(V+r_pl.dir);
                 float NoV = dot(h.normal, V);
@@ -933,7 +939,7 @@ vec3 get_direct_light(Hit h, Material mat, Ray r, float total_t){
                 float LoN = dot(r_pl.dir, h.normal);
 
                 vec3  F = reflectance(VoH, F0);
-                float D = ggx_distribution(NoH,alpha);
+                float D = ggx_distribution(NoH,alpha2);
                 float G = G_Smith_Fast(NoV,LoN,alpha);
 
                 vec3 f_specular = (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
@@ -982,7 +988,7 @@ vec3 cast_ray(Ray r){
 
             // Get light from all light sources
             //if(bounce_count == 0){
-            if(true){
+            if(bounce_count < 2){
                 vec3 direct_light = get_direct_light(h,mat,r,total_t);
                 color += direct_light*atenuation;
             }

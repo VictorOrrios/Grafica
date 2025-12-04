@@ -141,6 +141,11 @@ export class Scene {
         this.addSphere(s5, white_light);
         */
 
+        const white_light = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            emission: 10.0
+        }));
+
         const white_matte = this.addMaterial(new Material({
             roughness: 0.8,
         }));
@@ -167,10 +172,8 @@ export class Scene {
         }));
 
 
-        const white_light = this.addMaterial(new Material({
-            albedo: new Vector3(1.0,1.0,1.0),
-            emission: 10.0
-        }));
+        
+
 
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
@@ -225,7 +228,7 @@ export class Scene {
             //this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
-            console.warn("Could not load BVH mesh:", error);
+            console.warn("Could not load mesh:", error);
         }
     }
 
