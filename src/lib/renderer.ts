@@ -413,8 +413,8 @@ export class Renderer {
             throw error;
         }
         
-        // Desbindear
-        gl.bindTexture(textureTarget, null);
+        // NOTE: Do NOT unbind the texture - it must remain bound to its texture unit for rendering
+        // gl.bindTexture(textureTarget, null);  // Removed - causes texture to appear as zeros
         
         // Configurar uniforme
         const location = gl.getUniformLocation(this.program, name);

@@ -58,10 +58,10 @@ export class TextureManager{
             console.log("Filing empty albedo 512")
             let dummy = new Uint8Array(512*512*4);
             for (let i = 0; i < 512*512; i++) {
-                dummy[i*3+0] = 37;
-                dummy[i*3+1] = 150;
-                dummy[i*3+2] = 190;
-                dummy[i*3+3] = 255;
+                dummy[i*4+0] = 37;
+                dummy[i*4+1] = 150;
+                dummy[i*4+2] = 190;
+                dummy[i*4+3] = 255;
             }
             this.albedo_block.data_512.push(dummy);
         }
@@ -69,10 +69,10 @@ export class TextureManager{
             console.log("Filing empty albedo 1024")
             let dummy = new Uint8Array(1024*1024*4);
             for (let i = 0; i < 1024*1024; i++) {
-                dummy[i*3+0] = 37;
-                dummy[i*3+1] = 150;
-                dummy[i*3+2] = 190;
-                dummy[i*3+3] = 255;
+                dummy[i*4+0] = 37;
+                dummy[i*4+1] = 150;
+                dummy[i*4+2] = 190;
+                dummy[i*4+3] = 255;
             }
             this.albedo_block.data_1024.push(dummy);
         }
@@ -80,10 +80,10 @@ export class TextureManager{
             console.log("Filing empty albedo 2048")
             let dummy = new Uint8Array(2048*2048*4);
             for (let i = 0; i < 2048*2048; i++) {
-                dummy[i*3+0] = 37;
-                dummy[i*3+1] = 150;
-                dummy[i*3+2] = 190;
-                dummy[i*3+3] = 255;
+                dummy[i*4+0] = 37;
+                dummy[i*4+1] = 150;
+                dummy[i*4+2] = 190;
+                dummy[i*4+3] = 255;
             }
             this.albedo_block.data_2048.push(dummy);
         }
