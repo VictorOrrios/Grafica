@@ -156,7 +156,7 @@ export class Scene {
         const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
         const brick = this.addMaterial(new Material({
-            albedo:new Vector3(1.0,1.0,0.0),
+            albedo:new Vector3(0.0,0.0,0.0),
             albedo_tex_info:brick_albedo,
             roughness: 1.0,
             reflectance:0.0,
@@ -190,7 +190,7 @@ export class Scene {
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
             1.0);
-        this.addSphere(s1, green_glass);
+        this.addSphere(s1, brick);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
@@ -223,7 +223,7 @@ export class Scene {
             new Vector3(0.0, 1.0, 0.0),
             1.0
         );
-        this.addPlane(p1, brick);
+        this.addPlane(p1, blue_matte);
 
         const l1: PointLight = new PointLight(
             new Vector3(0, 3.0, 0.0),
