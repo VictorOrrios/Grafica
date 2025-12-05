@@ -884,7 +884,6 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
     
     float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w;
     
-
     float NoV = dot(N, V);
     float NoVabs = abs(NoV);
     float NoH = dot(N, H);
@@ -943,8 +942,9 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
         vec3 f_diffuse = rhoD * INV_PI;
 
-        vec3 fr = f_diffuse + f_specular;
-
+        //vec3 fr = f_diffuse + f_specular;
+        vec3 fr = f_diffuse;
+        return fr / max(pdf_ggx, 1e-5);
         return fr * max(LoN,1e-5) / max(pdf_ggx, 1e-5);
     }
         
@@ -1117,8 +1117,8 @@ void main() {
     outColor = vec4(samples_sum/float(spp),1.0);
 
     // Post processing
-    outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
-    //outColor.xyz = gamma_correct(clamp_color(outColor.xyz));
+    //outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
+    outColor.xyz = gamma_correct(clamp_color(outColor.xyz));
 
     // Alpha channel correction
     outColor.a = 1.0; 
