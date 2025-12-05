@@ -84,9 +84,15 @@ export class Material{
             this.specular_color.x, this.specular_color.y, this.specular_color.z, 0.0,
             this.subsurface_color.x, this.subsurface_color.y, this.subsurface_color.z, this.ior,
             this.roughness, this.metalness, this.trs_weight, this.reflectance,
-            F0.x,F0.y,F0.z,alpha
+            F0.x,F0.y,F0.z,alpha,
+            0,0,0,0,
+            0,0,0,0
         ]);
 
+        (new Int32Array(data.buffer))[20] = this.albedo_tex_info.index;
+        (new Int32Array(data.buffer))[21] = this.albedo_tex_info.array;
+        console.log("MATERIAL",data,this.albedo_tex_info)
+        /*
         let idata = new Int32Array([
             this.albedo_tex_info.index, this.albedo_tex_info.array,0,0,
             0,0,0,0
@@ -97,6 +103,9 @@ export class Material{
         combined.set(idata,data.length);
         console.log("Material:",combined);
         return combined;
+        */
+
+        return data;
     }
 
 };

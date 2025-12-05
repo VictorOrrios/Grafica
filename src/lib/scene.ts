@@ -155,8 +155,10 @@ export class Scene {
         const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
         const brick = this.addMaterial(new Material({
-            roughness: 0.8,
-            albedo_tex_info:brick_albedo
+            albedo:new Vector3(1.0,1.0,0.0),
+            albedo_tex_info:brick_albedo,
+            roughness: 1.0,
+            reflectance:0.0,
         }));
 
         const mirror = this.addMaterial(new Material({

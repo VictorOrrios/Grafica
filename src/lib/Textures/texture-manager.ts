@@ -38,6 +38,11 @@ export async function loadImageUNORM8(path: string): Promise<{
         }
     }
 
+    console.log("=== First 10 pixels of",path)
+    for (let i = 0; i < 10; i++) {
+        console.log(data[i*3+0],data[i*3+1],data[i*3+2])
+    }
+
     return { width: img.bitmap.width, height: img.bitmap.height, data: data };
 }
 
@@ -52,12 +57,21 @@ export class TextureManager{
 
     public fillEmptyTextures(){
         if(this.albedo_block.data_512.length === 0){
+            console.log("Filing empty albedo 512")
             this.albedo_block.data_512.push(new Uint8Array(512*512*3));
         }
         if(this.albedo_block.data_1024.length === 0){
-            this.albedo_block.data_1024.push(new Uint8Array(1024*1024*3));
+            console.log("Filing empty albedo 1024")
+            let dummy = new Uint8Array(1024*1024*3);
+            for (let i = 0; i < 1024*1024; i++) {
+                dummy[i*3] = 1.0;
+                dummy[i*3+1] = 0.0;
+                dummy[i*3+2] = 0.0;
+            }
+            this.albedo_block.data_1024.push();
         }
         if(this.albedo_block.data_2048.length === 0){
+            console.log("Filing empty albedo 2048")
             this.albedo_block.data_2048.push(new Uint8Array(2048*2048*3));
         }
     }

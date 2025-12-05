@@ -771,14 +771,20 @@ vec3 skybox_color(Ray r){
 vec3 get_albedo(Material mat, vec2 uv){
     // Check for no texture
     if(mat.albedoTA_rmTA.x < 0) return mat.albedo_emission.rgb;
-
+    //return texture(albedo_1024, vec3(0, 0, 0)).rgb;
+    //if(mat.albedoTA_rmTA.x != 0 || mat.albedoTA_rmTA.y != 1) return vec3(1.0,0.0,0.0);
     switch(mat.albedoTA_rmTA.y){
         case 0:
+            //return vec3(1.0,0.0,0.0);
             return texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb;
         case 1:
+            //return vec3(0.0,1.0,0.0);
             return texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb;
         case 2:
+            //return vec3(0.0,0.0,1.0);
             return texture(albedo_2048, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb;
+        default:
+            return vec3(mat.albedoTA_rmTA.x,mat.albedoTA_rmTA.y,0.0);
     }
 }
 
@@ -854,6 +860,8 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
     if(rr_chance < random()) return vec3(0.0);
 
     bool has_uvs = h.uv.x >= 0.0;
+    // Uv check
+    //if(has_uvs) return vec3(h.uv.x,h.uv.y,0.0);
 
     vec3 V = -Vin;
     vec3 N = h.normal;
