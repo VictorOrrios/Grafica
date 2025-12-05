@@ -779,6 +779,7 @@ vec3 get_albedo(Material mat, vec2 uv){
             return texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb;
         case 1:
             //return vec3(0.0,1.0,0.0);
+            //return vec3(uv.x, uv.y,0.0);
             return texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb;
         case 2:
             //return vec3(0.0,0.0,1.0);
@@ -1097,6 +1098,29 @@ void main() {
 
     // Calculate mean color of pixel
     vec2 uv = (gl_FragCoord.xy)/resolution.xy;
+    if(uv.x > 0.5 && uv.y > 0.5) {
+        // Intenta con diferentes capas
+        int layer = 0;
+        vec3 albedo1 = texture(albedo_1024, vec3(uv, layer)).rgb;
+        vec3 albedo2 = texelFetch(albedo_1024 , ivec3(0,0, layer),0).rgb;
+        
+        // Debug: muestra información sobre lo que se lee
+        float sum1 = albedo1.r + albedo1.g + albedo1.b;
+        float sum2 = albedo2.r + albedo2.g + albedo2.b;
+            
+        if (sum1 > 0.01) {
+            // Hay datos en capa 0
+            outColor = vec4(albedo1, 1.0);
+        } else if (sum2 > 0.01) {
+            // Hay datos en capa 1
+            outColor = vec4(albedo2, 1.0);
+        } else {
+            // No hay datos, muestra debug
+            outColor = vec4(1.0, 0.0, 0.0, 1.0); // Rojo = textura vacía
+        }
+        return;
+    }
+
     vec3 samples_sum = vec3(0.0);
     for(int i = 0; i<int(spp); i++){
         Ray r = get_ray(uv);

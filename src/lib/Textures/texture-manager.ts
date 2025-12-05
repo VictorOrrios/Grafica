@@ -23,24 +23,22 @@ export async function loadImageUNORM8(path: string): Promise<{
 
     const hasAlpha = img.hasAlpha();
 
-    if (hasAlpha) {
-        console.warn("Image with alpha channel detected:",path)
-    }
-
-    const data = new Uint8Array(img.bitmap.width * img.bitmap.height * 3);
-    if(data_raw.length === data.length){
+    let data = new Uint8Array(img.bitmap.width * img.bitmap.height * 4);;
+    if (data_raw.length === data.length) {
         data.set(data_raw,0);
     }else{
-        for (let i = 0, j = 0; i < data_raw.length; i += 4, j += 3) {
+        for (let i = 0, j = 0; i < data_raw.length; i += 3, j += 4) {
             data[j] = data_raw[i];         // R
             data[j + 1] = data_raw[i + 1]; // G
             data[j + 2] = data_raw[i + 2]; // B
-        }
-    }
+            data[j + 3] = 255              // A
+        } 
+    }   
+
 
     console.log("=== First 10 pixels of",path)
     for (let i = 0; i < 10; i++) {
-        console.log(data[i*3+0],data[i*3+1],data[i*3+2])
+        console.log(data[i*4+0],data[i*4+1],data[i*4+2],data[i*4+3])
     }
 
     return { width: img.bitmap.width, height: img.bitmap.height, data: data };
@@ -58,21 +56,36 @@ export class TextureManager{
     public fillEmptyTextures(){
         if(this.albedo_block.data_512.length === 0){
             console.log("Filing empty albedo 512")
-            this.albedo_block.data_512.push(new Uint8Array(512*512*3));
+            let dummy = new Uint8Array(512*512*4);
+            for (let i = 0; i < 512*512; i++) {
+                dummy[i*3+0] = 37;
+                dummy[i*3+1] = 150;
+                dummy[i*3+2] = 190;
+                dummy[i*3+3] = 255;
+            }
+            this.albedo_block.data_512.push(dummy);
         }
         if(this.albedo_block.data_1024.length === 0){
             console.log("Filing empty albedo 1024")
-            let dummy = new Uint8Array(1024*1024*3);
+            let dummy = new Uint8Array(1024*1024*4);
             for (let i = 0; i < 1024*1024; i++) {
-                dummy[i*3] = 1.0;
-                dummy[i*3+1] = 0.0;
-                dummy[i*3+2] = 0.0;
+                dummy[i*3+0] = 37;
+                dummy[i*3+1] = 150;
+                dummy[i*3+2] = 190;
+                dummy[i*3+3] = 255;
             }
-            this.albedo_block.data_1024.push();
+            this.albedo_block.data_1024.push(dummy);
         }
         if(this.albedo_block.data_2048.length === 0){
             console.log("Filing empty albedo 2048")
-            this.albedo_block.data_2048.push(new Uint8Array(2048*2048*3));
+            let dummy = new Uint8Array(2048*2048*4);
+            for (let i = 0; i < 2048*2048; i++) {
+                dummy[i*3+0] = 37;
+                dummy[i*3+1] = 150;
+                dummy[i*3+2] = 190;
+                dummy[i*3+3] = 255;
+            }
+            this.albedo_block.data_2048.push(dummy);
         }
     }
 

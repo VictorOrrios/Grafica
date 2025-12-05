@@ -152,6 +152,7 @@ export class Scene {
             roughness: 0.8,
         }));
 
+        console.log("BRICKS")
         const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
         const brick = this.addMaterial(new Material({

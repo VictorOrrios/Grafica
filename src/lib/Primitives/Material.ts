@@ -29,6 +29,7 @@ export class Material{
     public albedo_tex_info:LoadedTextureInfo = {array:-1,index:-1};
 
     constructor(p:Params){
+        console.log("MATERIAL",p)
         if(p.albedo !== undefined) this.albedo = p.albedo;
         if(p.emission !== undefined) this.emission = p.emission;
         if(p.specular_color !== undefined) this.specular_color = p.specular_color;
@@ -91,7 +92,6 @@ export class Material{
 
         (new Int32Array(data.buffer))[20] = this.albedo_tex_info.index;
         (new Int32Array(data.buffer))[21] = this.albedo_tex_info.array;
-        console.log("MATERIAL",data,this.albedo_tex_info)
         /*
         let idata = new Int32Array([
             this.albedo_tex_info.index, this.albedo_tex_info.array,0,0,

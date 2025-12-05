@@ -288,14 +288,149 @@ export class Renderer {
 
     private initMaterialTextures(){
         const gl = this.gl;
+        console.log(gl.getSupportedExtensions());
 
         this.scene.tex_manager.fillEmptyTextures();
 
-        this.initSampler2DArray("albedo_512",this.scene.tex_manager.albedo_block.data_512,512,512,gl.RGB);
-        this.initSampler2DArray("albedo_1024",this.scene.tex_manager.albedo_block.data_1024,1024,1024,gl.RGB);
-        this.initSampler2DArray("albedo_2048",this.scene.tex_manager.albedo_block.data_2048,2048,2048,gl.RGB);
+
+        this.initSampler2DArray("albedo_512",this.scene.tex_manager.albedo_block.data_512,512,512,gl.RGBA);
+        this.initSampler2DArray("albedo_1024",this.scene.tex_manager.albedo_block.data_1024,1024,1024,gl.RGBA);
+        this.initSampler2DArray("albedo_2048",this.scene.tex_manager.albedo_block.data_2048,2048,2048,gl.RGBA);
     }
 
+
+    public initSampler2DArray(
+        name: string,
+        data: Uint8Array[],
+        width: number,
+        height: number,
+        format: number = this.gl.RGB,
+    ): WebGLTexture {
+        const gl = this.gl;
+        gl.useProgram(this.program);
+        const depth = data.length;
+        const texBinding = this.nextTexBinding++;
+        
+        console.log("Init sampler2DArray", name, "texture unit:", texBinding, "layers:", depth);
+        
+        // DEBUG: Verificar constantes
+        console.log("DEBUG - Texture constants:");
+        console.log("TEXTURE_2D_ARRAY:", gl.TEXTURE_2D_ARRAY, 
+                    typeof gl.TEXTURE_2D_ARRAY, 
+                    gl.TEXTURE_2D_ARRAY ? `0x${gl.TEXTURE_2D_ARRAY.toString(16)}` : "undefined");
+        console.log("TEXTURE0:", gl.TEXTURE0);
+        
+        let internalFormat: number;
+        let bytesPerPixel: number;
+        
+        switch (format) {
+            case gl.RGBA:
+                internalFormat = gl.RGBA8;
+                bytesPerPixel = 4;
+                break;
+            case gl.RG:
+                internalFormat = gl.RG8;
+                bytesPerPixel = 2;
+                break;
+            case gl.RED:
+                internalFormat = gl.R8;
+                bytesPerPixel = 1;
+                break;
+            default:
+                throw new Error(`Unsupported format: ${format}`);
+        }
+        
+        // Size validation
+        const expectedSize = width * height * bytesPerPixel;
+        for (let i = 0; i < data.length; i++) {
+            if (data[i].length !== expectedSize) {
+                throw new Error(`${name} Layer ${i} size mismatch. Expected ${expectedSize} bytes, got ${data[i].length} bytes`);
+            }
+        }
+        
+        const texture = gl.createTexture();
+        if (!texture) {
+            throw new Error("Failed to create texture");
+        }
+        
+        // CORRECCIÓN: Usar TEXTURE_2D_ARRAY, no SAMPLER_2D_ARRAY
+        const textureTarget = gl.TEXTURE_2D_ARRAY;
+        
+        if (textureTarget === undefined) {
+            throw new Error("WebGL 2 required for TEXTURE_2D_ARRAY. Use webgl2 context.");
+        }
+        
+        // 1. Activar unidad de textura
+        gl.activeTexture(gl.TEXTURE0 + texBinding);
+        console.log("Active texture unit:", texBinding);
+        
+        // 2. Bind al target correcto
+        gl.bindTexture(textureTarget, texture);
+        console.log("Texture bound to target:", textureTarget);
+        
+        // Configuración
+        gl.texParameteri(textureTarget, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(textureTarget, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(textureTarget, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(textureTarget, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        
+        try {
+            // Almacenamiento
+            gl.texStorage3D(
+                textureTarget,      // TEXTURE_2D_ARRAY
+                1,                  // 1 mip level
+                internalFormat,     // RGBA8, RGB8, etc.
+                width,
+                height,
+                depth               // número de capas
+            );
+            console.log("gl.getError after texSubImage3D:", gl.getError());
+            
+            console.log(`Texture storage created: ${width}x${height}x${depth}`);
+            
+            // Subir datos de cada capa
+            for (let layer = 0; layer < depth; layer++) {
+                if (data[layer]) {
+                    gl.texSubImage3D(
+                        textureTarget,  // TEXTURE_2D_ARRAY
+                        0,              // level
+                        0, 0, layer,    // xoffset, yoffset, zoffset (layer)
+                        width,
+                        height,
+                        1,              // depth (siempre 1 para 2D array)
+                        format,         // RGBA, RGB, etc.
+                        gl.UNSIGNED_BYTE,
+                        data[layer]
+                    );
+                    console.log("gl.getError after texSubImage3D:", gl.getError());
+                    
+                    console.log(`Layer ${layer} uploaded: ${data[layer].length} bytes`);
+                }
+            }
+        } catch (error) {
+            console.error("Error during texture setup:", error);
+            gl.deleteTexture(texture);
+            throw error;
+        }
+        
+        // Desbindear
+        gl.bindTexture(textureTarget, null);
+        
+        // Configurar uniforme
+        const location = gl.getUniformLocation(this.program, name);
+        if (location === null) {
+            console.warn(`Uniform "${name}" not found in shader program`);
+        } else {
+            gl.useProgram(this.program);
+            gl.uniform1i(location, texBinding);
+            console.log(`Uniform "${name}" set to texture unit ${texBinding}`);
+        }
+
+        
+        return texture;
+    }
+
+    /*
     public initSampler2DArray(
         name: string,
         data: Uint8Array[],
@@ -306,7 +441,7 @@ export class Renderer {
         const gl = this.gl;
         const depth = data.length;
         const texBinding = this.nextTexBinding++;
-        console.log("Init sampler2D",name,texBinding)
+        console.log("Init sampler2D",name,texBinding,data)
         
         let internalFormat: number;
         let bytesPerPixel: number;
@@ -346,17 +481,16 @@ export class Renderer {
         }
         
         gl.activeTexture(gl.TEXTURE0 + texBinding);
-        gl.bindTexture(gl.TEXTURE_3D, texture);
+        gl.bindTexture(gl.SAMPLER_2D_ARRAY, texture);
         
         // Configurationn
-        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.SAMPLER_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.SAMPLER_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.SAMPLER_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.SAMPLER_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         
         gl.texStorage3D(
-            gl.TEXTURE_3D,
+            gl.SAMPLER_2D_ARRAY,
             1,
             internalFormat,
             width,
@@ -368,7 +502,7 @@ export class Renderer {
         for (let layer = 0; layer < depth; layer++) {
             if (data[layer]) {
                 gl.texSubImage3D(
-                    gl.TEXTURE_3D,
+                    gl.SAMPLER_2D_ARRAY,
                     0,
                     0, 0, layer,
                     width,
@@ -391,6 +525,7 @@ export class Renderer {
         gl.uniform1i(location, texBinding);
         return texture;
     }
+    */
 
 
 
