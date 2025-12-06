@@ -552,7 +552,7 @@ export class Renderer {
     private async initSkyboxBuffer() {
         const gl = this.gl;
         // All images taken from: https://polyhaven.com
-        const image = await loadEXRImage("citrus_orchard_road_puresky_2k.exr", 2.0)
+        const image = await loadEXRImage("citrus_orchard_road_puresky_2k.exr", 0.3)
         const texBinding = this.nextTexBinding++;
         let tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0 + texBinding);

@@ -46,7 +46,7 @@ struct Material {
     vec4 rou_met_trs_ref;                   // x = roughness* 0.0 = smooth / 1.0 = rough
                                             // y = metalness* 0.0 = dielectric / 1.0 = metalic
                                             // z = transmision weight  0.0 = opaque / 1.0 = transparent
-                                            // w = reflectance 0.0 = low / 0.5 = normal / 1.0 = high
+                                            // w = f0 dielectric = 0.16*reflectance² | reflectance => 0.0 = low / 0.5 = normal / 1.0 = high
     vec4 F0_alpha;                          // xyz = precomputed F0 = mix(0.16*reflectance²,albedo,metalness)
                                             // w = precomputed alpha = roughness*roughness
     ivec4 albedoTA_rmTA;                    // Values for albedo tex, roughness/metalness map and normal map
@@ -779,25 +779,23 @@ vec3 skybox_color(Ray r){
 //===========================
 // Material functions
 //===========================
-vec3 get_albedo(Material mat, vec2 uv){
+void get_albedo_F0(Material mat, vec2 uv, out vec3 albedo, out vec3 F0){
     // Check for no texture
-    if(mat.albedoTA_rmTA.y < 0) return mat.albedo_emission.rgb;
-    //return texture(albedo_1024, vec3(0, 0, 0)).rgb;
-    //if(mat.albedoTA_rmTA.x != 0 || mat.albedoTA_rmTA.y != 1) return vec3(1.0,0.0,0.0);
+    if(mat.albedoTA_rmTA.y < 0){
+        albedo = mat.albedo_emission.rgb;
+        F0 = mat.F0_alpha.rgb;
+    }
+
     switch(mat.albedoTA_rmTA.y){
         case 0:
-            //return vec3(1.0,0.0,0.0);
-            return texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb;
+            albedo = texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
         case 1:
-            //return vec3(0.0,1.0,0.0);
-            //return vec3(uv.x, uv.y,0.0);
-            return texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb;
+            albedo = texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
         case 2:
-            //return vec3(0.0,0.0,1.0);
-            return texture(albedo_2048, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb;
-        default:
-            return mat.albedo_emission.rgb;
+            albedo = texture(albedo_2048, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
     }
+
+    F0 = mix(vec3(mat.rou_met_trs_ref.w),albedo,mat.rou_met_trs_ref.y);
 }
 
 // Fresnel-Schlick aproximation to reflectance
@@ -879,8 +877,14 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
     vec3 V = -Vin;
     vec3 N = h.normal;
     vec3 F0 = mat.F0_alpha.rgb;
+    vec3 albedo = mat.albedo_emission.rgb;
     float alpha = mat.F0_alpha.w;
     float alpha2 = alpha*alpha;
+
+    if(has_uvs){
+        get_albedo_F0(mat,h.uv,albedo,F0);
+    }
+
     vec3 H = sample_ggx(alpha,V,N);
     
     float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w;
@@ -935,13 +939,12 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
     }else{
         float G = G_Smith_Fast(NoV,LoN,alpha);
 
-        vec3 f_specular = (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
+        vec3 f_specular = mat.specular_color * (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
 
-        vec3 rhoD = has_uvs? get_albedo(mat,h.uv) : mat.albedo_emission.rgb;
-        rhoD *= vec3(1.0) - F;
-        rhoD *= (1.0 - mat.rou_met_trs_ref.y);
+        albedo *= vec3(1.0) - F;
+        albedo *= (1.0 - mat.rou_met_trs_ref.y);
 
-        vec3 f_diffuse = rhoD * INV_PI;
+        vec3 f_diffuse = albedo * INV_PI;
 
         vec3 fr = f_diffuse + f_specular;
 

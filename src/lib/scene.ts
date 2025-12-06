@@ -109,15 +109,17 @@ export class Scene {
     }
 
     private async testplane() {
-        this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
+        this.camera = new Camera(new Vector3(0.0, 0.0, 30.0));
 
-        /*
+        const test_tex_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
         const samples = 7;
         const offset = (samples-1.0)*2.5/2;
         for (let r = 0; r < samples; r++) {
             for (let m = 0; m < samples; m++) {
                 let mat = this.addMaterial(new Material({
-                    albedo: new Vector3(1.0,0.0,0.0),
+                    albedo: new Vector3(1.0, 0.0, 0.0),
+                    //albedo_tex_info: test_tex_albedo,
                     roughness: r/(samples-1),
                     metalness: m/(samples-1),
                     reflectance: 0.5,
@@ -139,7 +141,7 @@ export class Scene {
             new Vector3(-4.0, 15.0, 30.0),
             5.0);
         this.addSphere(s5, white_light);
-        */
+        /*
         
         const white_light = this.addMaterial(new Material({
             albedo: new Vector3(1.0,1.0,1.0),
@@ -150,7 +152,6 @@ export class Scene {
             roughness: 0.8,
         }));
 
-        console.log("BRICKS")
         const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
         const brick = this.addMaterial(new Material({
@@ -246,6 +247,7 @@ export class Scene {
         } catch (error) {
             console.warn("Could not load mesh:", error);
         }
+        */
     }
 
     /*

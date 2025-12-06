@@ -84,7 +84,7 @@ export class Material{
             this.albedo.x, this.albedo.y, this.albedo.z, this.emission,
             this.specular_color.x, this.specular_color.y, this.specular_color.z, 0.0,
             this.subsurface_color.x, this.subsurface_color.y, this.subsurface_color.z, this.ior,
-            this.roughness, this.metalness, this.trs_weight, this.reflectance,
+            this.roughness, this.metalness, this.trs_weight, f0_dielectric,
             F0.x,F0.y,F0.z,alpha,
             0,0,0,0,
             0,0,0,0
