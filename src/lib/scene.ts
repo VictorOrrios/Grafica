@@ -111,6 +111,7 @@ export class Scene {
     private async testplane() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
 
+        /*
         const samples = 7;
         const offset = (samples-1.0)*2.5/2;
         for (let r = 0; r < samples; r++) {
@@ -138,9 +139,8 @@ export class Scene {
             new Vector3(-4.0, 15.0, 30.0),
             5.0);
         this.addSphere(s5, white_light);
-
+        */
         
-        /*
         const white_light = this.addMaterial(new Material({
             albedo: new Vector3(1.0,1.0,1.0),
             emission: 10.0
@@ -159,10 +159,10 @@ export class Scene {
                 0.2352941176,
                 0.1490196078
             ),
-            //albedo_tex_info:brick_albedo,
+            albedo_tex_info:brick_albedo,
             roughness: 1.0,
-            metalness:0.0,
-            reflectance:0.0,
+            metalness: 0.0,
+            reflectance: 0.5,
         }));
 
         const mirror = this.addMaterial(new Material({
@@ -224,9 +224,10 @@ export class Scene {
 
         const p1: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
-            1.0
+            1.0,
+            0.2
         );
-        this.addPlane(p1, blue_matte);
+        this.addPlane(p1, brick);
 
         const l1: PointLight = new PointLight(
             new Vector3(0, 3.0, 0.0),
@@ -245,7 +246,6 @@ export class Scene {
         } catch (error) {
             console.warn("Could not load mesh:", error);
         }
-            */
     }
 
     /*

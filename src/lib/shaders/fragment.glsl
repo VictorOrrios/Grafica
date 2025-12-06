@@ -835,8 +835,9 @@ float G1_GGX_Schlick(float AoB, float k) {
 float G_Smith_Fast(float NoV, float NoL, float alpha) {
     float k = alpha * 0.5;
     float one_k = 1.0 - k;
-    float g1_v = NoV / (NoV * one_k + k);
-    float g1_l = NoL / (NoL * one_k + k);
+    // In line G1_GGX_Schlick
+    float g1_v = max(NoV,1e-5) / (NoV * one_k + k);
+    float g1_l = max(NoL,1e-5) / (NoL * one_k + k);
     return g1_v * g1_l;
 
 }
@@ -942,9 +943,8 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
         vec3 f_diffuse = rhoD * INV_PI;
 
-        //vec3 fr = f_diffuse + f_specular;
-        vec3 fr = f_diffuse;
-        return fr / max(pdf_ggx, 1e-5);
+        vec3 fr = f_diffuse + f_specular;
+
         return fr * max(LoN,1e-5) / max(pdf_ggx, 1e-5);
     }
         
@@ -1117,8 +1117,8 @@ void main() {
     outColor = vec4(samples_sum/float(spp),1.0);
 
     // Post processing
-    //outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
-    outColor.xyz = gamma_correct(clamp_color(outColor.xyz));
+    outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));
+    //outColor.xyz = gamma_correct(clamp_color(outColor.xyz));
 
     // Alpha channel correction
     outColor.a = 1.0; 
