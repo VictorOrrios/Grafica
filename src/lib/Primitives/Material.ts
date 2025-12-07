@@ -14,6 +14,7 @@ export type Params = {
     reflectance?:number,
     albedo_tex_path?:string,
     albedo_tex_info?:LoadedTextureInfo
+    normal_tex_info?:LoadedTextureInfo
 }
 
 export class Material{
@@ -26,7 +27,8 @@ export class Material{
     public metalness:number = 0.0;
     public trs_weight:number = 0.0;
     public reflectance:number = 0.5;
-    public albedo_tex_info:LoadedTextureInfo = {array:-1,index:-1};
+    public albedo_tex_info:LoadedTextureInfo = {array:0,index:-1};
+    public normal_tex_info:LoadedTextureInfo = {array:0,index:-1};
 
     constructor(p:Params){
         console.log("MATERIAL",p)
@@ -57,9 +59,8 @@ export class Material{
             p.reflectance = clamp(p.reflectance,0.0,1.0);
             this.reflectance = p.reflectance;
         }
-        if(p.albedo_tex_info !== undefined){
-            this.albedo_tex_info = p.albedo_tex_info;
-        }
+        if(p.albedo_tex_info !== undefined) this.albedo_tex_info = p.albedo_tex_info;
+        if(p.normal_tex_info !== undefined) this.normal_tex_info = p.normal_tex_info;
     }
 
     private static getMaxComponent(v:Vector3):number{
@@ -84,7 +85,7 @@ export class Material{
             this.albedo.x, this.albedo.y, this.albedo.z, this.emission,
             this.specular_color.x, this.specular_color.y, this.specular_color.z, 0.0,
             this.subsurface_color.x, this.subsurface_color.y, this.subsurface_color.z, this.ior,
-            this.roughness, this.metalness, this.trs_weight, this.reflectance,
+            this.roughness, this.metalness, this.trs_weight, f0_dielectric,
             F0.x,F0.y,F0.z,alpha,
             0,0,0,0,
             0,0,0,0
@@ -92,19 +93,8 @@ export class Material{
 
         (new Int32Array(data.buffer))[20] = this.albedo_tex_info.index;
         (new Int32Array(data.buffer))[21] = this.albedo_tex_info.array;
-        /*
-        let idata = new Int32Array([
-            this.albedo_tex_info.index, this.albedo_tex_info.array,0,0,
-            0,0,0,0
-        ]);
-
-        let combined = new Float32Array(data.length + idata.length);
-        combined.set(data,0);
-        combined.set(idata,data.length);
-        console.log("Material:",combined);
-        return combined;
-        */
-
+        //(new Int32Array(data.buffer))[22] = this.normal_tex_info.index;
+        //(new Int32Array(data.buffer))[23] = this.normal_tex_info.array;
         return data;
     }
 

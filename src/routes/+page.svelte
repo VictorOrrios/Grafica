@@ -62,6 +62,7 @@
         let range_numbers_fix = [range_numbers_ini,range_size+range_numbers_ini];
 
         if (renderer.frame_acummulation_on !== frame_acummulation
+            || renderer.spp !== samplesPerPixel
             || renderer.rr_chance !== russianRoulette
             || renderer.range_numbers[0] !== range_numbers_fix[0]
             || renderer.range_numbers[1] !== range_numbers_fix[1]

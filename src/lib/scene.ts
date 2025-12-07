@@ -19,6 +19,7 @@ import { TextureManager, type LoadedTextureInfo } from "./Textures/texture-manag
 
 export enum SceneType {
     TESTPLANE = 'testplane',
+    PALETTE = 'palette',
     CORNELEXTRA = 'cornellextra',
     CORNEL = 'cornell',
     CORNELTRANSIENT = 'cornelltransient',
@@ -40,14 +41,16 @@ export class Scene {
     public meshDataVec: EfficientMeshData[] = [];
     public tex_manager: TextureManager = new TextureManager();
 
-    constructor(type: SceneType = SceneType.TESTPLANE) {
+    constructor(type: SceneType = SceneType.PALETTE) {
         this.sceneType = type;
     }
 
     public async setupScene() {
         if (this.sceneType === SceneType.TESTPLANE) {
             await this.testplane();
-        } 
+        }else if(this.sceneType === SceneType.PALETTE) {
+            await this.palette();
+        }
         /*
         else if (this.sceneType === SceneType.CORNEL) {
             this.cornell();
@@ -65,81 +68,10 @@ export class Scene {
         */
     }
 
-    private addMaterial(material: Material): number {
-        this.materialVec.push(material);
-        return this.materialVec.length - 1;
-    }
-
-    private addSphere(sphere: Sphere, materialIndex: number) {
-        this.sphereVec.push({
-            sphere, materialIndex
-        });
-    }
-
-    private addPlane(plane: Plane, materialIndex: number) {
-        this.planeVec.push({
-            plane, materialIndex
-        });
-    }
-
-    private addTriangle(tri: Triangle, materialIndex: number) {
-        this.triangleVec.push({
-            tri, materialIndex
-        });
-    }
-
-    private addQuad(quad: Quad, materialIndex: number) {
-        this.addTriangle(quad.t1, materialIndex);
-        this.addTriangle(quad.t2, materialIndex);
-    }
-
-    private addPointLight(pl: PointLight) {
-        this.pointLightVec.push(pl);
-    }
-
-    public addSimpleMesh(mesh: SimpleMesh, materialIndex: number) {
-        this.simpleMeshVec.push({ mesh, materialIndex });
-        mesh.getTriangles().forEach(tri => {
-            this.addTriangle(tri, materialIndex);
-        });
-    }
-
-    public addEfficientMeshData(data: EfficientMeshData) {
-        this.meshDataVec.push(data);
-    }
+    
 
     private async testplane() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
-
-        /*
-        const samples = 7;
-        const offset = (samples-1.0)*2.5/2;
-        for (let r = 0; r < samples; r++) {
-            for (let m = 0; m < samples; m++) {
-                let mat = this.addMaterial(new Material({
-                    albedo: new Vector3(1.0,0.0,0.0),
-                    roughness: r/(samples-1),
-                    metalness: m/(samples-1),
-                    reflectance: 0.5,
-                }));
-                this.addSphere(
-                    new Sphere(
-                        new Vector3(r*2.5-offset, m*2.5-offset, 0.0),
-                        1.0),
-                    mat);
-            }
-        }
-
-        const white_light = this.addMaterial(new Material({
-            albedo: new Vector3(1.0,1.0,1.0),
-            emission: 1000.0
-        }));
-
-        const s5 = new Sphere(
-            new Vector3(-4.0, 15.0, 30.0),
-            5.0);
-        this.addSphere(s5, white_light);
-        */
         
         const white_light = this.addMaterial(new Material({
             albedo: new Vector3(1.0,1.0,1.0),
@@ -150,7 +82,6 @@ export class Scene {
             roughness: 0.8,
         }));
 
-        console.log("BRICKS")
         const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
         const brick = this.addMaterial(new Material({
@@ -186,8 +117,6 @@ export class Scene {
             trs_weight: 1.0
         }));
 
-
-        
 
 
         const s1: Sphere = new Sphere(
@@ -246,6 +175,43 @@ export class Scene {
         } catch (error) {
             console.warn("Could not load mesh:", error);
         }
+    }
+
+    private async palette(){
+        this.camera = new Camera(new Vector3(0.0, 0.0, 30.0));
+
+        const test_tex_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
+        const test_tex_normal:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_nor_gl_1k.jpg");
+        const samples = 7;
+        const offset = (samples-1.0)*2.5/2;
+        for (let r = 0; r < samples; r++) {
+            for (let m = 0; m < samples; m++) {
+                let mat = this.addMaterial(new Material({
+                    albedo: new Vector3(1.0, 0.0, 0.0),
+                    //albedo_tex_info: test_tex_albedo,
+                    roughness: r/(samples-1),
+                    metalness: m/(samples-1),
+                    reflectance: 0.5,
+                }));
+                this.addSphere(
+                    new Sphere(
+                        new Vector3(r*2.5-offset, m*2.5-offset, 0.0),
+                        1.0),
+                    mat);
+            }
+        }
+
+        const white_light = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            emission: 1000.0
+        }));
+
+        const s5 = new Sphere(
+            new Vector3(-4.0, 15.0, 30.0),
+            5.0);
+        this.addSphere(s5, white_light);
     }
 
     /*
@@ -942,6 +908,49 @@ export class Scene {
         }
     }
         */
+
+    private addMaterial(material: Material): number {
+        this.materialVec.push(material);
+        return this.materialVec.length - 1;
+    }
+
+    private addSphere(sphere: Sphere, materialIndex: number) {
+        this.sphereVec.push({
+            sphere, materialIndex
+        });
+    }
+
+    private addPlane(plane: Plane, materialIndex: number) {
+        this.planeVec.push({
+            plane, materialIndex
+        });
+    }
+
+    private addTriangle(tri: Triangle, materialIndex: number) {
+        this.triangleVec.push({
+            tri, materialIndex
+        });
+    }
+
+    private addQuad(quad: Quad, materialIndex: number) {
+        this.addTriangle(quad.t1, materialIndex);
+        this.addTriangle(quad.t2, materialIndex);
+    }
+
+    private addPointLight(pl: PointLight) {
+        this.pointLightVec.push(pl);
+    }
+
+    public addSimpleMesh(mesh: SimpleMesh, materialIndex: number) {
+        this.simpleMeshVec.push({ mesh, materialIndex });
+        mesh.getTriangles().forEach(tri => {
+            this.addTriangle(tri, materialIndex);
+        });
+    }
+
+    public addEfficientMeshData(data: EfficientMeshData) {
+        this.meshDataVec.push(data);
+    }
 
     public serializeStaticBlock(): Float32Array {
         const data: number[] = [];
