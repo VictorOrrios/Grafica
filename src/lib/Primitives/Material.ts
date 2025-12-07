@@ -14,6 +14,7 @@ export type Params = {
     reflectance?:number,
     albedo_tex_path?:string,
     albedo_tex_info?:LoadedTextureInfo
+    normal_tex_info?:LoadedTextureInfo
 }
 
 export class Material{
@@ -27,6 +28,7 @@ export class Material{
     public trs_weight:number = 0.0;
     public reflectance:number = 0.5;
     public albedo_tex_info:LoadedTextureInfo = {array:-1,index:-1};
+    public normal_tex_info:LoadedTextureInfo = {array:-1,index:-1};
 
     constructor(p:Params){
         console.log("MATERIAL",p)
@@ -57,9 +59,8 @@ export class Material{
             p.reflectance = clamp(p.reflectance,0.0,1.0);
             this.reflectance = p.reflectance;
         }
-        if(p.albedo_tex_info !== undefined){
-            this.albedo_tex_info = p.albedo_tex_info;
-        }
+        if(p.albedo_tex_info !== undefined) this.albedo_tex_info = p.albedo_tex_info;
+        if(p.normal_tex_info !== undefined) this.normal_tex_info = p.normal_tex_info;
     }
 
     private static getMaxComponent(v:Vector3):number{
@@ -92,19 +93,8 @@ export class Material{
 
         (new Int32Array(data.buffer))[20] = this.albedo_tex_info.index;
         (new Int32Array(data.buffer))[21] = this.albedo_tex_info.array;
-        /*
-        let idata = new Int32Array([
-            this.albedo_tex_info.index, this.albedo_tex_info.array,0,0,
-            0,0,0,0
-        ]);
-
-        let combined = new Float32Array(data.length + idata.length);
-        combined.set(data,0);
-        combined.set(idata,data.length);
-        console.log("Material:",combined);
-        return combined;
-        */
-
+        //(new Int32Array(data.buffer))[22] = this.normal_tex_info.index;
+        //(new Int32Array(data.buffer))[23] = this.normal_tex_info.array;
         return data;
     }
 

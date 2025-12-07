@@ -46,9 +46,13 @@ export async function loadImageUNORM8(path: string): Promise<{
 
 export class TextureManager{
     public albedo_block:TextureBlock;
+    public normal_block:TextureBlock;
 
     constructor(){
         this.albedo_block = {
+            data_512:[],data_1024:[],data_2048:[],
+        };
+        this.normal_block = {
             data_512:[],data_1024:[],data_2048:[],
         };
     }
@@ -56,41 +60,37 @@ export class TextureManager{
     public fillEmptyTextures(){
         if(this.albedo_block.data_512.length === 0){
             console.log("Filing empty albedo 512")
-            let dummy = new Uint8Array(512*512*4);
-            for (let i = 0; i < 512*512; i++) {
-                dummy[i*4+0] = 37;
-                dummy[i*4+1] = 150;
-                dummy[i*4+2] = 190;
-                dummy[i*4+3] = 255;
-            }
-            this.albedo_block.data_512.push(dummy);
+            this.albedo_block.data_512.push(new Uint8Array(512*512*4));
         }
         if(this.albedo_block.data_1024.length === 0){
             console.log("Filing empty albedo 1024")
-            let dummy = new Uint8Array(1024*1024*4);
-            for (let i = 0; i < 1024*1024; i++) {
-                dummy[i*4+0] = 37;
-                dummy[i*4+1] = 150;
-                dummy[i*4+2] = 190;
-                dummy[i*4+3] = 255;
-            }
-            this.albedo_block.data_1024.push(dummy);
+            this.albedo_block.data_1024.push(new Uint8Array(1024*1024*4));
         }
         if(this.albedo_block.data_2048.length === 0){
             console.log("Filing empty albedo 2048")
-            let dummy = new Uint8Array(2048*2048*4);
-            for (let i = 0; i < 2048*2048; i++) {
-                dummy[i*4+0] = 37;
-                dummy[i*4+1] = 150;
-                dummy[i*4+2] = 190;
-                dummy[i*4+3] = 255;
-            }
-            this.albedo_block.data_2048.push(dummy);
+            this.albedo_block.data_2048.push(new Uint8Array(2048*2048*4));
+        }
+
+        if(this.normal_block.data_512.length === 0){
+            console.log("Filing empty normal 512")
+            this.normal_block.data_512.push(new Uint8Array(512*512*4));
+        }
+        if(this.normal_block.data_1024.length === 0){
+            console.log("Filing empty normal 1024")
+            this.normal_block.data_1024.push(new Uint8Array(1024*1024*4));
+        }
+        if(this.normal_block.data_2048.length === 0){
+            console.log("Filing empty normal 2048")
+            this.normal_block.data_2048.push(new Uint8Array(2048*2048*4));
         }
     }
 
     public async addAlbedo(path:string):Promise<LoadedTextureInfo>{
         return await this.addImage(path,this.albedo_block);
+    }
+
+    public async addNormal(path:string):Promise<LoadedTextureInfo>{
+        return await this.addImage(path,this.normal_block);
     }
 
     private async addImage(path:string,block:TextureBlock):Promise<LoadedTextureInfo> {
