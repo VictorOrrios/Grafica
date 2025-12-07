@@ -58,8 +58,10 @@ struct Material {
 struct Sphere {
     vec4 center_radius;     // xyz = center, w = radius
     int mat;
-    vec3 north;
-    vec3 ecuator;
+    vec3 u;
+    vec3 v;
+    vec3 w;
+    vec3 tiling;            // xy = uv offset, z = tiling size
 };
 
 struct Plane {
@@ -172,6 +174,11 @@ uniform sampler2DArray albedo_512;
 uniform sampler2DArray albedo_1024;
 uniform sampler2DArray albedo_2048;
 
+// Normal
+uniform sampler2DArray normal_512;
+uniform sampler2DArray normal_1024;
+uniform sampler2DArray normal_2048;
+
 
 //===========================
 // RNG Functions
@@ -275,6 +282,36 @@ void set_front_face(vec3 normal, vec3 dir, inout Hit h){
     }
 }
 
+void get_albedo_F0(Material mat, vec2 uv, out vec3 albedo, out vec3 F0){
+    // Check for no texture
+    if(mat.albedoTA_rmTA.y == 0){
+        albedo = mat.albedo_emission.rgb;
+        F0 = mat.F0_alpha.xyz;
+    }
+
+    switch(mat.albedoTA_rmTA.y){
+        case 1:
+            albedo = texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
+        case 2:
+            albedo = texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
+        case 3:
+            albedo = texture(albedo_2048, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
+    }
+
+    F0 = mix(vec3(mat.rou_met_trs_ref.w),albedo,mat.rou_met_trs_ref.y);
+}
+
+vec3 get_normal(Material mat, vec2 uv){
+    switch(mat.albedoTA_rmTA.w){
+        case 1:
+            return texture(normal_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.z)).rgb * 2.0 - vec3(1.0);
+        case 2:
+            return texture(normal_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.z)).rgb * 2.0 - vec3(1.0);
+        case 3:
+            return texture(normal_2048, vec3(uv.x, uv.y, mat.albedoTA_rmTA.z)).rgb * 2.0 - vec3(1.0);
+    }
+}
+
 //===========================
 // Postprocesing
 //===========================
@@ -355,20 +392,31 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
     h.t = d;
     h.p = r.orig+r.dir*d;
     h.mat = s.mat;
+
     vec3 s_normal = (h.p-s.center_radius.xyz)/s.center_radius.w;
     set_front_face(s_normal,r.dir,h);
     h.normal = s_normal;
-    float v = 0.5 + 0.5 * dot(s_normal, s.north);
 
-    vec3 E_perp = normalize(cross(s.north, s.ecuator));
-    float x = dot(s_normal, s.ecuator);
-    float y = dot(s_normal, E_perp);
+    float v = 0.5 + 0.5 * dot(h.normal, s.v);
 
-    float u = atan(y, x) / (2.0 * PI);
-    if (u < 0.0) u += 1.0;
+    float x = dot(h.normal, s.u);
+    float y = dot(h.normal, s.w);
 
-    h.uv = vec2(u,v);
-    //h.uv = vec2(-1.0,-1.0);
+    float u = atan(y, x) * INV_TWO_PI;
+    u = u < 0.0 ? u + 1.0 : u;
+
+    //h.uv = vec2(u,v);
+    h.uv = fract(vec2(u, v) * s.tiling.z + s.tiling.xy);
+
+    Material mat = materials[h.mat];
+    if(mat.albedoTA_rmTA.w > 0){
+        vec3 n_map = get_normal(mat, h.uv);
+        vec3 T = normalize(cross(s.v, h.normal));
+        vec3 B = normalize(cross(h.normal,T));
+        mat3 TBN = mat3(T,B,h.normal);
+        h.normal = normalize(TBN * n_map); 
+    }
+
     return true;
 }
 
@@ -394,7 +442,12 @@ bool hit_plane(const Plane p, const Ray r, out Hit h){
 
             h.uv = fract(vec2(u, v) * p.tiling.z + p.tiling.xy);
 
-            // TODO: Set normal texture
+            Material mat = materials[h.mat];
+            if(mat.albedoTA_rmTA.w > 0){
+                vec3 n_map = get_normal(mat, h.uv);
+                mat3 TBN = mat3(tangent,bitangent,h.normal);
+                h.normal = normalize(TBN * n_map); 
+            }
 
             return true;
         }
@@ -780,24 +833,6 @@ vec3 skybox_color(Ray r){
 //===========================
 // Material functions
 //===========================
-void get_albedo_F0(Material mat, vec2 uv, out vec3 albedo, out vec3 F0){
-    // Check for no texture
-    if(mat.albedoTA_rmTA.y == 0){
-        albedo = mat.albedo_emission.rgb;
-        F0 = mat.F0_alpha.xyz;
-    }
-
-    switch(mat.albedoTA_rmTA.y){
-        case 1:
-            albedo = texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
-        case 2:
-            albedo = texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
-        case 3:
-            albedo = texture(albedo_2048, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
-    }
-
-    F0 = mix(vec3(mat.rou_met_trs_ref.w),albedo,mat.rou_met_trs_ref.y);
-}
 
 // Fresnel-Schlick aproximation to reflectance
 vec3 reflectance(float cos_theta, vec3 F0) {

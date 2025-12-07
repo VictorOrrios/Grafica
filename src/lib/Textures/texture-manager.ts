@@ -23,7 +23,7 @@ export async function loadImageUNORM8(path: string): Promise<{
 
     const hasAlpha = img.hasAlpha();
 
-    let data = new Uint8Array(img.bitmap.width * img.bitmap.height * 4);;
+    let data = new Uint8Array(img.bitmap.width * img.bitmap.height * 4);
     if (data_raw.length === data.length) {
         data.set(data_raw,0);
     }else{

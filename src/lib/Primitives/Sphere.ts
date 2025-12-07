@@ -1,26 +1,38 @@
-import {Vector3} from '@math.gl/core';
+import {Vector2, Vector3} from '@math.gl/core';
 
 export class Sphere{
     public center: Vector3; // UCS Point
     public radius: number;  // Sphere radius
     public north: Vector3 = new Vector3(0.0,1.0,0.0);
     public ecuator: Vector3 = new Vector3(0.0,0.0,1.0);
+    public tiling_size: number = 1.0;
+    public tiling_offset:Vector2 = new Vector2(0.0,0.0);
 
     constructor(center: Vector3, radius: number,
-        north?:Vector3, ecuator?:Vector3
+        tiling_size:number = 1.0,
+        tiling_offset?:Vector2,
+        north?:Vector3, 
+        ecuator?:Vector3,
     ){
         this.center = center;
         this.radius = radius;
         if(north !== undefined) this.north = north;
         if(ecuator !== undefined) this.ecuator = ecuator;
+        this.tiling_size = tiling_size;
+        if(tiling_offset !== undefined){
+            this.tiling_offset = tiling_offset;
+        }
     };
 
     public serialize(materialIndex:number):Float32Array{
+        let w = this.north.clone().cross(this.ecuator).normalize();
         const ret = new Float32Array([
             this.center.x, this.center.y, this.center.z, this.radius,
             0, 0, 0, 0,
-            this.north.x, this.north.y, this.north.z, 0,
             this.ecuator.x, this.ecuator.y, this.ecuator.z, 0,
+            this.north.x, this.north.y, this.north.z, 0,
+            w.x, w.y, w.z, 0,
+            this.tiling_offset.x,this.tiling_offset.y,this.tiling_size, 0,
         ]);
 
         // Bitwise cast of materialIndex

@@ -93,8 +93,8 @@ export class Material{
 
         (new Int32Array(data.buffer))[20] = this.albedo_tex_info.index;
         (new Int32Array(data.buffer))[21] = this.albedo_tex_info.array;
-        //(new Int32Array(data.buffer))[22] = this.normal_tex_info.index;
-        //(new Int32Array(data.buffer))[23] = this.normal_tex_info.array;
+        (new Int32Array(data.buffer))[22] = this.normal_tex_info.index;
+        (new Int32Array(data.buffer))[23] = this.normal_tex_info.array;
         return data;
     }
 

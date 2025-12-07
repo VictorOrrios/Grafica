@@ -41,7 +41,7 @@ export class Scene {
     public meshDataVec: EfficientMeshData[] = [];
     public tex_manager: TextureManager = new TextureManager();
 
-    constructor(type: SceneType = SceneType.PALETTE) {
+    constructor(type: SceneType = SceneType.TESTPLANE) {
         this.sceneType = type;
     }
 
@@ -84,6 +84,8 @@ export class Scene {
 
         const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
+        const brick_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_nor_gl_1k.jpg");
         const brick = this.addMaterial(new Material({
             albedo:new Vector3(
                 0.3647058824,
@@ -91,10 +93,23 @@ export class Scene {
                 0.1490196078
             ),
             albedo_tex_info:brick_albedo,
+            normal_tex_info:brick_normal,
             roughness: 1.0,
             metalness: 0.0,
             reflectance: 0.5,
-        }));
+        }));   
+        
+        const wood_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_diff_1k.jpg");
+        const wood_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_nor_gl_1k.jpg");
+        const wood = this.addMaterial(new Material({
+            albedo_tex_info:wood_albedo,
+            normal_tex_info:wood_normal,
+            roughness: 1.0,
+            metalness: 0.0,
+            reflectance: 0.5,
+        }));   
 
         const mirror = this.addMaterial(new Material({
             roughness: 0.0,
@@ -121,8 +136,9 @@ export class Scene {
 
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
-            1.0);
-        this.addSphere(s1, brick);
+            1.0,2.0
+        );
+        this.addSphere(s1, wood);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
@@ -182,7 +198,7 @@ export class Scene {
 
         const test_tex_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
-        const test_tex_normal:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        const test_tex_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_nor_gl_1k.jpg");
         const samples = 7;
         const offset = (samples-1.0)*2.5/2;
@@ -190,7 +206,8 @@ export class Scene {
             for (let m = 0; m < samples; m++) {
                 let mat = this.addMaterial(new Material({
                     albedo: new Vector3(1.0, 0.0, 0.0),
-                    //albedo_tex_info: test_tex_albedo,
+                    albedo_tex_info: test_tex_albedo,
+                    normal_tex_info: test_tex_normal,
                     roughness: r/(samples-1),
                     metalness: m/(samples-1),
                     reflectance: 0.5,
