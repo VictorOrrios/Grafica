@@ -51,7 +51,8 @@ struct Material {
                                             // w = precomputed alpha = roughness*roughness
     ivec4 albedoTA_rmTA;                    // Values for albedo tex, roughness/metalness map and normal map
     ivec2 normalTA;                         // T value indicates which texture index on the array
-                                            // A value indicates which texture array to use: 0=512, 1=1024, 2=2048
+                                            // A value indicates which texture array to use: 1=512, 2=1024, 3=2048
+                                            // If A = 0 then theres is no texture attached
 };
 
 struct Sphere {
@@ -781,17 +782,17 @@ vec3 skybox_color(Ray r){
 //===========================
 void get_albedo_F0(Material mat, vec2 uv, out vec3 albedo, out vec3 F0){
     // Check for no texture
-    if(mat.albedoTA_rmTA.y < 0){
+    if(mat.albedoTA_rmTA.y == 0){
         albedo = mat.albedo_emission.rgb;
-        F0 = mat.F0_alpha.rgb;
+        F0 = mat.F0_alpha.xyz;
     }
 
     switch(mat.albedoTA_rmTA.y){
-        case 0:
-            albedo = texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
         case 1:
-            albedo = texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
+            albedo = texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
         case 2:
+            albedo = texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
+        case 3:
             albedo = texture(albedo_2048, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
     }
 
@@ -876,7 +877,7 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     vec3 V = -Vin;
     vec3 N = h.normal;
-    vec3 F0 = mat.F0_alpha.rgb;
+    vec3 F0 = mat.F0_alpha.xyz;
     vec3 albedo = mat.albedo_emission.rgb;
     float alpha = mat.F0_alpha.w;
     float alpha2 = alpha*alpha;

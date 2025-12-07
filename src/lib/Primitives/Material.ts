@@ -27,8 +27,8 @@ export class Material{
     public metalness:number = 0.0;
     public trs_weight:number = 0.0;
     public reflectance:number = 0.5;
-    public albedo_tex_info:LoadedTextureInfo = {array:-1,index:-1};
-    public normal_tex_info:LoadedTextureInfo = {array:-1,index:-1};
+    public albedo_tex_info:LoadedTextureInfo = {array:0,index:-1};
+    public normal_tex_info:LoadedTextureInfo = {array:0,index:-1};
 
     constructor(p:Params){
         console.log("MATERIAL",p)

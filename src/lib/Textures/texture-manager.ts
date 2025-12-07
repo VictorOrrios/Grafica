@@ -99,24 +99,24 @@ export class TextureManager{
 
         if(width !== height){
             console.error("Could not load non square image",path)
-            return {array:-1,index:-1};
+            return {array:0,index:-1};
         }
 
         if(width == 512){
-            array = 0;
+            array = 1;
             index = block.data_512.length;
             block.data_512.push(data);
         }else if(width == 1024){
-            array = 1;
+            array = 2;
             index = block.data_1024.length;
             block.data_1024.push(data);
         }else if(width == 2048){
-            array = 2;
+            array = 3;
             index = block.data_2048.length;
             block.data_2048.push(data);
         }else{
             console.error("Could not load image of unsuported size",path,width)
-            return {array:-1,index:-1};
+            return {array:0,index:-1};
         }
         
         console.log("Texture loaded array:",array,"index:",index);
