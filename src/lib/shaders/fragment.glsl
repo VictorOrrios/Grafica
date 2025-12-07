@@ -49,8 +49,8 @@ struct Material {
                                             // w = f0 dielectric = 0.16*reflectance² | reflectance => 0.0 = low / 0.5 = normal / 1.0 = high
     vec4 F0_alpha;                          // xyz = precomputed F0 = mix(0.16*reflectance²,albedo,metalness)
                                             // w = precomputed alpha = roughness*roughness
-    ivec4 albedoTA_rmTA;                    // Values for albedo tex, roughness/metalness map and normal map
-    ivec2 normalTA;                         // T value indicates which texture index on the array
+    ivec4 albedoTA_normalTA;                // Values for albedo tex, normal map and roughness/metalness map
+    ivec2 rmTA;                             // T value indicates which texture index on the array
                                             // A value indicates which texture array to use: 1=512, 2=1024, 3=2048
                                             // If A = 0 then theres is no texture attached
 };
@@ -61,7 +61,7 @@ struct Sphere {
     vec3 u;
     vec3 v;
     vec3 w;
-    vec3 tiling;            // xy = uv offset, z = tiling size
+    vec4 tiling;            // xy = uv offset, zw = tiling size
 };
 
 struct Plane {
@@ -179,6 +179,11 @@ uniform sampler2DArray normal_512;
 uniform sampler2DArray normal_1024;
 uniform sampler2DArray normal_2048;
 
+// Roughness metalness
+uniform sampler2DArray rm_512;
+uniform sampler2DArray rm_1024;
+uniform sampler2DArray rm_2048;
+
 
 //===========================
 // RNG Functions
@@ -282,34 +287,50 @@ void set_front_face(vec3 normal, vec3 dir, inout Hit h){
     }
 }
 
-void get_albedo_F0(Material mat, vec2 uv, out vec3 albedo, out vec3 F0){
-    // Check for no texture
-    if(mat.albedoTA_rmTA.y == 0){
-        albedo = mat.albedo_emission.rgb;
-        F0 = mat.F0_alpha.xyz;
-    }
-
-    switch(mat.albedoTA_rmTA.y){
+void get_albedo_F0(Material mat, vec2 uv, float metalness, out vec3 albedo, out vec3 F0){
+    switch(mat.albedoTA_normalTA.y){
+        case 0:
+            albedo = mat.albedo_emission.rgb;
+            F0 = mat.F0_alpha.xyz;
+            return;
         case 1:
-            albedo = texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
+            albedo = texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_normalTA.x)).rgb; break;
         case 2:
-            albedo = texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
+            albedo = texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_normalTA.x)).rgb; break;
         case 3:
-            albedo = texture(albedo_2048, vec3(uv.x, uv.y, mat.albedoTA_rmTA.x)).rgb; break;
+            albedo = texture(albedo_2048, vec3(uv.x, uv.y, mat.albedoTA_normalTA.x)).rgb; break;
     }
 
-    F0 = mix(vec3(mat.rou_met_trs_ref.w),albedo,mat.rou_met_trs_ref.y);
+    F0 = mix(vec3(mat.rou_met_trs_ref.w),albedo,metalness);
 }
 
 vec3 get_normal(Material mat, vec2 uv){
-    switch(mat.albedoTA_rmTA.w){
+    switch(mat.albedoTA_normalTA.w){
         case 1:
-            return texture(normal_512, vec3(uv.x, uv.y, mat.albedoTA_rmTA.z)).rgb * 2.0 - vec3(1.0);
+            return texture(normal_512, vec3(uv.x, uv.y, mat.albedoTA_normalTA.z)).rgb * 2.0 - vec3(1.0);
         case 2:
-            return texture(normal_1024, vec3(uv.x, uv.y, mat.albedoTA_rmTA.z)).rgb * 2.0 - vec3(1.0);
+            return texture(normal_1024, vec3(uv.x, uv.y, mat.albedoTA_normalTA.z)).rgb * 2.0 - vec3(1.0);
         case 3:
-            return texture(normal_2048, vec3(uv.x, uv.y, mat.albedoTA_rmTA.z)).rgb * 2.0 - vec3(1.0);
+            return texture(normal_2048, vec3(uv.x, uv.y, mat.albedoTA_normalTA.z)).rgb * 2.0 - vec3(1.0);
     }
+}
+
+void get_alpha_metalness(Material mat, vec2 uv, out float alpha, out float metalness){
+    vec2 data;
+    switch(mat.rmTA.y){
+        case 0:
+            alpha = mat.F0_alpha.w;
+            metalness = mat.rou_met_trs_ref.y;
+            return;
+        case 1:
+            data = texture(rm_512, vec3(uv.x, uv.y, mat.rmTA.x)).rg; break;
+        case 2:
+            data = texture(rm_1024, vec3(uv.x, uv.y, mat.rmTA.x)).rg; break;
+        case 3:
+            data = texture(rm_2048, vec3(uv.x, uv.y, mat.rmTA.x)).rg; break;
+    }
+    alpha = data.x*data.x;
+    metalness = data.y;
 }
 
 //===========================
@@ -397,7 +418,7 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
     set_front_face(s_normal,r.dir,h);
     h.normal = s_normal;
 
-    float v = 0.5 + 0.5 * dot(h.normal, s.v);
+    float v = -0.5 - 0.5 * dot(h.normal, s.v);
 
     float x = dot(h.normal, s.u);
     float y = dot(h.normal, s.w);
@@ -406,10 +427,10 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
     u = u < 0.0 ? u + 1.0 : u;
 
     //h.uv = vec2(u,v);
-    h.uv = fract(vec2(u, v) * s.tiling.z + s.tiling.xy);
+    h.uv = fract(vec2(u, v) * s.tiling.zw + s.tiling.xy);
 
     Material mat = materials[h.mat];
-    if(mat.albedoTA_rmTA.w > 0){
+    if(mat.albedoTA_normalTA.w > 0){
         vec3 n_map = get_normal(mat, h.uv);
         vec3 T = normalize(cross(s.v, h.normal));
         vec3 B = normalize(cross(h.normal,T));
@@ -443,7 +464,7 @@ bool hit_plane(const Plane p, const Ray r, out Hit h){
             h.uv = fract(vec2(u, v) * p.tiling.z + p.tiling.xy);
 
             Material mat = materials[h.mat];
-            if(mat.albedoTA_rmTA.w > 0){
+            if(mat.albedoTA_normalTA.w > 0){
                 vec3 n_map = get_normal(mat, h.uv);
                 mat3 TBN = mat3(tangent,bitangent,h.normal);
                 h.normal = normalize(TBN * n_map); 
@@ -915,12 +936,15 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
     vec3 F0 = mat.F0_alpha.xyz;
     vec3 albedo = mat.albedo_emission.rgb;
     float alpha = mat.F0_alpha.w;
-    float alpha2 = alpha*alpha;
 
     if(has_uvs){
-        get_albedo_F0(mat,h.uv,albedo,F0);
+        float metalness;
+        get_alpha_metalness(mat,h.uv,alpha,metalness);
+        get_albedo_F0(mat,h.uv,metalness,albedo,F0);
     }
 
+
+    float alpha2 = alpha*alpha;
     vec3 H = sample_ggx(alpha,V,N);
     
     float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w;

@@ -5,11 +5,11 @@ export class Sphere{
     public radius: number;  // Sphere radius
     public north: Vector3 = new Vector3(0.0,1.0,0.0);
     public ecuator: Vector3 = new Vector3(0.0,0.0,1.0);
-    public tiling_size: number = 1.0;
+    public tiling_size: Vector2 = new Vector2(1.0,1.0);
     public tiling_offset:Vector2 = new Vector2(0.0,0.0);
 
     constructor(center: Vector3, radius: number,
-        tiling_size:number = 1.0,
+        tiling_size?:Vector2,
         tiling_offset?:Vector2,
         north?:Vector3, 
         ecuator?:Vector3,
@@ -18,10 +18,8 @@ export class Sphere{
         this.radius = radius;
         if(north !== undefined) this.north = north;
         if(ecuator !== undefined) this.ecuator = ecuator;
-        this.tiling_size = tiling_size;
-        if(tiling_offset !== undefined){
-            this.tiling_offset = tiling_offset;
-        }
+        if(tiling_size !== undefined)this.tiling_size = tiling_size;
+        if(tiling_offset !== undefined)this.tiling_offset = tiling_offset;
     };
 
     public serialize(materialIndex:number):Float32Array{
@@ -32,7 +30,7 @@ export class Sphere{
             this.ecuator.x, this.ecuator.y, this.ecuator.z, 0,
             this.north.x, this.north.y, this.north.z, 0,
             w.x, w.y, w.z, 0,
-            this.tiling_offset.x,this.tiling_offset.y,this.tiling_size, 0,
+            this.tiling_offset.x,this.tiling_offset.y,this.tiling_size.x, this.tiling_size.y,
         ]);
 
         // Bitwise cast of materialIndex

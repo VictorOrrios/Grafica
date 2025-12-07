@@ -11,8 +11,14 @@ export type LoadedTextureInfo = {
     index:number,
 };
 
+export enum Channels {
+    RGBA,
+    RG,
+    GB
+}
 
-export async function loadImageUNORM8(path: string): Promise<{
+
+export async function loadImageUNORM8(path: string, channels:Channels): Promise<{
     width: number;
     height: number;
     data: Uint8Array;  // RGB UNORM8
@@ -21,24 +27,56 @@ export async function loadImageUNORM8(path: string): Promise<{
     const img = await Jimp.read(path);
     const data_raw = new Uint8Array(img.bitmap.data);
 
-    const hasAlpha = img.hasAlpha();
+    const hasAlpha = data_raw.length === img.bitmap.width * img.bitmap.height * 4;
 
-    let data = new Uint8Array(img.bitmap.width * img.bitmap.height * 4);
-    if (data_raw.length === data.length) {
-        data.set(data_raw,0);
+    let data:Uint8Array;
+    if(channels == Channels.RGBA){
+        data = new Uint8Array(img.bitmap.width * img.bitmap.height * 4);
+        if (data_raw.length === data.length) {
+            data.set(data_raw,0);
+        }else{
+            for (let i = 0, j = 0; i < data_raw.length; i += 3, j += 4) {
+                data[j] = data_raw[i];         // R
+                data[j + 1] = data_raw[i + 1]; // G
+                data[j + 2] = data_raw[i + 2]; // B
+                data[j + 3] = 255              // A
+            } 
+        }  
+    }else if(channels == Channels.RG){
+        data = new Uint8Array(img.bitmap.width * img.bitmap.height * 2);
+        if(hasAlpha){
+            for (let i = 0, j = 0; i < data_raw.length; i += 4, j += 2) {
+                data[j] = data_raw[i];          // R
+                data[j + 1] = data_raw[i+1];    // G
+            } 
+        }else{
+            for (let i = 0, j = 0; i < data_raw.length; i += 3, j += 2) {
+                data[j] = data_raw[i];          // R
+                data[j + 1] = data_raw[i+1];    // G
+            } 
+        }
+    }else if(channels == Channels.GB){
+        data = new Uint8Array(img.bitmap.width * img.bitmap.height * 2);
+        if(hasAlpha){
+            for (let i = 0, j = 0; i < data_raw.length; i += 4, j += 2) {
+                data[j] = data_raw[i+1];          // R
+                data[j + 1] = data_raw[i+2];      // G
+            } 
+        }else{
+            for (let i = 0, j = 0; i < data_raw.length; i += 3, j += 2) {
+                data[j] = data_raw[i+1];          // R
+                data[j + 1] = data_raw[i+2];      // G
+            } 
+        }
     }else{
-        for (let i = 0, j = 0; i < data_raw.length; i += 3, j += 4) {
-            data[j] = data_raw[i];         // R
-            data[j + 1] = data_raw[i + 1]; // G
-            data[j + 2] = data_raw[i + 2]; // B
-            data[j + 3] = 255              // A
-        } 
-    }   
+        console.error("loadImageUNORM8 unsuported channel extraction",channels);
+        return {width:-1,height:-1,data: new Uint8Array()}
+    } 
 
 
-    console.log("=== First 10 pixels of",path)
+    console.log("=== First 10 values of",path)
     for (let i = 0; i < 10; i++) {
-        console.log(data[i*4+0],data[i*4+1],data[i*4+2],data[i*4+3])
+        console.log(data[i])
     }
 
     return { width: img.bitmap.width, height: img.bitmap.height, data: data };
@@ -47,6 +85,7 @@ export async function loadImageUNORM8(path: string): Promise<{
 export class TextureManager{
     public albedo_block:TextureBlock;
     public normal_block:TextureBlock;
+    public roughmetal_block:TextureBlock;
 
     constructor(){
         this.albedo_block = {
@@ -55,47 +94,38 @@ export class TextureManager{
         this.normal_block = {
             data_512:[],data_1024:[],data_2048:[],
         };
+        this.roughmetal_block = {
+            data_512:[],data_1024:[],data_2048:[],
+        };
     }
 
     public fillEmptyTextures(){
-        if(this.albedo_block.data_512.length === 0){
-            console.log("Filing empty albedo 512")
-            this.albedo_block.data_512.push(new Uint8Array(512*512*4));
-        }
-        if(this.albedo_block.data_1024.length === 0){
-            console.log("Filing empty albedo 1024")
-            this.albedo_block.data_1024.push(new Uint8Array(1024*1024*4));
-        }
-        if(this.albedo_block.data_2048.length === 0){
-            console.log("Filing empty albedo 2048")
-            this.albedo_block.data_2048.push(new Uint8Array(2048*2048*4));
+        function fillEmpty(block:TextureBlock,x:number){
+            if(block.data_512.length === 0) block.data_512.push(new Uint8Array(512*512*x));
+            if(block.data_1024.length === 0) block.data_1024.push(new Uint8Array(1024*1024*x));
+            if(block.data_2048.length === 0) block.data_2048.push(new Uint8Array(2048*2048*x));
         }
 
-        if(this.normal_block.data_512.length === 0){
-            console.log("Filing empty normal 512")
-            this.normal_block.data_512.push(new Uint8Array(512*512*4));
-        }
-        if(this.normal_block.data_1024.length === 0){
-            console.log("Filing empty normal 1024")
-            this.normal_block.data_1024.push(new Uint8Array(1024*1024*4));
-        }
-        if(this.normal_block.data_2048.length === 0){
-            console.log("Filing empty normal 2048")
-            this.normal_block.data_2048.push(new Uint8Array(2048*2048*4));
-        }
+        fillEmpty(this.albedo_block,4);
+        fillEmpty(this.normal_block,4);
+        fillEmpty(this.roughmetal_block,2);
     }
 
     public async addAlbedo(path:string):Promise<LoadedTextureInfo>{
-        return await this.addImage(path,this.albedo_block);
+        return await this.addImage(path,this.albedo_block,Channels.RGBA);
     }
 
     public async addNormal(path:string):Promise<LoadedTextureInfo>{
-        return await this.addImage(path,this.normal_block);
+        return await this.addImage(path,this.normal_block,Channels.RGBA);
     }
 
-    private async addImage(path:string,block:TextureBlock):Promise<LoadedTextureInfo> {
+    public async addRoughMetal(path:string,channels:Channels = Channels.GB):Promise<LoadedTextureInfo>{
+        return await this.addImage(path,this.roughmetal_block,channels);
+    }
+
+    private async addImage(path:string,block:TextureBlock,channels:Channels):Promise<LoadedTextureInfo> {
         let array:number, index:number;
-        let {width,height,data} = await loadImageUNORM8(path);
+        let {width,height,data} = await loadImageUNORM8(path,channels);
 
         if(width !== height){
             console.error("Could not load non square image",path)

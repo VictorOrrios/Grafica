@@ -298,6 +298,9 @@ export class Renderer {
         this.initSampler2DArray("normal_512",this.scene.tex_manager.normal_block.data_512,512,512,gl.RGBA);
         this.initSampler2DArray("normal_1024",this.scene.tex_manager.normal_block.data_1024,1024,1024,gl.RGBA);
         this.initSampler2DArray("normal_2048",this.scene.tex_manager.normal_block.data_2048,2048,2048,gl.RGBA);
+        this.initSampler2DArray("rm_512",this.scene.tex_manager.roughmetal_block.data_512,512,512,gl.RG);
+        this.initSampler2DArray("rm_1024",this.scene.tex_manager.roughmetal_block.data_1024,1024,1024,gl.RG);
+        this.initSampler2DArray("rm_2048",this.scene.tex_manager.roughmetal_block.data_2048,2048,2048,gl.RG);
     
     }
 
@@ -335,6 +338,8 @@ export class Renderer {
             default:
                 throw new Error(`Unsupported format: ${format}`);
         }
+
+        console.log("Using format:", format, "internalFormat:", internalFormat);
         
         // Size validation
         const expectedSize = width * height * bytesPerPixel;

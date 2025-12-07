@@ -1,4 +1,4 @@
-import { Vector3 } from "math.gl";
+import { Vector2, Vector3 } from "math.gl";
 import { Sphere } from "./Primitives/Sphere"
 import { Camera } from "./camera";
 import { Material } from "./Primitives/Material";
@@ -82,20 +82,19 @@ export class Scene {
             roughness: 0.8,
         }));
 
+        const test_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/rmTest.jpg");
+
         const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
         const brick_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_nor_gl_1k.jpg");
+        const brick_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_arm_1k.jpg");
         const brick = this.addMaterial(new Material({
-            albedo:new Vector3(
-                0.3647058824,
-                0.2352941176,
-                0.1490196078
-            ),
             albedo_tex_info:brick_albedo,
-            normal_tex_info:brick_normal,
-            roughness: 1.0,
-            metalness: 0.0,
+            normal_tex_info:brick_normal, 
+            roughmetal_tex_info:brick_rm,
             reflectance: 0.5,
         }));   
         
@@ -103,13 +102,28 @@ export class Scene {
             "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_diff_1k.jpg");
         const wood_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_nor_gl_1k.jpg");
+        const wood_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_arm_1k.jpg");
         const wood = this.addMaterial(new Material({
             albedo_tex_info:wood_albedo,
             normal_tex_info:wood_normal,
-            roughness: 1.0,
-            metalness: 0.0,
+            roughmetal_tex_info:wood_rm,
             reflectance: 0.5,
         }));   
+
+        
+        const metal_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_diff_1k.jpg");
+        const metal_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_nor_gl_1k.jpg");
+        const metal_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_arm_1k.jpg");
+        const metal = this.addMaterial(new Material({
+            albedo_tex_info:metal_albedo,
+            normal_tex_info:metal_normal, 
+            roughmetal_tex_info:metal_rm,
+            reflectance: 0.5,
+        })); 
 
         const mirror = this.addMaterial(new Material({
             roughness: 0.0,
@@ -136,9 +150,9 @@ export class Scene {
 
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
-            1.0,2.0
+            1.0,new Vector2(3.0,1.0)
         );
-        this.addSphere(s1, wood);
+        this.addSphere(s1, brick);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
@@ -172,7 +186,7 @@ export class Scene {
             1.0,
             0.2
         );
-        this.addPlane(p1, brick);
+        this.addPlane(p1, wood);
 
         const l1: PointLight = new PointLight(
             new Vector3(0, 3.0, 0.0),
