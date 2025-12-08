@@ -15,7 +15,7 @@ import {
 } from './Mesh/loaders/OBJLoader';
 import { GLTFLoader } from "./Mesh/loaders/GLTFLoader";
 import { roughness } from "three/tsl";
-import { TextureManager, type LoadedTextureInfo } from "./Textures/texture-manager";
+import { Channels, TextureManager, type LoadedTextureInfo } from "./Textures/texture-manager";
 
 export enum SceneType {
     TESTPLANE = 'testplane',
@@ -109,9 +109,21 @@ export class Scene {
             normal_tex_info:wood_normal,
             roughmetal_tex_info:wood_rm,
             reflectance: 0.5,
-        }));   
-
+        })); 
         
+        const wood2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/wood_table_001_1k.gltf/textures/wood_table_001_diff_1k.jpg");
+        const wood2_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/wood_table_001_1k.gltf/textures/wood_table_001_nor_gl_1k.jpg");
+        const wood2_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/wood_table_001_1k.gltf/textures/wood_table_001_rough_1k.jpg",Channels.RG);
+        const wood2 = this.addMaterial(new Material({
+            albedo_tex_info:wood2_albedo,
+            normal_tex_info:wood2_normal,
+            roughmetal_tex_info:wood2_rm,
+            reflectance: 0.5,
+        })); 
+
         const metal_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_diff_1k.jpg");
         const metal_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
@@ -123,6 +135,15 @@ export class Scene {
             normal_tex_info:metal_normal, 
             roughmetal_tex_info:metal_rm,
             reflectance: 0.5,
+        })); 
+
+        const dirty_glass_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/earth.jpg",Channels.RG);
+        const dirty_glass = this.addMaterial(new Material({
+            roughmetal_tex_info:dirty_glass_rm,
+            roughness:0.0,
+            reflectance: 0.5,
+            trs_weight:1.0,
         })); 
 
         const mirror = this.addMaterial(new Material({
@@ -150,9 +171,11 @@ export class Scene {
 
         const s1: Sphere = new Sphere(
             new Vector3(0.0, 0.0, 0.0),
-            1.0,new Vector2(3.0,1.0)
+            1.0,
+            new Vector2(1.3,1.0),new Vector2(0.0,0.0),
+            new Vector3(0.0,1.0,0.0), new Vector3(0.0,0.0,-1.0)
         );
-        this.addSphere(s1, brick);
+        this.addSphere(s1, dirty_glass);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
@@ -162,12 +185,12 @@ export class Scene {
         const s3 = new Sphere(
             new Vector3(4.0, 1.0, -6.0),
             2.0);
-        this.addSphere(s3, mirror);
+        this.addSphere(s3, wood2);
 
         const s4 = new Sphere(
             new Vector3(-4.0, 1.0, -6.0),
             2.0);
-        this.addSphere(s4, white_matte);
+        this.addSphere(s4, brick);
 
         const s5 = new Sphere(
             new Vector3(-4.0, 15.0, -6.0),

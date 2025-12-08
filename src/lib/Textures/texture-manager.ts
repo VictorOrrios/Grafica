@@ -112,20 +112,29 @@ export class TextureManager{
     }
 
     public async addAlbedo(path:string):Promise<LoadedTextureInfo>{
-        return await this.addImage(path,this.albedo_block,Channels.RGBA);
+        let {width,height,data} = await loadImageUNORM8(path,Channels.RGBA);
+        return await this.addImage(path,this.albedo_block,width,height,data);
     }
 
     public async addNormal(path:string):Promise<LoadedTextureInfo>{
-        return await this.addImage(path,this.normal_block,Channels.RGBA);
+        let {width,height,data} = await loadImageUNORM8(path,Channels.RGBA);
+        return await this.addImage(path,this.normal_block,width,height,data);
     }
 
     public async addRoughMetal(path:string,channels:Channels = Channels.GB):Promise<LoadedTextureInfo>{
-        return await this.addImage(path,this.roughmetal_block,channels);
+        let {width,height,data} = await loadImageUNORM8(path,channels);
+        for (let i = 0; i < data.length; i += 2) {
+            data[i] = Math.max(2,data[i]);
+        }
+        console.log("=== RM First 10 values of",path)
+        for (let i = 0; i < 10; i++) {
+            console.log(data[i])
+        }
+        return await this.addImage(path,this.roughmetal_block,width,height,data);
     }
 
-    private async addImage(path:string,block:TextureBlock,channels:Channels):Promise<LoadedTextureInfo> {
+    private async addImage(path:string,block:TextureBlock,width:number,height:number,data:Uint8Array):Promise<LoadedTextureInfo> {
         let array:number, index:number;
-        let {width,height,data} = await loadImageUNORM8(path,channels);
 
         if(width !== height){
             console.error("Could not load non square image",path)

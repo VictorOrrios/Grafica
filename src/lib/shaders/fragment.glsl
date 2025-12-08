@@ -16,7 +16,7 @@ precision mediump sampler2DArray;
 // Global constants
 //===========================
 // TODO: Fine tune to float precision limit when system is more advanced
-#define ray_min_distance 0.0001
+#define ray_min_distance 0.001
 #define ray_max_distance 10000.0
 #define bounce_hard_limit 200
 #define minimun_atenuation 0.0
@@ -923,6 +923,7 @@ vec3 sample_ggx(float alpha, vec3 V, vec3 N){
 }
 
 
+
 vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 
     if(rr_chance < random()) return vec3(0.0);
@@ -1144,7 +1145,12 @@ vec3 cast_ray(Ray r){
 // Generates a ray pointing to the pixel this thread is assigned with
 Ray get_ray(vec2 uv){
     // Calculate offsets
-    vec2 ndc = 2.0*(uv + sample_square() / resolution.xy) -1.0;
+    vec2 ndc;
+    if(length(resolution.xy)>0.0){
+        ndc = 2.0*(uv + sample_square() / resolution.xy) -1.0;
+    }else{
+        ndc = 2.0*(uv) -1.0;
+    }
     vec2 aperture = sample_square()*cam.thin_lense.x;
 
     // Ray from 0,0,0 to +z + offsets
