@@ -66,8 +66,7 @@ struct Sphere {
 
 struct Plane {
     vec4 normal_distance;   // xyz = The normal of the plane, w = Distance from 0,0,0
-    vec3 tiling;            // xy = uv offset, z = tiling size
-    int mat;                // Material index
+    vec4 tiling_mat;        // xy = uv offset, z = tiling size, w = material index
 };
 
 struct Triangle {
@@ -452,7 +451,7 @@ bool hit_plane(const Plane p, const Ray r, out Hit h){
         if(t >= ray_min_distance && t <= ray_max_distance){
             h.t = t;
             h.p = r.orig + r.dir * t;
-            h.mat = p.mat;
+            h.mat = int(p.tiling_mat.w);
             set_front_face(p.normal_distance.xyz,r.dir,h);
 
             vec3 tangent   = normalize(abs(p.normal_distance.x) > 0.5 ? vec3(0,1,0) : vec3(1,0,0));
@@ -461,7 +460,7 @@ bool hit_plane(const Plane p, const Ray r, out Hit h){
             float u = dot(h.p, tangent);
             float v = dot(h.p, bitangent);
 
-            h.uv = fract(vec2(u, v) * p.tiling.z + p.tiling.xy);
+            h.uv = fract(vec2(u, v) * p.tiling_mat.z + p.tiling_mat.xy);
 
             Material mat = materials[h.mat];
             if(mat.albedoTA_normalTA.w > 0){
@@ -1120,6 +1119,7 @@ vec3 cast_ray(Ray r){
 
             atenuation *= eval_mat(mat,r.dir,h,new_direction) / rr_chance;
             //return atenuation;
+            
             // 0 atennuation check for termination
             if(length(atenuation) <= minimun_atenuation) break;
 

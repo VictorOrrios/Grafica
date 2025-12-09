@@ -25,13 +25,9 @@ export class Plane {
     public serialize(materialIndex: number): Float32Array {
         const ret = new Float32Array([
             this.normal.x, this.normal.y, this.normal.z, this.distance,
-            this.tiling_offset.x,this.tiling_offset.y,this.tiling_size, 0,
-            0,0,0,0
+            this.tiling_offset.x,this.tiling_offset.y,this.tiling_size, materialIndex,
         ]);
 
-        // Bitwise cast of materialIndex
-        (new Int32Array(ret.buffer))[7] = materialIndex;
-        (new Int32Array(ret.buffer))[8] = materialIndex;
 
         return ret;
     }

@@ -202,7 +202,7 @@ export class Scene {
             new Vector3(-6.0, 0.0, 0.0),
             new Vector3(-4.5, 2.5, -2.0),
         );
-        //this.addTriangle(t1, white_matte);
+        this.addTriangle(t1, white_matte);
 
         const p1: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
