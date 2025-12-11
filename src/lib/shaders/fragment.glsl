@@ -102,10 +102,9 @@ struct PointLight {
 struct Hit {
     vec3 p;             // Where it happend
     vec3 normal;        // The normal where it hit
-    int mat;            // Material index of the object it hit
+    Material mat;       // Material of the object it hit
     float t;            // The distance from the ray origin to the hit
     bool front_face;    // True if hit is to a front facing surface
-    bool isMesh;        // True if hit came from a mesh
     vec2 uv;            // Texture uv where it hit. (-1,-1) = It doesn't have uvs
 };
 
@@ -286,23 +285,6 @@ void set_front_face(vec3 normal, vec3 dir, inout Hit h){
     }
 }
 
-void get_albedo_F0(Material mat, vec2 uv, float metalness, out vec3 albedo, out vec3 F0){
-    switch(mat.albedoTA_normalTA.y){
-        case 0:
-            albedo = mat.albedo_emission.rgb;
-            F0 = mat.F0_alpha.xyz;
-            return;
-        case 1:
-            albedo = texture(albedo_512, vec3(uv.x, uv.y, mat.albedoTA_normalTA.x)).rgb; break;
-        case 2:
-            albedo = texture(albedo_1024, vec3(uv.x, uv.y, mat.albedoTA_normalTA.x)).rgb; break;
-        case 3:
-            albedo = texture(albedo_2048, vec3(uv.x, uv.y, mat.albedoTA_normalTA.x)).rgb; break;
-    }
-
-    F0 = mix(vec3(mat.rou_met_trs_ref.w),albedo,metalness);
-}
-
 vec3 get_normal(Material mat, vec2 uv){
     switch(mat.albedoTA_normalTA.w){
         case 1:
@@ -314,22 +296,36 @@ vec3 get_normal(Material mat, vec2 uv){
     }
 }
 
-void get_alpha_metalness(Material mat, vec2 uv, out float alpha, out float metalness){
-    vec2 data;
-    switch(mat.rmTA.y){
-        case 0:
-            alpha = mat.F0_alpha.w;
-            metalness = mat.rou_met_trs_ref.y;
-            return;
-        case 1:
-            data = texture(rm_512, vec3(uv.x, uv.y, mat.rmTA.x)).rg; break;
-        case 2:
-            data = texture(rm_1024, vec3(uv.x, uv.y, mat.rmTA.x)).rg; break;
-        case 3:
-            data = texture(rm_2048, vec3(uv.x, uv.y, mat.rmTA.x)).rg; break;
+void set_mat_tex_params(inout Material mat, vec2 uv){
+    bool calculate_F0 = false;
+
+    if (mat.rmTA.y != 0) {
+        calculate_F0 = true;
+        vec2 data;
+        switch(mat.rmTA.y){
+            case 1: data = texture(rm_512, vec3(uv, mat.rmTA.x)).rg; break;
+            case 2: data = texture(rm_1024, vec3(uv, mat.rmTA.x)).rg; break;
+            case 3: data = texture(rm_2048, vec3(uv, mat.rmTA.x)).rg; break;
+        }
+        mat.F0_alpha.w = data.x * data.x;
+        mat.rou_met_trs_ref.y = data.y;
     }
-    alpha = data.x*data.x;
-    metalness = data.y;
+
+    if(mat.albedoTA_normalTA.y != 0){
+        calculate_F0 = true;
+        switch(mat.albedoTA_normalTA.y){
+            case 1: mat.albedo_emission.rgb = texture(albedo_512, vec3(uv, mat.albedoTA_normalTA.x)).rgb; break;
+            case 2: mat.albedo_emission.rgb = texture(albedo_1024, vec3(uv, mat.albedoTA_normalTA.x)).rgb; break;
+            case 3: mat.albedo_emission.rgb = texture(albedo_2048, vec3(uv, mat.albedoTA_normalTA.x)).rgb; break;
+        }
+    }
+
+    if(calculate_F0){
+        mat.F0_alpha.xyz = mix(vec3(mat.rou_met_trs_ref.w),
+                                    mat.albedo_emission.xyz,
+                                    mat.rou_met_trs_ref.y);
+    }
+
 }
 
 //===========================
@@ -388,9 +384,10 @@ vec3 apply_kernel(vec3 color, float t){
 //===========================
 // Sphere functions
 //===========================
+#if NUM_SPHERES > 0
 
 // PRE: r.dir is already normalized
-bool hit_sphere(const Sphere s, const Ray r, out Hit h){
+bool hit_sphere(const Sphere s, const Ray r, out float d){
     vec3 oc =  r.orig - s.center_radius.xyz;
     
     float a = 1.0;
@@ -402,16 +399,23 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
     if(discriminant < 0.0) return false;
 
     float sq_disc = sqrt(discriminant);
-    float d = (-half_b - sq_disc)/a;
+    d = (-half_b - sq_disc)/a;
     if (d < ray_min_distance || d > ray_max_distance){
         d = (-half_b + sq_disc)/a;
         if (d < ray_min_distance || d > ray_max_distance)
             return false;
     }
 
-    h.t = d;
-    h.p = r.orig+r.dir*d;
-    h.mat = s.mat;
+    return true;
+}
+
+Hit fill_sphere_record(const int s_i, const Ray r, const float t){
+    Hit h;
+    Sphere s = spheres[s_i];
+
+    h.t = t;
+    h.p = r.orig+r.dir*t;
+    h.mat = materials[s.mat];
 
     vec3 s_normal = (h.p-s.center_radius.xyz)/s.center_radius.w;
     set_front_face(s_normal,r.dir,h);
@@ -425,61 +429,72 @@ bool hit_sphere(const Sphere s, const Ray r, out Hit h){
     float u = atan(y, x) * INV_TWO_PI;
     u = u < 0.0 ? u + 1.0 : u;
 
-    //h.uv = vec2(u,v);
     h.uv = fract(vec2(u, v) * s.tiling.zw + s.tiling.xy);
 
-    Material mat = materials[h.mat];
-    if(mat.albedoTA_normalTA.w > 0){
-        vec3 n_map = get_normal(mat, h.uv);
+    if(h.mat.albedoTA_normalTA.w > 0){
+        vec3 n_map = get_normal(h.mat, h.uv);
         vec3 T = normalize(cross(s.v, h.normal));
         vec3 B = normalize(cross(h.normal,T));
         mat3 TBN = mat3(T,B,h.normal);
         h.normal = normalize(TBN * n_map); 
     }
 
-    return true;
+    set_mat_tex_params(h.mat,h.uv);
+
+    return h;
 }
+
+#endif
 
 //===========================
 // Plane functions
 //===========================
+#if NUM_PLANES > 0
 
-bool hit_plane(const Plane p, const Ray r, out Hit h){
+bool hit_plane(const Plane p, const Ray r, out float t){
     float denom = dot(p.normal_distance.xyz, r.dir);
     if(abs(denom) > 0.0001){
-        float t = dot((p.normal_distance.xyz*-p.normal_distance.w) - r.orig, p.normal_distance.xyz) / denom;
-        if(t >= ray_min_distance && t <= ray_max_distance){
-            h.t = t;
-            h.p = r.orig + r.dir * t;
-            h.mat = int(p.tiling_mat.w);
-            set_front_face(p.normal_distance.xyz,r.dir,h);
-
-            vec3 tangent   = normalize(abs(p.normal_distance.x) > 0.5 ? vec3(0,1,0) : vec3(1,0,0));
-            vec3 bitangent = normalize(cross(p.normal_distance.xyz, tangent));
-
-            float u = dot(h.p, tangent);
-            float v = dot(h.p, bitangent);
-
-            h.uv = fract(vec2(u, v) * p.tiling_mat.z + p.tiling_mat.xy);
-
-            Material mat = materials[h.mat];
-            if(mat.albedoTA_normalTA.w > 0){
-                vec3 n_map = get_normal(mat, h.uv);
-                mat3 TBN = mat3(tangent,bitangent,h.normal);
-                h.normal = normalize(TBN * n_map); 
-            }
-
-            return true;
-        }
+        t = dot((p.normal_distance.xyz*-p.normal_distance.w) - r.orig, p.normal_distance.xyz) / denom;
+        return t >= ray_min_distance && t <= ray_max_distance;
     }
     return false;
 }
 
+Hit fill_plane_record(const int p_i, const Ray r, const float t){
+    Hit h;
+    Plane p = planes[p_i];
+
+    h.p = r.orig + r.dir * t;
+    h.mat = materials[int(p.tiling_mat.w)];
+    set_front_face(p.normal_distance.xyz,r.dir,h);
+
+    vec3 tangent   = normalize(abs(p.normal_distance.x) > 0.5 ? vec3(0,1,0) : vec3(1,0,0));
+    vec3 bitangent = normalize(cross(p.normal_distance.xyz, tangent));
+
+    float u = dot(h.p, tangent);
+    float v = dot(h.p, bitangent);
+
+    h.uv = fract(vec2(u, v) * p.tiling_mat.z + p.tiling_mat.xy);
+
+    if(h.mat.albedoTA_normalTA.w > 0){
+        vec3 n_map = get_normal(h.mat, h.uv);
+        mat3 TBN = mat3(tangent,bitangent,h.normal);
+        h.normal = normalize(TBN * n_map); 
+    }
+
+    set_mat_tex_params(h.mat,h.uv);
+
+    return h;
+}
+
+#endif
+
 //===========================
 // Triangle functions
 //===========================
+#if NUM_TRIS > 0
 
-bool hit_triangle(Triangle tri, const Ray r, out Hit h){
+bool hit_triangle(Triangle tri, const Ray r, out float t){
     vec3 v0 = tri.v0;
     vec3 v1 = tri.v1;
     vec3 v2 = tri.v2;
@@ -500,19 +515,29 @@ bool hit_triangle(Triangle tri, const Ray r, out Hit h){
     float v = dot(r.dir, qvec) * invDet;
     if(v < 0.0 || u + v > 1.0) return false;
 
-    float t = dot(edge2, qvec) * invDet;
+    t = dot(edge2, qvec) * invDet;
     if(t < ray_min_distance || t > ray_max_distance) return false;
 
-    h.t = t;
+    return true;
+}
+
+Hit fill_tri_record(const int t_i, const Ray r, const float t){
+    Hit h;
+    Triangle tri = triangles[t_i];
+
     h.p = r.orig + r.dir * t;
 
     vec3 normal = tri.normal_mat.xyz;
-    h.mat = int(tri.normal_mat.w);
-    h.isMesh = false;  // This is a UBO triangle
+    h.mat = materials[int(tri.normal_mat.w)];
     set_front_face(normal, r.dir, h);
+
+    // TODO, setup uvs for tris
     h.uv = vec2(-1.0,-1.0);
-    return true;
+
+    return h;
 }
+
+#endif
 
 //===========================
 // Mesh functions
@@ -595,8 +620,7 @@ bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normal
     h.normal = finalNormal;
     // Triangle material index stored as R32UI texel per triangle
     uint mat_u = fetchTexelUint(u_triangleMaterials_tex, triIndex).r;
-    h.mat = int(mat_u);
-    h.isMesh = true;  // This is a mesh triangle
+    h.mat = materials[int(mat_u)];
     set_front_face(finalNormal, r.dir, h);
 
     // TODO: Set uvs with tri hit
@@ -722,7 +746,8 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
     
     // Set material if we found a hit
     if (found) {
-        h.mat = mesh.materialIndex;
+        // TODO: Revise this
+        h.mat = materials[mesh.materialIndex];
     }
     
     return found;
@@ -745,7 +770,7 @@ bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, out Hit h){
     }
 
     if(has_hit) {
-        h.mat = mesh.materialIndex;
+        h.mat = materials[mesh.materialIndex];
     }
 
     return has_hit;
@@ -762,19 +787,24 @@ bool hit_mesh(MeshInfo mesh, const Ray r, out Hit h){
 //===========================
 
 bool hit_scene(Ray r, out Hit h){
-    bool has_hit = false;
     Hit h_aux;
+    float aux_t;
+    int primitive_type = 0;
+    int primitive_index = 0;
+
     h.t = ray_max_distance;
+
 
     // Check for sphere hits
     #if NUM_SPHERES > 0
         for(int s_i = 0; s_i < NUM_SPHERES; s_i++){
             Sphere s = spheres[s_i];
-            if(hit_sphere(s,r,h_aux)){
-                if(h_aux.t<h.t){
-                    h=h_aux;
+            if(hit_sphere(s,r,aux_t)){
+                if(aux_t < h.t){
+                    h.t = aux_t;
+                    primitive_type = 1;
+                    primitive_index = s_i;
                 }
-                has_hit = true;
             }
         }
     #endif
@@ -783,11 +813,12 @@ bool hit_scene(Ray r, out Hit h){
     #if NUM_PLANES > 0
         for(int p_i = 0; p_i < NUM_PLANES; p_i++) {
             Plane p = planes[p_i];
-            if(hit_plane(p,r,h_aux)){
-                if(h_aux.t<h.t){
-                    h=h_aux;
+            if(hit_plane(p,r,aux_t)){
+                if(aux_t<h.t){
+                    h.t = aux_t;
+                    primitive_type = 2;
+                    primitive_index = p_i;
                 }
-                has_hit = true;
             }
         }
     #endif
@@ -796,14 +827,30 @@ bool hit_scene(Ray r, out Hit h){
     #if NUM_TRIS > 0
         for(int t_i = 0; t_i < NUM_TRIS; t_i++) {
             Triangle tri = triangles[t_i];
-            if(hit_triangle(tri, r, h_aux)){
-                if(h_aux.t < h.t){
-                    h = h_aux;
+            if(hit_triangle(tri, r, aux_t)){
+                if(aux_t < h.t){
+                    h.t = aux_t;
+                    primitive_type = 3;
+                    primitive_index = t_i;
                 }
-                has_hit = true;
             }
         }
     #endif
+
+    switch(primitive_type){
+        #if NUM_SPHERES > 0
+            case 1:
+                h = fill_sphere_record(primitive_index,r,h.t);break;
+        #endif
+        #if NUM_PLANES > 0
+            case 2:
+                h = fill_plane_record(primitive_index,r,h.t);break;
+        #endif
+        #if NUM_TRIS > 0
+            case 3:
+                h = fill_tri_record(primitive_index,r,h.t);break;
+        #endif
+    }
 
     #if NUM_MESHES > 0
         for(int m_i = 0; m_i < NUM_MESHES; m_i++) {
@@ -811,13 +858,13 @@ bool hit_scene(Ray r, out Hit h){
             if(hit_mesh(mesh, r, h_aux)){
                 if(h_aux.t < h.t){
                     h = h_aux;
+                    primitive_type = 4;
                 }
-                has_hit = true;
             }
         }
     #endif
 
-    return has_hit;
+    return primitive_type != 0;
 }
 
 //===========================
@@ -923,38 +970,30 @@ vec3 sample_ggx(float alpha, vec3 V, vec3 N){
 
 
 
-vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
+vec3 eval_mat(Hit h, vec3 Vin, out vec3 Vout){
 
     if(rr_chance < random()) return vec3(0.0);
 
-    bool has_uvs = h.uv.x >= 0.0;
     // Uv check
-    //if(has_uvs) return vec3(h.uv.x,h.uv.y,0.0);
+    //if(h.uv.x >= 0.0) return vec3(h.uv.x,h.uv.y,0.0);
 
     vec3 V = -Vin;
     vec3 N = h.normal;
-    vec3 F0 = mat.F0_alpha.xyz;
-    vec3 albedo = mat.albedo_emission.rgb;
-    float alpha = mat.F0_alpha.w;
-
-    if(has_uvs){
-        float metalness;
-        get_alpha_metalness(mat,h.uv,alpha,metalness);
-        get_albedo_F0(mat,h.uv,metalness,albedo,F0);
-    }
-
+    vec3 F0 = h.mat.F0_alpha.xyz;
+    vec3 albedo = h.mat.albedo_emission.rgb;
+    float alpha = h.mat.F0_alpha.w;
 
     float alpha2 = alpha*alpha;
     vec3 H = sample_ggx(alpha,V,N);
     
-    float eta = h.front_face? 1.0/mat.subsurface_color_ior.w : mat.subsurface_color_ior.w;
+    float eta = h.front_face? 1.0/h.mat.subsurface_color_ior.w : h.mat.subsurface_color_ior.w;
     
     float NoV = dot(N, V);
     float NoVabs = abs(NoV);
     float NoH = dot(N, H);
     float VoH = dot(V, H);
 
-    bool transmissive = mat.rou_met_trs_ref.z > random();
+    bool transmissive = h.mat.rou_met_trs_ref.z > random();
 
     vec3 F = reflectance(VoH, F0);
     
@@ -994,15 +1033,15 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
         vec3 btdf = (T * D * G * jacobian) / 
                     (4.0 * max(NoVabs, 1e-5) * max(LoNabs, 1e-5));
 
-        return mat.subsurface_color_ior.rgb * btdf * LoNabs / max(pdf_ggx*jacobian, 1e-5);
+        return h.mat.subsurface_color_ior.rgb * btdf * LoNabs / max(pdf_ggx*jacobian, 1e-5);
 
     }else{
         float G = G_Smith_Fast(NoV,LoN,alpha);
 
-        vec3 f_specular = mat.specular_color * (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
+        vec3 f_specular = h.mat.specular_color * (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
 
         albedo *= vec3(1.0) - F;
-        albedo *= (1.0 - mat.rou_met_trs_ref.y);
+        albedo *= (1.0 - h.mat.rou_met_trs_ref.y);
 
         vec3 f_diffuse = albedo * INV_PI;
 
@@ -1018,9 +1057,10 @@ vec3 eval_mat(Material mat, vec3 Vin, Hit h, out vec3 Vout){
 // Main functions
 //===========================
 
-vec3 get_direct_light(Hit h, Material mat, Ray r, float total_t){
+vec3 get_direct_light(Hit h, Ray r, float total_t){
     Hit aux;
     vec3 ret = vec3(0);
+    return ret;
 
     #if NUM_POINT_LIGHTS > 0
         for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
@@ -1084,7 +1124,7 @@ vec3 cast_ray(Ray r){
     float pdf;
     vec3 atenuation = vec3(1.0);
     vec3 new_direction;
-
+    float rr_inv = 1.0 / rr_chance;
     float total_t = 0.0;
 
 
@@ -1097,34 +1137,30 @@ vec3 cast_ray(Ray r){
             // Max distance check
             if(total_t > ray_range.y) break;
 
-            Material mat = materials[h.mat];
-
-            // Get light from all light sources
-            //if(bounce_count == 0){
-            if(bounce_count < 2){
-                vec3 direct_light = get_direct_light(h,mat,r,total_t);
-                color += direct_light*atenuation;
-            }
-
             // Emissive material & Min distance check
-            if(mat.albedo_emission.a > 0.0){
+            if(h.mat.albedo_emission.a > 0.0){
                 // Min distance check
                 if(total_t < ray_range.x) break;
 
                 color += apply_kernel(
-                    atenuation * mat.albedo_emission.rgb*mat.albedo_emission.a,
+                    atenuation * h.mat.albedo_emission.rgb*h.mat.albedo_emission.a,
                     total_t);
                 break; 
             }
 
-            atenuation *= eval_mat(mat,r.dir,h,new_direction) / rr_chance;
+            // Get light from all light sources
+            //if(bounce_count == 0){
+            if(bounce_count < 2){
+                vec3 direct_light = get_direct_light(h,r,total_t);
+                color += direct_light*atenuation;
+            }
+
+            atenuation *= eval_mat(h,r.dir,new_direction) * rr_inv;
             //return atenuation;
             
             // 0 atennuation check for termination
             if(length(atenuation) <= minimun_atenuation) break;
 
-            
-            
             r.dir = new_direction;
             r.orig = h.p;
         }else{
