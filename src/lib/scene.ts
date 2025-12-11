@@ -190,11 +190,11 @@ export class Scene {
         const s4 = new Sphere(
             new Vector3(-4.0, 1.0, -6.0),
             2.0);
-        this.addSphere(s4, brick);
+        this.addSphere(s4, mirror);
 
         const s5 = new Sphere(
-            new Vector3(-4.0, 15.0, -6.0),
-            10.0);
+            new Vector3(0.0, 15.0, 0.0),
+            8.0);
         //this.addSphere(s5, white_light);
 
         const t1: Triangle = new Triangle(
@@ -202,7 +202,7 @@ export class Scene {
             new Vector3(-6.0, 0.0, 0.0),
             new Vector3(-4.5, 2.5, -2.0),
         );
-        //this.addTriangle(t1, white_matte);
+        this.addTriangle(t1, white_matte);
 
         const p1: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
@@ -242,9 +242,9 @@ export class Scene {
         for (let r = 0; r < samples; r++) {
             for (let m = 0; m < samples; m++) {
                 let mat = this.addMaterial(new Material({
-                    albedo: new Vector3(1.0, 0.0, 0.0),
-                    albedo_tex_info: test_tex_albedo,
-                    normal_tex_info: test_tex_normal,
+                    albedo: new Vector3(1.0, 1.0, 1.0),
+                    //albedo_tex_info: test_tex_albedo,
+                    //normal_tex_info: test_tex_normal,
                     roughness: r/(samples-1),
                     metalness: m/(samples-1),
                     reflectance: 0.5,

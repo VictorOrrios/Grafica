@@ -894,7 +894,7 @@ vec3 skybox_color_black(Ray r){
 }
 
 vec3 skybox_color(Ray r){
-    return skybox_color_image(r);
+    return skybox_color_black(r);
 }
 
 //===========================
@@ -1060,7 +1060,6 @@ vec3 eval_mat(Hit h, vec3 Vin, out vec3 Vout){
 vec3 get_direct_light(Hit h, Ray r, float total_t){
     Hit aux;
     vec3 ret = vec3(0);
-    return ret;
 
     #if NUM_POINT_LIGHTS > 0
         for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
@@ -1080,9 +1079,8 @@ vec3 get_direct_light(Hit h, Ray r, float total_t){
             // Cast a ray from the light source to the hit position
             Ray r_pl = Ray(h.p,normalize(l.position-h.p));
             if(!hit_scene(r_pl,aux) || aux.t >= d){
-
-                vec3 F0 = mat.F0_alpha.rgb;
-                float alpha = mat.F0_alpha.w;
+                vec3 F0 = h.mat.F0_alpha.rgb;
+                float alpha = h.mat.F0_alpha.w;
                 float alpha2 = alpha*alpha;
                 vec3 V = -r.dir;
                 vec3 H = normalize(V+r_pl.dir);
@@ -1097,11 +1095,11 @@ vec3 get_direct_light(Hit h, Ray r, float total_t){
 
                 vec3 f_specular = (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
 
-                vec3 radiance = mat.albedo_emission.xyz * l.color_power.xyz * l.color_power.w / d2;
+                vec3 radiance = h.mat.albedo_emission.xyz * l.color_power.xyz * l.color_power.w / d2;
 
-                vec3 rhoD = mat.albedo_emission.xyz;
+                vec3 rhoD = h.mat.albedo_emission.xyz;
                 rhoD *= vec3(1.0) - F;
-                rhoD *= (1.0 - mat.rou_met_trs_ref.y);
+                rhoD *= (1.0 - h.mat.rou_met_trs_ref.y);
 
                 vec3 f_diffuse = rhoD * INV_PI;
 
