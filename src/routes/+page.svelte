@@ -19,6 +19,8 @@
     import { Switch } from "$lib/components/ui/switch/index.js";
     import { Button } from "$lib/components/ui/button/index.js";
     import { Slider } from "$lib/components/ui/slider/index.js";
+    import { Tween } from 'svelte/motion';
+    import { cubicOut } from "svelte/easing";
 
     let scene = new Scene();
     let renderer: Renderer;
@@ -26,6 +28,7 @@
 
     let canvas!: HTMLCanvasElement;
 
+    let mousePos = new Tween({ x: 2.0*Math.PI, y: 0.5*Math.PI }, { duration: 500, easing: cubicOut });
     let needCapture: boolean = false;
 
     let listenToMove: boolean = true;
@@ -103,13 +106,23 @@
         const rect = canvas.getBoundingClientRect();
         const x = (event.clientX - rect.left) / canvas.width;
         const y = clamp((event.clientY - rect.top) / canvas.height, 0.05, 0.95);
-        let azymuth = 4 * x * Math.PI;
-        let polar = y * Math.PI;
+        let azymuth:number = 4 * x * Math.PI;
+        let polar:number = y * Math.PI;
         //polar = Math.PI/2.0;
         //azymuth = 0;
-        scene.camera.moveTo(azymuth, polar);
-        renderer.resetFrameAcummulation();
+        mousePos.target = {x:azymuth,y:polar};
+        //scene.camera.moveTo(azymuth, polar);
+        //renderer.resetFrameAcummulation();
     }
+
+    $effect(() => {
+        mousePos.current;
+        if(renderer && scene){
+            scene.camera.moveTo(mousePos.current.x, mousePos.current.y);
+            renderer.resetFrameAcummulation();
+        }
+    })
+
 
     function updateFPS(time: number) {
         frameCount++;

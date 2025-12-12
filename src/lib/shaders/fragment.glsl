@@ -894,7 +894,7 @@ vec3 skybox_color_black(Ray r){
 }
 
 vec3 skybox_color(Ray r){
-    return skybox_color_black(r);
+    return skybox_color_image(r);
 }
 
 //===========================
