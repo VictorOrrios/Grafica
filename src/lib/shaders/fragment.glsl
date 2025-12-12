@@ -168,6 +168,7 @@ uniform sampler2D u_positions_tex;
 uniform sampler2D u_normals_tex;
 uniform usampler2D u_sharedVertexIndices_tex;
 uniform usampler2D u_triangleMaterials_tex;
+uniform usampler2D u_uvs_tex;
 uniform sampler2D u_bvh_tex;    // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
 uniform int u_vertex_count;
 
@@ -854,6 +855,18 @@ bool hit_scene(Ray r, out Hit h){
         }
     #endif
 
+    #if NUM_MESHES > 0
+        for(int m_i = 0; m_i < NUM_MESHES; m_i++) {
+            MeshInfo mesh = meshInfos[m_i];
+            if(hit_mesh(mesh, r, h_aux)){
+                if(h_aux.t < h.t){
+                    h = h_aux;
+                    primitive_type = 4;
+                }
+            }
+        }
+    #endif
+
     switch(primitive_type){
         #if NUM_SPHERES > 0
             case 1:
@@ -868,18 +881,6 @@ bool hit_scene(Ray r, out Hit h){
                 h = fill_tri_record(primitive_index,r,h.t,uv);break;
         #endif
     }
-
-    #if NUM_MESHES > 0
-        for(int m_i = 0; m_i < NUM_MESHES; m_i++) {
-            MeshInfo mesh = meshInfos[m_i];
-            if(hit_mesh(mesh, r, h_aux)){
-                if(h_aux.t < h.t){
-                    h = h_aux;
-                    primitive_type = 4;
-                }
-            }
-        }
-    #endif
 
     return primitive_type != 0;
 }

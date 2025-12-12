@@ -188,7 +188,7 @@ export class Scene {
             new Vector2(1.3,1.0),new Vector2(0.0,0.0),
             new Vector3(0.0,1.0,0.0), new Vector3(0.0,0.0,-1.0)
         );
-        this.addSphere(s1, dirty_glass);
+        //this.addSphere(s1, dirty_glass);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
@@ -250,11 +250,8 @@ export class Scene {
         //this.addPointLight(l1);
 
         try {
-            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon/scene.gltf", 0.012, new Vector3(0.0, 0.0, 0.0), new Vector3(0.0, 0.0, 0.0), NormalStrategy.GEOMETRIC);
-            // NOTE, KEY: ~230K vertices, only used for material loading, USE ONLY WITH RENDER DISABLED (Stop)
-            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon_glass/scene.gltf", 0.012);
-            //const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2);
-            //this.addEfficientMeshData(bvhMesh);
+            const bvhMesh = await GLTFLoader.load("models/gltf/DamagedHelmet.gltf", 1.0, new Vector3(Math.PI/2.0,0.0,0.0), new Vector3(0.0,0.5,0.0));
+            this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
             console.warn("Could not load mesh:", error);
