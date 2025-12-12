@@ -73,12 +73,13 @@ export async function loadImageUNORM8(path: string, channels:Channels): Promise<
         return {width:-1,height:-1,data: new Uint8Array()}
     } 
 
-
+    /*
     console.log("=== First 10 values of",path)
     for (let i = 0; i < 10; i++) {
         console.log(data[i])
     }
-
+    */
+   
     return { width: img.bitmap.width, height: img.bitmap.height, data: data };
 }
 
@@ -126,10 +127,12 @@ export class TextureManager{
         for (let i = 0; i < data.length; i += 2) {
             data[i] = Math.max(2,data[i]);
         }
+        /*
         console.log("=== RM First 10 values of",path)
         for (let i = 0; i < 10; i++) {
             console.log(data[i])
         }
+        */
         return await this.addImage(path,this.roughmetal_block,width,height,data);
     }
 

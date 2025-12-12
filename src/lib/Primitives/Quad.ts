@@ -1,4 +1,5 @@
 import {
+    Vector2,
     Vector3
 } from '@math.gl/core';
 import { Triangle } from './Triangle';
@@ -15,7 +16,10 @@ export class Quad {
         v3: Vector3,
     ) {
         this.t1 = new Triangle(v0,v1,v2);
-        this.t2 = new Triangle(v0,v2,v3);
+        this.t2 = new Triangle(v0,v2,v3,
+                    new Vector2(0.0,0.0),
+                    new Vector2(1.0,1.0),
+                    new Vector2(1.0,0.0),);
     }
 
     public serialize(material:number): Float32Array {

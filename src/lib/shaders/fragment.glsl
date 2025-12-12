@@ -73,7 +73,11 @@ struct Triangle {
     vec3 v0;            // Vertex 0
     vec3 v1;            // Vertex 1
     vec3 v2;            // Vertex 2
-    vec4 normal_mat;    // xyz = The normal of the triangle, w = material index
+    vec3 normal;        // xyz = The normal of the triangle
+    vec3 tangent;       // xyz = The tangent of the triangle
+    vec3 bitangent;     // xyz = The bitanget of the triangle
+    vec4 uv0_uv1;       // xy = uv of vertex 0, zw = uv of vertex 1
+    vec4 uv2_mat;       // xy = uv of vertex 2, w = material index
 };
 
 struct MeshInfo {
@@ -386,63 +390,63 @@ vec3 apply_kernel(vec3 color, float t){
 //===========================
 #if NUM_SPHERES > 0
 
-// PRE: r.dir is already normalized
-bool hit_sphere(const Sphere s, const Ray r, out float d){
-    vec3 oc =  r.orig - s.center_radius.xyz;
-    
-    float a = 1.0;
-    float half_b = dot(r.dir,oc);
-    float c = dot(oc,oc)-s.center_radius.a*s.center_radius.w;
+    // PRE: r.dir is already normalized
+    bool hit_sphere(const Sphere s, const Ray r, out float d){
+        vec3 oc =  r.orig - s.center_radius.xyz;
+        
+        float a = 1.0;
+        float half_b = dot(r.dir,oc);
+        float c = dot(oc,oc)-s.center_radius.a*s.center_radius.w;
 
-    float discriminant = half_b*half_b - a*c;
-    // If < 0.0 then no solution exists
-    if(discriminant < 0.0) return false;
+        float discriminant = half_b*half_b - a*c;
+        // If < 0.0 then no solution exists
+        if(discriminant < 0.0) return false;
 
-    float sq_disc = sqrt(discriminant);
-    d = (-half_b - sq_disc)/a;
-    if (d < ray_min_distance || d > ray_max_distance){
-        d = (-half_b + sq_disc)/a;
-        if (d < ray_min_distance || d > ray_max_distance)
-            return false;
+        float sq_disc = sqrt(discriminant);
+        d = (-half_b - sq_disc)/a;
+        if (d < ray_min_distance || d > ray_max_distance){
+            d = (-half_b + sq_disc)/a;
+            if (d < ray_min_distance || d > ray_max_distance)
+                return false;
+        }
+
+        return true;
     }
 
-    return true;
-}
+    Hit fill_sphere_record(const int s_i, const Ray r, const float t){
+        Hit h;
+        Sphere s = spheres[s_i];
 
-Hit fill_sphere_record(const int s_i, const Ray r, const float t){
-    Hit h;
-    Sphere s = spheres[s_i];
+        h.t = t;
+        h.p = r.orig+r.dir*t;
+        h.mat = materials[s.mat];
 
-    h.t = t;
-    h.p = r.orig+r.dir*t;
-    h.mat = materials[s.mat];
+        vec3 s_normal = (h.p-s.center_radius.xyz)/s.center_radius.w;
+        set_front_face(s_normal,r.dir,h);
+        h.normal = s_normal;
 
-    vec3 s_normal = (h.p-s.center_radius.xyz)/s.center_radius.w;
-    set_front_face(s_normal,r.dir,h);
-    h.normal = s_normal;
+        float v = -0.5 - 0.5 * dot(h.normal, s.v);
 
-    float v = -0.5 - 0.5 * dot(h.normal, s.v);
+        float x = dot(h.normal, s.u);
+        float y = dot(h.normal, s.w);
 
-    float x = dot(h.normal, s.u);
-    float y = dot(h.normal, s.w);
+        float u = atan(y, x) * INV_TWO_PI;
+        u = u < 0.0 ? u + 1.0 : u;
 
-    float u = atan(y, x) * INV_TWO_PI;
-    u = u < 0.0 ? u + 1.0 : u;
+        h.uv = fract(vec2(u, v) * s.tiling.zw + s.tiling.xy);
 
-    h.uv = fract(vec2(u, v) * s.tiling.zw + s.tiling.xy);
+        if(h.mat.albedoTA_normalTA.w > 0){
+            vec3 n_map = get_normal(h.mat, h.uv);
+            vec3 T = normalize(cross(s.v, h.normal));
+            vec3 B = normalize(cross(h.normal,T));
+            mat3 TBN = mat3(T,B,h.normal);
+            h.normal = normalize(TBN * n_map); 
+        }
 
-    if(h.mat.albedoTA_normalTA.w > 0){
-        vec3 n_map = get_normal(h.mat, h.uv);
-        vec3 T = normalize(cross(s.v, h.normal));
-        vec3 B = normalize(cross(h.normal,T));
-        mat3 TBN = mat3(T,B,h.normal);
-        h.normal = normalize(TBN * n_map); 
+        set_mat_tex_params(h.mat,h.uv);
+
+        return h;
     }
-
-    set_mat_tex_params(h.mat,h.uv);
-
-    return h;
-}
 
 #endif
 
@@ -451,41 +455,42 @@ Hit fill_sphere_record(const int s_i, const Ray r, const float t){
 //===========================
 #if NUM_PLANES > 0
 
-bool hit_plane(const Plane p, const Ray r, out float t){
-    float denom = dot(p.normal_distance.xyz, r.dir);
-    if(abs(denom) > 0.0001){
-        t = dot((p.normal_distance.xyz*-p.normal_distance.w) - r.orig, p.normal_distance.xyz) / denom;
-        return t >= ray_min_distance && t <= ray_max_distance;
-    }
-    return false;
-}
-
-Hit fill_plane_record(const int p_i, const Ray r, const float t){
-    Hit h;
-    Plane p = planes[p_i];
-
-    h.p = r.orig + r.dir * t;
-    h.mat = materials[int(p.tiling_mat.w)];
-    set_front_face(p.normal_distance.xyz,r.dir,h);
-
-    vec3 tangent   = normalize(abs(p.normal_distance.x) > 0.5 ? vec3(0,1,0) : vec3(1,0,0));
-    vec3 bitangent = normalize(cross(p.normal_distance.xyz, tangent));
-
-    float u = dot(h.p, tangent);
-    float v = dot(h.p, bitangent);
-
-    h.uv = fract(vec2(u, v) * p.tiling_mat.z + p.tiling_mat.xy);
-
-    if(h.mat.albedoTA_normalTA.w > 0){
-        vec3 n_map = get_normal(h.mat, h.uv);
-        mat3 TBN = mat3(tangent,bitangent,h.normal);
-        h.normal = normalize(TBN * n_map); 
+    bool hit_plane(const Plane p, const Ray r, out float t){
+        float denom = dot(p.normal_distance.xyz, r.dir);
+        if(abs(denom) > 0.0001){
+            t = dot((p.normal_distance.xyz*-p.normal_distance.w) - r.orig, p.normal_distance.xyz) / denom;
+            return t >= ray_min_distance && t <= ray_max_distance;
+        }
+        return false;
     }
 
-    set_mat_tex_params(h.mat,h.uv);
+    Hit fill_plane_record(const int p_i, const Ray r, const float t){
+        Hit h;
+        Plane p = planes[p_i];
 
-    return h;
-}
+        h.t = t;
+        h.p = r.orig + r.dir * t;
+        h.mat = materials[int(p.tiling_mat.w)];
+        set_front_face(p.normal_distance.xyz,r.dir,h);
+
+        vec3 tangent   = normalize(abs(p.normal_distance.x) > 0.5 ? vec3(0,1,0) : vec3(1,0,0));
+        vec3 bitangent = normalize(cross(p.normal_distance.xyz, tangent));
+
+        float u = dot(h.p, tangent);
+        float v = dot(h.p, bitangent);
+
+        h.uv = fract(vec2(u, v) * p.tiling_mat.z + p.tiling_mat.xy);
+
+        if(h.mat.albedoTA_normalTA.w > 0){
+            vec3 n_map = get_normal(h.mat, h.uv);
+            mat3 TBN = mat3(tangent,bitangent,h.normal);
+            h.normal = normalize(TBN * n_map); 
+        }
+
+        set_mat_tex_params(h.mat,h.uv);
+
+        return h;
+    }
 
 #endif
 
@@ -494,48 +499,58 @@ Hit fill_plane_record(const int p_i, const Ray r, const float t){
 //===========================
 #if NUM_TRIS > 0
 
-bool hit_triangle(Triangle tri, const Ray r, out float t){
-    vec3 v0 = tri.v0;
-    vec3 v1 = tri.v1;
-    vec3 v2 = tri.v2;
+    bool hit_triangle(Triangle tri, const Ray r, out float t, out vec2 uv){
+        vec3 v0 = tri.v0;
+        vec3 v1 = tri.v1;
+        vec3 v2 = tri.v2;
 
-    // Moller-Trumbore intersection
-    vec3 edge1 = v1 - v0;
-    vec3 edge2 = v2 - v0;
-    vec3 pvec = cross(r.dir, edge2);
-    float det = dot(edge1, pvec);
-    if(abs(det) < 1e-6) return false; // Parallel or nearly parallel
+        // Moller-Trumbore intersection
+        vec3 edge1 = v1 - v0;
+        vec3 edge2 = v2 - v0;
+        vec3 pvec = cross(r.dir, edge2);
+        float det = dot(edge1, pvec);
+        if(abs(det) < 1e-6) return false; // Parallel or nearly parallel
 
-    float invDet = 1.0 / det;
-    vec3 tvec = r.orig - v0;
-    float u = dot(tvec, pvec) * invDet;
-    if(u < 0.0 || u > 1.0) return false;
+        float invDet = 1.0 / det;
+        vec3 tvec = r.orig - v0;
+        float u = dot(tvec, pvec) * invDet;
+        if(u < 0.0 || u > 1.0) return false;
 
-    vec3 qvec = cross(tvec, edge1);
-    float v = dot(r.dir, qvec) * invDet;
-    if(v < 0.0 || u + v > 1.0) return false;
+        vec3 qvec = cross(tvec, edge1);
+        float v = dot(r.dir, qvec) * invDet;
+        if(v < 0.0 || u + v > 1.0) return false;
 
-    t = dot(edge2, qvec) * invDet;
-    if(t < ray_min_distance || t > ray_max_distance) return false;
+        t = dot(edge2, qvec) * invDet;
+        if(t < ray_min_distance || t > ray_max_distance) return false;
 
-    return true;
-}
+        float w = 1.0 - u - v;
+        uv = tri.uv0_uv1.xy * w + tri.uv0_uv1.zw * u + tri.uv2_mat.xy * v;
 
-Hit fill_tri_record(const int t_i, const Ray r, const float t){
-    Hit h;
-    Triangle tri = triangles[t_i];
+        return true;
+    }
 
-    h.p = r.orig + r.dir * t;
+    Hit fill_tri_record(const int t_i, const Ray r, const float t, const vec2 uv){
+        Hit h;
+        Triangle tri = triangles[t_i];
 
-    vec3 normal = tri.normal_mat.xyz;
-    h.mat = materials[int(tri.normal_mat.w)];
-    set_front_face(normal, r.dir, h);
+        h.t = t;
+        h.p = r.orig + r.dir * t;
+        h.uv = uv;
 
-    // TODO, setup uvs for tris
-    h.uv = vec2(-1.0,-1.0);
+        vec3 normal = tri.normal.xyz;
+        h.mat = materials[int(tri.uv2_mat.w)];
+        set_front_face(normal, r.dir, h);
 
-    return h;
-}
+        if(h.mat.albedoTA_normalTA.w > 0){
+            vec3 n_map = get_normal(h.mat, h.uv);
+            mat3 TBN = mat3(tri.tangent,tri.bitangent,h.normal);
+            h.normal = normalize(TBN * n_map); 
+        }
+
+        set_mat_tex_params(h.mat,h.uv);
+
+        return h;
+    }
 
 #endif
 
@@ -791,6 +806,7 @@ bool hit_scene(Ray r, out Hit h){
     float aux_t;
     int primitive_type = 0;
     int primitive_index = 0;
+    vec2 aux_uv, uv;
 
     h.t = ray_max_distance;
 
@@ -827,9 +843,10 @@ bool hit_scene(Ray r, out Hit h){
     #if NUM_TRIS > 0
         for(int t_i = 0; t_i < NUM_TRIS; t_i++) {
             Triangle tri = triangles[t_i];
-            if(hit_triangle(tri, r, aux_t)){
+            if(hit_triangle(tri, r, aux_t, aux_uv)){
                 if(aux_t < h.t){
                     h.t = aux_t;
+                    uv = aux_uv;
                     primitive_type = 3;
                     primitive_index = t_i;
                 }
@@ -848,7 +865,7 @@ bool hit_scene(Ray r, out Hit h){
         #endif
         #if NUM_TRIS > 0
             case 3:
-                h = fill_tri_record(primitive_index,r,h.t);break;
+                h = fill_tri_record(primitive_index,r,h.t,uv);break;
         #endif
     }
 

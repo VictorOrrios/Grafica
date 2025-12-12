@@ -137,6 +137,19 @@ export class Scene {
             reflectance: 0.5,
         })); 
 
+        const metal2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/rusty_metal_04_1k.gltf/textures/rusty_metal_04_diff_1k.jpg");
+        const metal2_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/rusty_metal_04_1k.gltf/textures/rusty_metal_04_nor_gl_1k.jpg");
+        const metal2_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/rusty_metal_04_1k.gltf/textures/rusty_metal_04_arm_1k.jpg");
+        const metal2 = this.addMaterial(new Material({
+            albedo_tex_info:metal2_albedo,
+            normal_tex_info:metal2_normal, 
+            roughmetal_tex_info:metal2_rm,
+            reflectance: 0.5,
+        })); 
+
         const dirty_glass_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
             "materials/gltf/earth.jpg",Channels.RG);
         const dirty_glass = this.addMaterial(new Material({
@@ -198,11 +211,29 @@ export class Scene {
         //this.addSphere(s5, white_light);
 
         const t1: Triangle = new Triangle(
-            new Vector3(-3.0, 0.5, 2.0),
-            new Vector3(-6.0, 0.0, 0.0),
-            new Vector3(-4.5, 2.5, -2.0),
+            new Vector3(4.0, -1.0, -9.0),
+            new Vector3(4.0, 5.0, -9.0),
+            new Vector3(-4.0, 5.0, -9.0),
         );
-        this.addTriangle(t1, white_matte);
+        //this.addTriangle(t1, brick);
+
+        const t2: Triangle = new Triangle(
+            new Vector3(4.0, -1.0, -9.0),
+            new Vector3(-4.0, 5.0, -9.0),
+            new Vector3(-4.0, -1.0, -9.0),
+            new Vector2(0.0,0.0),
+            new Vector2(1.0,1.0),
+            new Vector2(1.0,0.0),
+        );
+        //this.addTriangle(t2, brick);
+
+        const q1: Quad = new Quad(
+            new Vector3(5.0, -1.0, -12.0),
+            new Vector3(5.0, 7.0, -12.0),
+            new Vector3(-5.0, 7.0, -12.0),
+            new Vector3(-5.0, -1.0, -12.0),
+        );
+        this.addQuad(q1,metal2);
 
         const p1: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),

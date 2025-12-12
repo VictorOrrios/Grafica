@@ -28,7 +28,7 @@
 
     let canvas!: HTMLCanvasElement;
 
-    let mousePos = new Tween({ x: 2.0*Math.PI, y: 0.5*Math.PI }, { duration: 500, easing: cubicOut });
+    let mousePos = new Tween({ x: 2.0*Math.PI, y: 0.5*Math.PI }, { duration: 0, easing: cubicOut });
     let needCapture: boolean = false;
 
     let listenToMove: boolean = true;
