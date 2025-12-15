@@ -9,8 +9,9 @@ import { DEFAULT_COLOR, DEFAULT_IOR, DEFAULT_SPECULAR, DEFAULT_SUBSURFACE_COLOR,
 export interface ExtractedMaterial {
     id: number;
     material: Material;
-    diffuseMap?: string;
-    specularMap?: string;
+    albedoMap?: string;
+    normalMap?: string;
+    rmMap?: string;
 }
 
 export interface EfficientMeshData {
@@ -204,15 +205,6 @@ export class ThreeJSMeshLoader {
         if (extracted.materials.length === 0) {
             extracted.materials.push({
                 id: 0,
-                /*
-                material: new Material(
-                    DEFAULT_COLOR,
-                    0,
-                    DEFAULT_SPECULAR,
-                    DEFAULT_SUBSURFACE_COLOR,
-                    DEFAULT_IOR
-                )
-                */
                material : new Material({})
             });
         }

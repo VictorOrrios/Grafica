@@ -13,9 +13,9 @@ import {
     ThreeJSOBJLoader,
     type EfficientMeshData
 } from './Mesh/loaders/OBJLoader';
-import { GLTFLoader } from "./Mesh/loaders/GLTFLoader";
 import { roughness } from "three/tsl";
 import { Channels, TextureManager, type LoadedTextureInfo } from "./Textures/texture-manager";
+import { GLTFLoader } from "./Mesh/loaders/GLTFLoader";
 
 export enum SceneType {
     TESTPLANE = 'testplane',
@@ -95,7 +95,7 @@ export class Scene {
             albedo_tex_info:brick_albedo,
             normal_tex_info:brick_normal, 
             roughmetal_tex_info:brick_rm,
-            reflectance: 0.5,
+            reflectance: 0.5
         }));   
         
         const wood_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
@@ -250,7 +250,10 @@ export class Scene {
         //this.addPointLight(l1);
 
         try {
-            const bvhMesh = await GLTFLoader.load("models/gltf/DamagedHelmet.gltf", 1.0, new Vector3(Math.PI/2.0,0.0,0.0), new Vector3(0.0,0.5,0.0));
+            const bvhMesh = await GLTFLoader.load(
+                "models/gltf/stanford_dragon_pbr/scene.gltf", 
+                0.02, new Vector3(Math.PI/2.0,0.0,0.0), new Vector3(0.0,0.5,0.0)
+            );
             this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
@@ -1032,6 +1035,10 @@ export class Scene {
 
     public addEfficientMeshData(data: EfficientMeshData) {
         this.meshDataVec.push(data);
+    }
+
+    public getNextMaterialIndex():number{
+        return this.materialVec.length;
     }
 
     public serializeStaticBlock(): Float32Array {

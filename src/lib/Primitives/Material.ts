@@ -12,7 +12,6 @@ export type Params = {
     metalness?:number,
     trs_weight?:number,
     reflectance?:number,
-    albedo_tex_path?:string,
     albedo_tex_info?:LoadedTextureInfo
     normal_tex_info?:LoadedTextureInfo
     roughmetal_tex_info?:LoadedTextureInfo
