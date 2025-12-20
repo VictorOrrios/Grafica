@@ -213,10 +213,9 @@ export class Renderer {
         gl.bindBufferBase(gl.UNIFORM_BUFFER, bindingPoint, staticUBO);
     }
 
-    private initStorageTextures():number {
-        const meshBuffers = this.scene.getMeshTextureBuffers();
-        let nextTextureBinding = 2;
-
+    private async initStorageTextures() {
+        const meshBuffers = await this.scene.getMeshTextureBuffers();
+        
         this.initUniform("u_positions_count", 0, [meshBuffers.positions.length / 3]);
 
         if (meshBuffers.positions.length > 0) {
@@ -232,8 +231,6 @@ export class Renderer {
 
             this.initTextureBuffer('u_bvh_tex', meshBuffers.bvh, 3);
         }
-
-        return nextTextureBinding;
     }
 
     

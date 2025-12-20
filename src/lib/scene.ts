@@ -73,13 +73,13 @@ export class Scene {
     private async testplane() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
         
+        const white_matte = this.addMaterial(new Material({
+            roughness: 0.8,
+        }));
+
         const white_light = this.addMaterial(new Material({
             albedo: new Vector3(1.0,1.0,1.0),
             emission: 10.0
-        }));
-
-        const white_matte = this.addMaterial(new Material({
-            roughness: 0.8,
         }));
 
         const test_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
@@ -233,7 +233,7 @@ export class Scene {
             new Vector3(-5.0, 7.0, -12.0),
             new Vector3(-5.0, -1.0, -12.0),
         );
-        this.addQuad(q1,metal2);
+        //this.addQuad(q1,metal2);
 
         const p1: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
@@ -249,16 +249,10 @@ export class Scene {
         );
         //this.addPointLight(l1);
 
-        try {
-            const bvhMesh = await GLTFLoader.load(
-                "models/gltf/stanford_dragon_pbr/scene.gltf", 
-                0.02, new Vector3(Math.PI/2.0,0.0,0.0), new Vector3(0.0,0.5,0.0)
-            );
-            this.addEfficientMeshData(bvhMesh);
-            console.log("BVH mesh loaded successfully");
-        } catch (error) {
-            console.warn("Could not load mesh:", error);
-        }
+        this.addGLTFModel(
+            "models/gltf/wood_elephant/wood_elephant.gltf", 
+            1.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,0.0,0.0)
+        )
     }
 
     private async palette(){
@@ -1033,12 +1027,49 @@ export class Scene {
         });
     }
 
-    public addEfficientMeshData(data: EfficientMeshData) {
+    public async addEfficientMeshData(data: EfficientMeshData) {
+        // Add material offset
+        const offset = this.materialVec.length;
+        for (let i = 0; i < data.triangleMaterials.length; i++) {
+            //data.triangleMaterials[i] += offset
+        }
+        console.log("========TEST")
+        for (let i = 0; i < 10; i++) {
+            console.log(data.triangleMaterials[i])            
+        }
+        // Add the materials
+        for (let i = 0; i < data.materials.length; i++) {
+            const albedoURL = data.materials[i].albedoMap;
+            const normalURL = data.materials[i].normalMap;
+            const rmURL = data.materials[i].rmMap;
+            if(albedoURL !== undefined){
+                data.materials[i].material.albedo_tex_info = await this.tex_manager.addAlbedo(albedoURL);
+            }
+            if(normalURL !== undefined){
+                data.materials[i].material.normal_tex_info = await this.tex_manager.addNormal(normalURL);
+            }
+            if(rmURL !== undefined){
+                data.materials[i].material.roughmetal_tex_info = await this.tex_manager.addRoughMetal(rmURL);
+            }
+            const matIdx = this.addMaterial(data.materials[i].material); 
+            console.log("Added mesh material to scene:",matIdx,data.materials[i].material)
+        }
         this.meshDataVec.push(data);
     }
 
-    public getNextMaterialIndex():number{
-        return this.materialVec.length;
+    public async addGLTFModel(
+        url: string,
+        scale: number = 1.0,
+        rotation: Vector3 = new Vector3(0, 0, 0),
+        translation: Vector3 = new Vector3(0, 0, 0),
+        normalStrategy: NormalStrategy = NormalStrategy.INTERPOLATED){
+        try {
+            const bvhMesh = await GLTFLoader.load(url,scale,rotation,translation,normalStrategy);
+            this.addEfficientMeshData(bvhMesh);
+            console.log("BVH mesh loaded successfully");
+        } catch (error) {
+            console.warn("Could not load mesh:", error);
+        }
     }
 
     public serializeStaticBlock(): Float32Array {
@@ -1160,7 +1191,7 @@ export class Scene {
     /**
      * Returns concatenated mesh texture buffers for all meshes in the scene.
      */
-    public getMeshTextureBuffers() {
+    public async getMeshTextureBuffers() {
         let positionsList: Float32Array[] = [];
         let normalsList: Float32Array[] = [];
         let uvsList: Float32Array[] = [];
@@ -1179,13 +1210,7 @@ export class Scene {
         for (const meshData of this.meshDataVec) {
             const s = meshData.serializeTextures();
 
-            // Offset triangle material indices by cumulative material count
-            // TODO, revise
-            const offsetTriMat = new Uint32Array(s.triangleMaterials.length);
-            for (let i = 0; i < s.triangleMaterials.length; i++) {
-                offsetTriMat[i] = s.triangleMaterials[i] + materialOffset;
-            }
-            triMatList.push(offsetTriMat);
+            triMatList.push(s.triangleMaterials);
 
             positionsList.push(s.positionsRGB);
             if (s.normalsRGB.length > 0) {

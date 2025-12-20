@@ -763,7 +763,7 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
     // Set material if we found a hit
     if (found) {
         // TODO: Revise this
-        h.mat = materials[mesh.materialIndex];
+        //h.mat = materials[mesh.materialIndex];
     }
     
     return found;

@@ -30,6 +30,35 @@ export class GLTFLoader extends ThreeJSMeshLoader {
         // Load GLTF file
         const gltfLoader = new THREEGLTFLoader();
         const gltf = await gltfLoader.loadAsync(url);
+        const json = gltf.parser.json;
+
+        gltf.scene.traverse((obj: any) => {
+            const mat = obj.material;
+            if (!mat) return;
+
+            const maps = [
+                mat.map,
+                mat.normalMap,
+                mat.roughnessMap,
+                mat.metalnessMap
+            ];
+
+            for (const tex of maps) {
+                if (!tex) continue;
+
+                const assoc = gltf.parser.associations.get(tex);
+                if (!assoc || assoc.textures === undefined) continue;
+
+                const textureDef = json.textures[assoc.textures];
+                const imageDef = json.images[textureDef.source];
+
+                if (imageDef?.uri) {
+                    tex.userData.url = imageDef.uri;
+                }
+            }
+        });
+
+        
         console.debug("GLTF file loaded:", url);
         console.debug("GLTF contents:", gltf);
 
@@ -129,11 +158,20 @@ export class GLTFLoader extends ThreeJSMeshLoader {
     private static getTextureURL(tex?: THREE.Texture): string | undefined {
         if (!tex || !tex.image) return undefined
 
+        if (tex.userData && tex.userData.url) {
+            return tex.userData.url
+        }
+
         const image = tex.image
 
         if (image instanceof HTMLImageElement) {
             return image.src
         }
+
+        if ((tex as any).source && (tex as any).source.data && (tex as any).source.data.src) {
+            return (tex as any).source.data.src
+        }
+
 
         return tex.name
     }
