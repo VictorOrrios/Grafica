@@ -251,7 +251,8 @@ export class Scene {
 
         await this.addGLTFModel(
             "models/gltf/wood_elephant/wood_elephant.gltf", 
-            20.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,-1.0)
+            20.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,-1.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG
         )
 
     }
@@ -1028,7 +1029,7 @@ export class Scene {
         });
     }
 
-    public async addEfficientMeshData(data: EfficientMeshData) {
+    public async addEfficientMeshData(data: EfficientMeshData, rmChannel: Channels) {
         // Add material offset
         const offset = this.materialVec.length;
         for (let i = 0; i < data.triangleMaterials.length; i++) {
@@ -1047,7 +1048,7 @@ export class Scene {
                 data.materials[i].material.normal_tex_info = await this.tex_manager.addNormal(normalURL);
             }
             if(rmURL !== undefined){
-                data.materials[i].material.roughmetal_tex_info = await this.tex_manager.addRoughMetal(rmURL,Channels.RG);
+                data.materials[i].material.roughmetal_tex_info = await this.tex_manager.addRoughMetal(rmURL,rmChannel);
             }
             const matIdx = this.addMaterial(data.materials[i].material); 
             console.log("Added mesh material to scene:",matIdx,data.materials[i].material)
@@ -1061,10 +1062,12 @@ export class Scene {
         scale: number = 1.0,
         rotation: Vector3 = new Vector3(0, 0, 0),
         translation: Vector3 = new Vector3(0, 0, 0),
-        normalStrategy: NormalStrategy = NormalStrategy.INTERPOLATED){
+        normalStrategy: NormalStrategy = NormalStrategy.INTERPOLATED,
+        rmChannel: Channels = Channels.GB
+    ){
         try {
             const bvhMesh = await GLTFLoader.load(url,scale,rotation,translation,normalStrategy);
-            await this.addEfficientMeshData(bvhMesh);
+            await this.addEfficientMeshData(bvhMesh,rmChannel);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
             console.warn("Could not load mesh:", error);
