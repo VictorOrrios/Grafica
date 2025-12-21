@@ -168,7 +168,7 @@ uniform sampler2D u_positions_tex;
 uniform sampler2D u_normals_tex;
 uniform usampler2D u_sharedVertexIndices_tex;
 uniform usampler2D u_triangleMaterials_tex;
-uniform usampler2D u_uvs_tex;
+uniform sampler2D u_uvs_tex;
 uniform sampler2D u_bvh_tex;    // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
 uniform int u_vertex_count;
 
@@ -594,6 +594,11 @@ bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normal
     vec3 v1 = fetchTexelFloat(u_positions_tex, idx1).xyz;
     vec3 v2 = fetchTexelFloat(u_positions_tex, idx2).xyz;
 
+    // Get the per vertex uvs
+    vec2 uv0 = fetchTexelFloat(u_uvs_tex,idx0).xy;
+    vec2 uv1 = fetchTexelFloat(u_uvs_tex,idx1).xy;
+    vec2 uv2 = fetchTexelFloat(u_uvs_tex,idx2).xy;
+
     // Moller-Trumbore intersection
     vec3 edge1 = v1 - v0;
     vec3 edge2 = v2 - v0;
@@ -616,11 +621,17 @@ bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normal
     h.t = t;
     h.p = r.orig + r.dir * t;
 
-    vec3 finalNormal;
+    float w = 1.0 - u - v;
+    h.uv = uv0 * w + uv1 * u + uv2 * v;
 
+    // Triangle material index stored as R32UI texel per triangle
+    uint mat_u = fetchTexelUint(u_triangleMaterials_tex, triIndex).r;
+    h.mat = materials[int(mat_u)];
+
+    // Calculate normal
     if (normalStrategy == 1) {
         // GEOMETRIC (Flat shading)
-        finalNormal = normalize(cross(edge1, edge2));
+        h.normal = normalize(cross(edge1, edge2));
     } else {
         // INTERPOLATED (Smooth shading)
         // Fetch vertex normals from texture using normalOffset
@@ -629,18 +640,36 @@ bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normal
         vec3 n2 = fetchTexelFloat(u_normals_tex, idx2 - normalOffset).xyz;
 
         // Interpolate normal using barycentric coordinates
-        float w = 1.0 - u - v;
-        finalNormal = normalize(n0 * w + n1 * u + n2 * v);
+        h.normal = normalize(n0 * w + n1 * u + n2 * v);
+    }
+    set_front_face(h.normal, r.dir, h);
+
+    // Add normal mapping if aplicable
+    if(h.mat.albedoTA_normalTA.w > 0){
+        vec3 n_map = get_normal(h.mat, h.uv);
+
+        vec2 deltaUV1 = uv1 - uv0;
+        vec2 deltaUV2 = uv2 - uv0;
+        float f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+        vec3 tangent;
+        tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+        tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+        tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+
+        tangent = normalize(tangent);
+
+        tangent = normalize(tangent - dot(tangent, h.normal) * h.normal);
+
+        vec3 bitangent = normalize(cross(h.normal, tangent));
+
+        mat3 TBN = mat3(tangent,bitangent,h.normal);
+        h.normal = normalize(TBN * n_map); 
     }
 
-    h.normal = finalNormal;
-    // Triangle material index stored as R32UI texel per triangle
-    uint mat_u = fetchTexelUint(u_triangleMaterials_tex, triIndex).r;
-    h.mat = materials[int(mat_u)];
-    set_front_face(finalNormal, r.dir, h);
+    
 
-    // TODO: Set uvs with tri hit
-    h.uv = vec2(-1.0,-1.0);
+    set_mat_tex_params(h.mat,h.uv);
 
     return true;
 }
@@ -765,11 +794,13 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
         // TODO: Revise this
         //h.mat = materials[mesh.materialIndex];
     }
+
     
     return found;
 }
 
 // Legacy brute-force version (kept for debugging/comparison)
+// WARNING: Deprecated, needs to be updated with uvs and texture mapping
 bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, out Hit h){
     bool has_hit = false;
     Hit h_aux;
@@ -912,7 +943,7 @@ vec3 skybox_color_black(Ray r){
 }
 
 vec3 skybox_color(Ray r){
-    return skybox_color_image(r);
+    return skybox_color_black(r);
 }
 
 //===========================

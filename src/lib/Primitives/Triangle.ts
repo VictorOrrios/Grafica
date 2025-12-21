@@ -82,6 +82,8 @@ export class Triangle {
 
         this.tangent   = new Vector3(tx, ty, tz).normalize();
         this.bitangent = new Vector3(bx, by, bz).normalize();
+
+        //this.tangent.subtract(this.normal.clone().multiplyByScalar(this.tangent.clone().dot(this.normal)));
     }
 
 

@@ -245,14 +245,15 @@ export class Scene {
         const l1: PointLight = new PointLight(
             new Vector3(0, 3.0, 0.0),
             new Vector3(1.0, 1.0, 1.0),
-            20.0
+            50.0
         );
-        //this.addPointLight(l1);
+        this.addPointLight(l1);
 
-        this.addGLTFModel(
+        await this.addGLTFModel(
             "models/gltf/wood_elephant/wood_elephant.gltf", 
-            1.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,0.0,0.0)
+            20.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,-1.0)
         )
+
     }
 
     private async palette(){
@@ -1031,12 +1032,9 @@ export class Scene {
         // Add material offset
         const offset = this.materialVec.length;
         for (let i = 0; i < data.triangleMaterials.length; i++) {
-            //data.triangleMaterials[i] += offset
+            data.triangleMaterials[i] += offset 
         }
-        console.log("========TEST")
-        for (let i = 0; i < 10; i++) {
-            console.log(data.triangleMaterials[i])            
-        }
+
         // Add the materials
         for (let i = 0; i < data.materials.length; i++) {
             const albedoURL = data.materials[i].albedoMap;
@@ -1049,11 +1047,12 @@ export class Scene {
                 data.materials[i].material.normal_tex_info = await this.tex_manager.addNormal(normalURL);
             }
             if(rmURL !== undefined){
-                data.materials[i].material.roughmetal_tex_info = await this.tex_manager.addRoughMetal(rmURL);
+                data.materials[i].material.roughmetal_tex_info = await this.tex_manager.addRoughMetal(rmURL,Channels.RG);
             }
             const matIdx = this.addMaterial(data.materials[i].material); 
             console.log("Added mesh material to scene:",matIdx,data.materials[i].material)
         }
+            
         this.meshDataVec.push(data);
     }
 
@@ -1065,7 +1064,7 @@ export class Scene {
         normalStrategy: NormalStrategy = NormalStrategy.INTERPOLATED){
         try {
             const bvhMesh = await GLTFLoader.load(url,scale,rotation,translation,normalStrategy);
-            this.addEfficientMeshData(bvhMesh);
+            await this.addEfficientMeshData(bvhMesh);
             console.log("BVH mesh loaded successfully");
         } catch (error) {
             console.warn("Could not load mesh:", error);
@@ -1204,7 +1203,6 @@ export class Scene {
 
         let positionsCount = 0;
         let trianglesCount = 0;
-        let materialOffset = 0;
         let bvhNodeOffset = 0;
 
         for (const meshData of this.meshDataVec) {
@@ -1240,7 +1238,6 @@ export class Scene {
 
             positionsCount += s.positionsRGB.length / 3;
             trianglesCount += s.positionIndices.length / 3;
-            materialOffset += s.materialsFloat.length / 16;  // 16 floats per material
         }
 
         return {
@@ -1254,8 +1251,7 @@ export class Scene {
             materialsFloat: concatFloat32Arrays(materialsList),
             bvh: concatFloat32Arrays(bvhList),
             positionsCount,
-            trianglesCount,
-            materialsCount: materialOffset
+            trianglesCount
         };
     }
 
