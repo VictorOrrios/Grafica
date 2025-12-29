@@ -563,17 +563,31 @@ vec3 apply_kernel(vec3 color, float t){
 // Assumes texture width is 2048
 #define TEX_WIDTH 2048
 
+ivec2 get_tex_coord(int index) {
+    return ivec2(index % TEX_WIDTH, index / TEX_WIDTH);
+}
+
+vec4 fetchTexelFloat(sampler2D tex, ivec2 tex_coord) {
+    return texelFetch(tex, tex_coord, 0);
+}
+
 vec4 fetchTexelFloat(sampler2D tex, int index) {
     int x = index % TEX_WIDTH;
     int y = index / TEX_WIDTH;
-    return texelFetch(tex, ivec2(x, y), 0);
+    return texelFetch(tex, ivec2(x,y), 0);
+}
+
+uvec4 fetchTexelUint(usampler2D tex, ivec2 tex_coord) {
+    return texelFetch(tex, tex_coord, 0);
 }
 
 uvec4 fetchTexelUint(usampler2D tex, int index) {
     int x = index % TEX_WIDTH;
     int y = index / TEX_WIDTH;
-    return texelFetch(tex, ivec2(x, y), 0);
+    return texelFetch(tex, ivec2(x,y), 0);
 }
+
+
 
 
 bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normalOffset, out Hit h){
@@ -589,15 +603,19 @@ bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normal
     int idx1 = int(id1.r);
     int idx2 = int(id2.r);
 
+    ivec2 coord0 = get_tex_coord(idx0);
+    ivec2 coord1 = get_tex_coord(idx1);
+    ivec2 coord2 = get_tex_coord(idx2);
+
     // Reconstruct triangle vertices from positions texture (RGB32F)
-    vec3 v0 = fetchTexelFloat(u_positions_tex, idx0).xyz;
-    vec3 v1 = fetchTexelFloat(u_positions_tex, idx1).xyz;
-    vec3 v2 = fetchTexelFloat(u_positions_tex, idx2).xyz;
+    vec3 v0 = fetchTexelFloat(u_positions_tex, coord0).xyz;
+    vec3 v1 = fetchTexelFloat(u_positions_tex, coord1).xyz;
+    vec3 v2 = fetchTexelFloat(u_positions_tex, coord2).xyz;
 
     // Get the per vertex uvs
-    vec2 uv0 = fetchTexelFloat(u_uvs_tex,idx0).xy;
-    vec2 uv1 = fetchTexelFloat(u_uvs_tex,idx1).xy;
-    vec2 uv2 = fetchTexelFloat(u_uvs_tex,idx2).xy;
+    vec2 uv0 = fetchTexelFloat(u_uvs_tex,coord0).xy;
+    vec2 uv1 = fetchTexelFloat(u_uvs_tex,coord1).xy;
+    vec2 uv2 = fetchTexelFloat(u_uvs_tex,coord2).xy;
 
     // Moller-Trumbore intersection
     vec3 edge1 = v1 - v0;

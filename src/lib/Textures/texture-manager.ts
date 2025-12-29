@@ -14,7 +14,8 @@ export type LoadedTextureInfo = {
 export enum Channels {
     RGBA,
     RG,
-    GB
+    GB,
+    NONE
 }
 
 
@@ -68,6 +69,8 @@ export async function loadImageUNORM8(path: string, channels:Channels): Promise<
                 data[j + 1] = data_raw[i+2];      // G
             } 
         }
+    }else if(channels == Channels.NONE){
+        return {width:-1,height:-1,data: new Uint8Array()}
     }else{
         console.error("loadImageUNORM8 unsuported channel extraction",channels);
         return {width:-1,height:-1,data: new Uint8Array()}
@@ -123,6 +126,7 @@ export class TextureManager{
     }
 
     public async addRoughMetal(path:string,channels:Channels = Channels.GB):Promise<LoadedTextureInfo>{
+        if(channels == Channels.NONE) return {array:0,index:-1};
         let {width,height,data} = await loadImageUNORM8(path,channels);
         for (let i = 0; i < data.length; i += 2) {
             data[i] = Math.max(2,data[i]);

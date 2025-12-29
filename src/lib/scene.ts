@@ -249,11 +249,23 @@ export class Scene {
         );
         this.addPointLight(l1);
 
+        
+        // Wood elephant
         await this.addGLTFModel(
             "models/gltf/wood_elephant/wood_elephant.gltf", 
             20.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,-1.0), 
             NormalStrategy.INTERPOLATED,Channels.RG
         )
+        
+
+        /*
+        // Stone kitty ^.^
+        await this.addGLTFModel(
+            "models/gltf/concrete_kitty/scene.gltf", 
+            7.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.GB
+        )
+        */
 
     }
 
