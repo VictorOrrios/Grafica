@@ -73,6 +73,11 @@ export class Scene {
     private async testplane() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
         
+        const debug_purple = this.addMaterial(new Material({
+            albedo: new Vector3(1, 0.058, 0.933),
+            roughness: 0.8,
+        }));
+
         const white_matte = this.addMaterial(new Material({
             roughness: 0.8,
         }));
@@ -1213,7 +1218,6 @@ export class Scene {
         let normalIndexList: Uint32Array[] = [];
         let uvIndexList: Uint32Array[] = [];
         let triMatList: Uint32Array[] = [];
-        let materialsList: Float32Array[] = [];
         let bvhList: Float32Array[] = [];
 
         let positionsCount = 0;
@@ -1242,7 +1246,6 @@ export class Scene {
 
             normalIndexList.push(s.normalIndices);
             uvIndexList.push(s.uvIndices);
-            materialsList.push(s.materialsFloat);
             // Offset BVH indices
             // We do NOT offset indices here anymore, we do it in the shader (cleaner)
             // Just copy the data
@@ -1255,6 +1258,17 @@ export class Scene {
             trianglesCount += s.positionIndices.length / 3;
         }
 
+        let indexListConcat: Uint32Array = concatUint32Arrays(indexList);
+        let matListConcat: Uint32Array = concatUint32Arrays(triMatList)
+        let indicesAndMatList: Uint32Array = new Uint32Array(matListConcat.length*4);
+
+        for (let i = 0; i < matListConcat.length; i++) {
+            indicesAndMatList[i*4+0] = indexListConcat[i*3+0];
+            indicesAndMatList[i*4+1] = indexListConcat[i*3+1];
+            indicesAndMatList[i*4+2] = indexListConcat[i*3+2];
+            indicesAndMatList[i*4+3] = matListConcat[i];
+        }
+
         return {
             positions: concatFloat32Arrays(positionsList),
             normals: concatFloat32Arrays(normalsList),
@@ -1263,8 +1277,8 @@ export class Scene {
             normalIndices: concatUint32Arrays(normalIndexList),
             uvIndices: concatUint32Arrays(uvIndexList),
             triangleMaterials: concatUint32Arrays(triMatList),
-            materialsFloat: concatFloat32Arrays(materialsList),
             bvh: concatFloat32Arrays(bvhList),
+            indicesAndMatList:indicesAndMatList,
             positionsCount,
             trianglesCount
         };

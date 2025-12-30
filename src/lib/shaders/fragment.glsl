@@ -166,8 +166,7 @@ layout(std140) uniform StaticBlock {
 
 uniform sampler2D u_positions_tex;
 uniform sampler2D u_normals_tex;
-uniform usampler2D u_sharedVertexIndices_tex;
-uniform usampler2D u_triangleMaterials_tex;
+uniform usampler2D u_sharedVertexMatIndices_tex;
 uniform sampler2D u_uvs_tex;
 uniform sampler2D u_bvh_tex;    // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
 uniform int u_vertex_count;
@@ -591,17 +590,13 @@ uvec4 fetchTexelUint(usampler2D tex, int index) {
 
 
 bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normalOffset, out Hit h){
-    // Each triangle stores 3 uint indices in the u_sharedVertexIndices_tex (one uint per texel)
-    int base = triIndex * 3;
+    
+    // Indices for postions and material
+    uvec4 indices = fetchTexelUint(u_sharedVertexMatIndices_tex,triIndex);
 
-    // Fetch packed indices (R32UI texture) using 2D layout
-    uvec4 id0 = fetchTexelUint(u_sharedVertexIndices_tex, base + 0);
-    uvec4 id1 = fetchTexelUint(u_sharedVertexIndices_tex, base + 1);
-    uvec4 id2 = fetchTexelUint(u_sharedVertexIndices_tex, base + 2);
-
-    int idx0 = int(id0.r);
-    int idx1 = int(id1.r);
-    int idx2 = int(id2.r);
+    int idx0 = int(indices.r);
+    int idx1 = int(indices.g);
+    int idx2 = int(indices.b);
 
     ivec2 coord0 = get_tex_coord(idx0);
     ivec2 coord1 = get_tex_coord(idx1);
@@ -643,8 +638,7 @@ bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normal
     h.uv = uv0 * w + uv1 * u + uv2 * v;
 
     // Triangle material index stored as R32UI texel per triangle
-    uint mat_u = fetchTexelUint(u_triangleMaterials_tex, triIndex).r;
-    h.mat = materials[int(mat_u)];
+    h.mat = materials[int(indices.w)];
 
     // Calculate normal
     if (normalStrategy == 1) {

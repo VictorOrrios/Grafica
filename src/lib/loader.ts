@@ -96,7 +96,7 @@ Promise<{ data: Float32Array; width: number; height: number; }>{
     console.log("=== STARTING EXR LOADER")
     const response = await fetch(fileName);
     if (!response.ok) throw new Error("Could not load image: " + fileName);
-    console.log("=== FILE FETCHED")
+    console.log("=== EXR FILE FETCHED")
     
     const exrData = await response.arrayBuffer();
     const FloatType = 1015;

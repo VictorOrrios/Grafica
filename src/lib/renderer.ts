@@ -223,10 +223,8 @@ export class Renderer {
 
             this.initTextureBuffer('u_normals_tex', meshBuffers.normals, 1);
 
-            this.initTextureBuffer('u_sharedVertexIndices_tex', meshBuffers.positionIndices, 2);
+            this.initTextureBuffer('u_sharedVertexMatIndices_tex', meshBuffers.indicesAndMatList, 5);
 
-            this.initTextureBuffer('u_triangleMaterials_tex', meshBuffers.triangleMaterials, 2);
-            
             this.initTextureBuffer('u_uvs_tex', meshBuffers.uvs, 4);
 
             this.initTextureBuffer('u_bvh_tex', meshBuffers.bvh, 3);
@@ -268,6 +266,8 @@ export class Renderer {
             case 3: texelLenght = 4; internalformat = gl.RGBA32F; format = gl.RGBA; type = gl.FLOAT; break;
             // RG32F
             case 4: texelLenght = 2; internalformat = gl.RG32F; format = gl.RG; type = gl.FLOAT; break;
+            // RGBA32UI
+            case 5: texelLenght = 4; internalformat = gl.RGBA32UI; format = gl.RGBA_INTEGER; type = gl.UNSIGNED_INT; break;
         }
 
         texels = data.length / texelLenght;
