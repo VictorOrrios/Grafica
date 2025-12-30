@@ -80,6 +80,13 @@ struct Triangle {
     vec4 uv2_mat;       // xy = uv of vertex 2, w = material index
 };
 
+struct MeshTriangleInfo {
+    ivec4 indices;      // xyz = position indices, w = mat index
+    vec3 uvw;           // Barycentric coordinates
+    vec3 edge1;         // v1 - v0
+    vec3 edge2;         // v2 - v0
+};
+
 struct MeshInfo {
     int startTriangle;
     int triangleCount;
@@ -576,6 +583,7 @@ vec4 fetchTexelFloat(sampler2D tex, int index) {
     return texelFetch(tex, ivec2(x,y), 0);
 }
 
+
 uvec4 fetchTexelUint(usampler2D tex, ivec2 tex_coord) {
     return texelFetch(tex, tex_coord, 0);
 }
@@ -587,9 +595,7 @@ uvec4 fetchTexelUint(usampler2D tex, int index) {
 }
 
 
-
-
-bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normalOffset, out Hit h){
+bool hit_mesh_triangle_old(int triIndex, const Ray r, int normalStrategy, int normalOffset, out Hit h){
     
     // Indices for postions and material
     uvec4 indices = fetchTexelUint(u_sharedVertexMatIndices_tex,triIndex);
@@ -686,6 +692,99 @@ bool hit_mesh_triangle(int triIndex, const Ray r, int normalStrategy, int normal
     return true;
 }
 
+bool hit_mesh_triangle(int triIndex, const Ray r, out float t, out MeshTriangleInfo mti){
+    // Indices for postions and material
+    mti.indices = ivec4(fetchTexelUint(u_sharedVertexMatIndices_tex,triIndex));
+
+    // Reconstruct triangle vertices from positions texture (RGB32F)
+    vec3 v0 = fetchTexelFloat(u_positions_tex, mti.indices.r).xyz;
+    vec3 v1 = fetchTexelFloat(u_positions_tex, mti.indices.g).xyz;
+    vec3 v2 = fetchTexelFloat(u_positions_tex, mti.indices.b).xyz;
+
+    // Moller-Trumbore intersection
+    mti.edge1 = v1 - v0;
+    mti.edge2 = v2 - v0;
+    vec3 pvec = cross(r.dir, mti.edge2);
+    float det = dot(mti.edge1, pvec);
+    if(abs(det) < 1e-6) return false; // Parallel or nearly parallel
+
+    float invDet = 1.0 / det;
+    vec3 tvec = r.orig - v0;
+    float u = dot(tvec, pvec) * invDet;
+    if(u < 0.0 || u > 1.0) return false;
+
+    vec3 qvec = cross(tvec, mti.edge1);
+    float v = dot(r.dir, qvec) * invDet;
+    if(v < 0.0 || u + v > 1.0) return false;
+
+    t = dot(mti.edge2, qvec) * invDet;
+    if(t < ray_min_distance || t > ray_max_distance) return false;
+
+    mti.uvw = vec3(u,v,1.0 - u - v);
+
+    return true;
+}
+
+Hit fill_tri_mesh_record(const MeshTriangleInfo mti, const Ray r, const float t, const int normalStrategy, const int normalOffset){
+    
+    Hit h;
+
+    h.t = t;
+    h.p = r.orig + r.dir * t;
+    
+    // Get the per vertex uvs
+    vec2 uv0 = fetchTexelFloat(u_uvs_tex,mti.indices.r).xy;
+    vec2 uv1 = fetchTexelFloat(u_uvs_tex,mti.indices.g).xy;
+    vec2 uv2 = fetchTexelFloat(u_uvs_tex,mti.indices.b).xy;
+
+    h.uv = uv0 * mti.uvw.z + uv1 * mti.uvw.x + uv2 * mti.uvw.y;
+
+    h.mat = materials[mti.indices.w];
+
+    // Calculate normal
+    if (normalStrategy == 1) {
+        // GEOMETRIC (Flat shading)
+        h.normal = normalize(cross(mti.edge1, mti.edge2));
+    } else {
+        // INTERPOLATED (Smooth shading)
+        // Fetch vertex normals from texture using normalOffset
+        vec3 n0 = fetchTexelFloat(u_normals_tex, mti.indices.r - normalOffset).xyz;
+        vec3 n1 = fetchTexelFloat(u_normals_tex, mti.indices.g - normalOffset).xyz;
+        vec3 n2 = fetchTexelFloat(u_normals_tex, mti.indices.b - normalOffset).xyz;
+
+        // Interpolate normal using barycentric coordinates
+        h.normal = normalize(n0 * mti.uvw.z + n1 * mti.uvw.x + n2 * mti.uvw.y);
+    }
+    set_front_face(h.normal, r.dir, h);
+
+    // Add normal mapping if aplicable
+    if(h.mat.albedoTA_normalTA.w > 0){
+        vec3 n_map = get_normal(h.mat, h.uv);
+
+        vec2 deltaUV1 = uv1 - uv0;
+        vec2 deltaUV2 = uv2 - uv0;
+        float f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+        vec3 tangent;
+        tangent.x = f * (deltaUV2.y * mti.edge1.x - deltaUV1.y * mti.edge2.x);
+        tangent.y = f * (deltaUV2.y * mti.edge1.y - deltaUV1.y * mti.edge2.y);
+        tangent.z = f * (deltaUV2.y * mti.edge1.z - deltaUV1.y * mti.edge2.z);
+
+        tangent = normalize(tangent);
+
+        tangent = normalize(tangent - dot(tangent, h.normal) * h.normal);
+
+        vec3 bitangent = normalize(cross(h.normal, tangent));
+
+        mat3 TBN = mat3(tangent,bitangent,h.normal);
+        h.normal = normalize(TBN * n_map); 
+    }
+
+    set_mat_tex_params(h.mat,h.uv);
+
+    return h;
+}
+
 // Official three-mesh-bvh AABB intersection test
 // https://www.reddit.com/r/opengl/comments/8ntzz5/fast_glsl_ray_box_intersection/
 // https://tavianator.com/2011/ray_box.html
@@ -731,6 +830,7 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
     
     float triangleDistance = ray_max_distance;
     bool found = false;
+    MeshTriangleInfo mti;
     
     // Initialize hit record
     h.t = ray_max_distance;
@@ -757,6 +857,9 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
         bool isLeaf = data2 < 0.0;
         
         if (isLeaf) {
+            float t;
+            MeshTriangleInfo mti_aux;
+
             // Leaf node: test triangles
             int count = int(-data2);
             int offset = int(data1);
@@ -765,14 +868,18 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
             for (int i = 0; i < count; i++) {
                 // offset is local to the mesh (from BVH), so we need mesh.startTriangle
                 int triIdx = mesh.startTriangle + (offset + i);
-                Hit h_aux;
                 
-                if (hit_mesh_triangle(triIdx, r, mesh.normalStrategy, mesh.normalOffset, h_aux) && h_aux.t < triangleDistance) {
-                    triangleDistance = h_aux.t;
-                    h = h_aux;
-                    found = true;
+                if(hit_mesh_triangle(triIdx,r,t,mti_aux)){
+                    if(t < triangleDistance){
+                        triangleDistance = t;
+                        mti = mti_aux;
+                        found = true;
+                    }
                 }
             }
+
+            
+
         } else {
             // Internal node - child indices are LOCAL to this mesh (in nodes)
             int leftIndex = int(data1);
@@ -800,13 +907,11 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
             }
         }
     }
-    
-    // Set material if we found a hit
-    if (found) {
-        // TODO: Revise this
-        //h.mat = materials[mesh.materialIndex];
-    }
 
+    if(found){
+        h = fill_tri_mesh_record(mti,r,triangleDistance,
+                mesh.normalStrategy,mesh.normalOffset);
+    }
     
     return found;
 }
@@ -815,21 +920,26 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
 // WARNING: Deprecated, needs to be updated with uvs and texture mapping
 bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, out Hit h){
     bool has_hit = false;
-    Hit h_aux;
     h.t = ray_max_distance;
+
+    float t;
+    MeshTriangleInfo mti, mti_aux;
+
 
     for(int i = 0; i < mesh.triangleCount; i++){
         int triIdx = mesh.startTriangle + i;
-        if(hit_mesh_triangle(triIdx, r, mesh.normalStrategy, mesh.normalOffset, h_aux)){
-            if(h_aux.t < h.t){
-                h = h_aux;
+        if(hit_mesh_triangle(triIdx,r,t,mti_aux)){
+            if(t < h.t){
+                h.t = t;
+                mti = mti_aux;
                 has_hit = true;
             }
         }
     }
 
     if(has_hit) {
-        h.mat = materials[mesh.materialIndex];
+        h = fill_tri_mesh_record(mti,r,h.t,
+                mesh.normalStrategy,mesh.normalOffset);
     }
 
     return has_hit;
