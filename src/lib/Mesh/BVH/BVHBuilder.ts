@@ -52,12 +52,12 @@ export class BVHBuilder {
             triBounds[i * 6 + 5] = Math.max(v0z, v1z, v2z);
         }
 
-        const root = this.split(triangleIndices, 0, numTriangles, centroids, triBounds, 0);
+        const root = this.split_bin_sah(triangleIndices, 0, numTriangles, centroids, triBounds, 0);
 
         return { root, sortedTriangleIndices: triangleIndices };
     }
 
-    private static split(
+    private static split_middle(
         triIndices: Uint32Array,
         offset: number,
         count: number,
@@ -79,12 +79,7 @@ export class BVHBuilder {
         for (let i = 0; i < count; i++) {
             const triIdx = triIndices[offset + i];
             const base = triIdx * 6;
-            node.min[0] = Math.min(node.min[0], triBounds[base]);
-            node.min[1] = Math.min(node.min[1], triBounds[base + 1]);
-            node.min[2] = Math.min(node.min[2], triBounds[base + 2]);
-            node.max[0] = Math.max(node.max[0], triBounds[base + 3]);
-            node.max[1] = Math.max(node.max[1], triBounds[base + 4]);
-            node.max[2] = Math.max(node.max[2], triBounds[base + 5]);
+            this.expandBounds(node.min,node.max,triBounds,base)
         }
 
         // CRITICAL: Pad bounds to prevent zero-thickness AABBs
@@ -146,10 +141,238 @@ export class BVHBuilder {
             return node;
         }
 
-        node.left = this.split(triIndices, offset, leftCount, centroids, triBounds, depth + 1);
-        node.right = this.split(triIndices, left, count - leftCount, centroids, triBounds, depth + 1);
+        node.left = this.split_middle(triIndices, offset, leftCount, centroids, triBounds, depth + 1);
+        node.right = this.split_middle(triIndices, left, count - leftCount, centroids, triBounds, depth + 1);
 
         return node;
+    }
+
+    private static split_bin_sah(
+        triIndices: Uint32Array,
+        offset: number,
+        count: number,
+        centroids: Float32Array,
+        triBounds: Float32Array,
+        depth: number
+    ): BVHNode {
+        const node: BVHNode = {
+            min: new Float32Array([Infinity, Infinity, Infinity]),
+            max: new Float32Array([-Infinity, -Infinity, -Infinity]),
+            isLeaf: false,
+            triangleOffset: offset,
+            triangleCount: count,
+            left: null,
+            right: null
+        };
+
+        
+        const BINS = 12; // Num of bins (check cuts) to use 
+        const TRAVERSAL_COST = 1.0;
+        const INTERSECTION_COST = 5.0;
+
+        // Calculate bounds of this node
+        for (let i = 0; i < count; i++) {
+            const triIdx = triIndices[offset + i];
+            const base = triIdx * 6;
+            this.expandBounds(node.min,node.max,triBounds,base)
+        }
+
+        // CRITICAL: Pad bounds to prevent zero-thickness AABBs
+        for (let i = 0; i < 3; i++) {
+            node.min[i] -= this.EPSILON;
+            node.max[i] += this.EPSILON;
+        }
+
+        // Leaf criteria
+        if (count <= this.MAX_TRIANGLES_PER_LEAF || depth >= this.MAX_DEPTH) {
+            node.isLeaf = true;
+            return node;
+        }
+
+        // Calculate node surface area (cube)
+        const nodeSize = [
+            node.max[0] - node.min[0],
+            node.max[1] - node.min[1],
+            node.max[2] - node.min[2]
+        ];
+        const nodeArea = this.getArea(node.min,node.max)
+
+        let bestAxis = -1;
+        let bestBin = -1;
+        let bestCost = Infinity;
+        let bestSplitPos = 0;
+
+
+        for (let axis = 0; axis < 3; axis++) {
+
+            const axisRange = nodeSize[axis];
+            if (axisRange <= 0) continue;
+
+            const binBounds: Array<{
+                min: Float32Array,
+                max: Float32Array,
+                count: number
+            }> = [];
+
+            for (let b = 0; b < BINS; b++) {
+                binBounds.push({
+                    min: new Float32Array([Infinity, Infinity, Infinity]),
+                    max: new Float32Array([-Infinity, -Infinity, -Infinity]),
+                    count: 0
+                });
+            }
+
+            // Fill bins with tris based on centroids
+            for (let i = 0; i < count; i++) {
+                const triIdx = triIndices[offset + i];
+                const c = centroids[triIdx * 3 + axis];
+
+                // Calculate best closest bin
+                let binIdx = Math.floor(BINS * (c - node.min[axis]) / axisRange);
+                binIdx = Math.max(0, Math.min(BINS - 1, binIdx));
+
+                const bin = binBounds[binIdx];
+                bin.count++;
+
+                const base = triIdx * 6;
+                this.expandBounds(bin.min,bin.max,triBounds,base);
+            }
+
+            // Accumulation from left to right
+            const leftAccum: Array<{
+                min: Float32Array,
+                max: Float32Array,
+                count: number
+            }> = [];
+
+            let leftMin = new Float32Array([Infinity, Infinity, Infinity]);
+            let leftMax = new Float32Array([-Infinity, -Infinity, -Infinity]);
+            let leftCount = 0;
+
+            for (let bin = 0; bin < BINS; bin++) {
+                if (binBounds[bin].count > 0) {
+                    for (let j = 0; j < 3; j++) {
+                        leftMin[j] = Math.min(leftMin[j], binBounds[bin].min[j]);
+                        leftMax[j] = Math.max(leftMax[j], binBounds[bin].max[j]);
+                    }
+                    leftCount += binBounds[bin].count;
+                }
+                
+                leftAccum.push({
+                    min: new Float32Array(leftMin),
+                    max: new Float32Array(leftMax),
+                    count: leftCount
+                });
+            }
+
+            // Accumulation from right to left
+            const rightAccum: Array<{
+                min: Float32Array,
+                max: Float32Array,
+                count: number
+            }> = [];
+
+            let rightMin = new Float32Array([Infinity, Infinity, Infinity]);
+            let rightMax = new Float32Array([-Infinity, -Infinity, -Infinity]);
+            let rightCount = 0;
+
+            for (let bin = BINS - 1; bin >= 0; bin--) {
+                if (binBounds[bin].count > 0) {
+                    for (let j = 0; j < 3; j++) {
+                        rightMin[j] = Math.min(rightMin[j], binBounds[bin].min[j]);
+                        rightMax[j] = Math.max(rightMax[j], binBounds[bin].max[j]);
+                    }
+                    rightCount += binBounds[bin].count;
+                }
+                
+                rightAccum[bin] = {
+                    min: new Float32Array(rightMin),
+                    max: new Float32Array(rightMax),
+                    count: rightCount
+                };
+            }
+
+            // Evaluate splits between bins
+            for (let split = 0; split < BINS - 1; split++) {
+                const leftInfo = leftAccum[split];
+                const rightInfo = rightAccum[split + 1];
+                
+                if (leftInfo.count === 0 || rightInfo.count === 0) {
+                    continue;
+                }
+
+                // Calculate surface areas
+                const leftArea = this.getArea(leftInfo.min,leftInfo.max)
+                const rightArea = this.getArea(rightInfo.min,rightInfo.max)
+
+                // Calculate SAH cost
+                const cost = TRAVERSAL_COST +
+                    (leftArea / nodeArea) * INTERSECTION_COST * leftInfo.count +
+                    (rightArea / nodeArea) * INTERSECTION_COST * rightInfo.count;
+
+                if (cost < bestCost) {
+                    bestCost = cost;
+                    bestAxis = axis;
+                    bestBin = split;
+                    bestSplitPos = node.min[axis] + ((split + 1) * axisRange) / BINS;
+                }
+            }
+        }
+
+        // If no good split found, create leaf
+        if (bestAxis === -1 || bestCost >= INTERSECTION_COST * count) {
+            node.isLeaf = true;
+            return node;
+        }
+
+        // Partition triangles based on best split
+        let left = offset;
+        let right = offset + count - 1;
+
+        while (left <= right) {
+            const triIdx = triIndices[left];
+            const c = centroids[triIdx * 3 + bestAxis];
+            
+            if (c < bestSplitPos) {
+                left++;
+            } else {
+                // Swap
+                const temp = triIndices[left];
+                triIndices[left] = triIndices[right];
+                triIndices[right] = temp;
+                right--;
+            }
+        }
+
+        const leftCount = left - offset;
+
+        // Check for failed split
+        if (leftCount === 0 || leftCount === count) {
+            node.isLeaf = true;
+            return node;
+        }
+
+        // Recursively build children
+        node.left = this.split_bin_sah(triIndices, offset, leftCount, centroids, triBounds, depth + 1);
+        node.right = this.split_bin_sah(triIndices, left, count - leftCount, centroids, triBounds, depth + 1);
+
+        return node;
+    }
+
+    private static getArea(min:Float32Array,max:Float32Array):number{
+        const boundSize = [
+            max[0] - min[0],
+            max[1] - min[1],
+            max[2] - min[2]
+        ];
+        return 2 * (boundSize[0] * boundSize[1] + boundSize[1] * boundSize[2] + boundSize[2] * boundSize[0]);
+    }
+
+    private static expandBounds(min:Float32Array,max:Float32Array,bounds:Float32Array,offset:number){
+        for (let i = 0; i < 3; i++) {
+            min[i] = Math.min(min[i],bounds[offset+i])
+            max[i] = Math.max(max[i],bounds[offset+3+i])
+        }
     }
 
     public static flatten(root: BVHNode): Float32Array {
