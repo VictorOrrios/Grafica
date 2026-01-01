@@ -836,7 +836,7 @@ bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, out Hit h){
 // Main hit_mesh function
 bool hit_mesh(MeshInfo mesh, const Ray r, out Hit h){
     return hit_mesh_with_bvh(mesh, r, h);
-    // return hit_mesh_bruteforce(mesh, r, h);
+    //return hit_mesh_bruteforce(mesh, r, h);
 }
 
 //===========================
@@ -1117,11 +1117,12 @@ vec3 eval_mat(Hit h, vec3 Vin, out vec3 Vout){
 //===========================
 
 vec3 get_direct_light(Hit h, Ray r, float total_t){
+    //if(h.mat.rou_met_trs_ref.z > random()) return vec3(0.0,0.0,0.0);
     Hit aux;
     vec3 ret = vec3(0);
 
     #if NUM_POINT_LIGHTS > 0
-        for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
+        for (int i = 0; i < NUM_POINT_LIGHTS; i++) {            
             PointLight l = point_lights[i];
             vec3 direction = l.position-h.p;
             float d = length(direction);
@@ -1292,13 +1293,13 @@ void main() {
     if (frames_acummulated > 0u) {
         vec3 last_color = texture(last_frame_buffer, uv).rgb;
         // Linear mean
-        //float f = float(frames_acummulated);
-        //outColor.rgb = (last_color * (f - 1.0) + outColor.rgb) / f;
+        float f = float(frames_acummulated);
+        outColor.rgb = (last_color * (f - 1.0) + outColor.rgb) / f;
         // Exponetianl mean
         //outColor.rgb = mix(last_color, outColor.rgb, 1.0 / float(frames_acummulated + 1u));
         // Mix
-        float inv_f = 1.0/float(frames_acummulated);
-        outColor.rgb = mix(last_color,outColor.rgb,inv_f);
+        //float inv_f = 1.0/float(frames_acummulated);
+        //outColor.rgb = mix(last_color,outColor.rgb,inv_f);
     }
 
 }

@@ -25,7 +25,8 @@ export enum SceneType {
     CORNELTRANSIENT = 'cornelltransient',
     SIMPLEMESH = 'simplem',
     BVHMESH = 'bvhmesh',
-    GLTF_BVH = 'glbvh'
+    GLTF_BVH = 'glbvh',
+    BRUCE = 'bruce',
 }
 
 export class Scene {
@@ -41,7 +42,7 @@ export class Scene {
     public meshDataVec: EfficientMeshData[] = [];
     public tex_manager: TextureManager = new TextureManager();
 
-    constructor(type: SceneType = SceneType.TESTPLANE) {
+    constructor(type: SceneType = SceneType.CORNEL) {
         this.sceneType = type;
     }
 
@@ -51,9 +52,12 @@ export class Scene {
         }else if(this.sceneType === SceneType.PALETTE) {
             await this.palette();
         }
-        /*
         else if (this.sceneType === SceneType.CORNEL) {
-            this.cornell();
+            await this.cornell();
+        }else if (this.sceneType === SceneType.BRUCE) {
+            await this.bruce();
+        }
+        /*
         } else if (this.sceneType === SceneType.CORNELEXTRA) {
             this.cornellextra();
         } else if (this.sceneType === SceneType.CORNELTRANSIENT) {
@@ -71,7 +75,7 @@ export class Scene {
     
 
     private async testplane() {
-        this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
+        this.camera = new Camera(new Vector3(0.0, 0.0, 7.0));
         
         const debug_purple = this.addMaterial(new Material({
             albedo: new Vector3(1, 0.058, 0.933),
@@ -164,6 +168,13 @@ export class Scene {
             trs_weight:1.0,
         })); 
 
+        const earth_mirror_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/earth3.jpg",Channels.RG);
+        const earth_mirror = this.addMaterial(new Material({
+            roughmetal_tex_info:earth_mirror_rm,
+            reflectance: 0.5,
+        })); 
+
         const mirror = this.addMaterial(new Material({
             roughness: 0.0,
             metalness: 1.0
@@ -188,8 +199,8 @@ export class Scene {
 
 
         const s1: Sphere = new Sphere(
-            new Vector3(0.0, 0.0, 0.0),
-            1.0,
+            new Vector3(-0.95, 1.4, -0.55),
+            0.5,
             new Vector2(1.3,1.0),new Vector2(0.0,0.0),
             new Vector3(0.0,1.0,0.0), new Vector3(0.0,0.0,-1.0)
         );
@@ -238,7 +249,7 @@ export class Scene {
             new Vector3(-5.0, 7.0, -12.0),
             new Vector3(-5.0, -1.0, -12.0),
         );
-        //this.addQuad(q1,metal2);
+        this.addQuad(q1,brick);
 
         const p1: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
@@ -248,20 +259,29 @@ export class Scene {
         this.addPlane(p1, wood);
 
         const l1: PointLight = new PointLight(
-            new Vector3(0, 3.0, 0.0),
+            new Vector3(0, 3.0, 2.0),
             new Vector3(1.0, 1.0, 1.0),
             50.0
         );
-        this.addPointLight(l1);
+        //this.addPointLight(l1);
+
+        const l2: PointLight = new PointLight(
+            new Vector3(0, 8.0, -11.5),
+            new Vector3(1.0, 1.0, 1.0),
+            100.0
+        );
+        this.addPointLight(l2);
 
         
         // Wood elephant
+        /*
         await this.addGLTFModel(
             "models/gltf/wood_elephant/wood_elephant.gltf", 
             20.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,-1.0), 
             NormalStrategy.INTERPOLATED,Channels.RG,
-            brick
+            
         )
+            */
         
 
         /*
@@ -313,57 +333,34 @@ export class Scene {
         this.addSphere(s5, white_light);
     }
 
-    /*
-    private cornell() {
+    
+    private async cornell() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 3.5));
 
-        const red = this.addMaterial(new Material(
-            new Vector3(1.0, 0.0, 0.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const red = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,0.0,0.0)
+        }));
 
-        const green = this.addMaterial(new Material(
-            new Vector3(0.0, 1.0, 0.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const green = this.addMaterial(new Material({
+            albedo: new Vector3(0.0,1.0,0.0)
+        }));
 
-        const purple = this.addMaterial(new Material(
-            new Vector3(0.5, 0.9, 0.9),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const purple = this.addMaterial(new Material({
+            albedo: new Vector3(0.5, 0.9, 0.9)
+        }));
 
-        const pink = this.addMaterial(new Material(
-            new Vector3(0.8, 0.6, 0.9),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const pink = this.addMaterial(new Material({
+            albedo: new Vector3(0.8, 0.6, 0.9)
+        }));
 
-        const white = this.addMaterial(new Material(
-            new Vector3(1.0, 1.0, 1.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
-
-        const white_light = this.addMaterial(new Material(
-            new Vector3(1.0, 1.0, 1.0),
-            1.0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const white = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0)
+        }));
+        
+        const white_light = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            emission: 1.0
+        }));
 
         const floor: Quad = new Quad(
             new Vector3(-1.0, -1.0, -1.0),
@@ -374,10 +371,10 @@ export class Scene {
         this.addQuad(floor, white);
 
         const back: Quad = new Quad(
-            new Vector3(-1.0, -1.0, -1.0),
+            new Vector3(-1.0, -1.0, -0.9999),
             new Vector3(-1.0, 1.0, -1.0),
             new Vector3(1.0, 1.0, -1.0),
-            new Vector3(1.0, -1.0, -1.0),
+            new Vector3(1.0, -1.0, -0.9999),
         );
         this.addQuad(back, white);
 
@@ -387,7 +384,16 @@ export class Scene {
             new Vector3(1.0, 1.0, 1.0),
             new Vector3(1.0, 1.0, -1.0),
         );
-        this.addQuad(ceiling, white);
+        this.addQuad(ceiling, white_light);
+
+        const ceiling_light_size = 0.3
+        const ceiling_light: Quad = new Quad(
+            new Vector3(-ceiling_light_size, 0.995, -ceiling_light_size),
+            new Vector3(-ceiling_light_size, 0.995, ceiling_light_size),
+            new Vector3(ceiling_light_size, 0.995, ceiling_light_size),
+            new Vector3(ceiling_light_size, 0.995, -ceiling_light_size),
+        );
+        //this.addQuad(ceiling_light, white_light);
 
         const left: Quad = new Quad(
             new Vector3(-1.0, -1.0, 1.0),
@@ -408,23 +414,151 @@ export class Scene {
         const s1: Sphere = new Sphere(
             new Vector3(0.5, -0.7, -0.25),
             0.3);
-        this.addSphere(s1, pink);
+        //this.addSphere(s1, pink);
 
         const s2: Sphere = new Sphere(
             new Vector3(-0.5, -0.7, 0.25),
             0.3);
-        this.addSphere(s2, purple);
+        //this.addSphere(s2, purple);
 
+        
 
         const l1: PointLight = new PointLight(
             new Vector3(0, 0.95, 0.0),
             new Vector3(1.0, 1.0, 1.0),
-            0.1
+            5.0
         );
-        this.addPointLight(l1);
+        //this.addPointLight(l1);
 
+        /*
+        await this.addGLTFModel(
+            "models/gltf/helmet/DamagedHelmet.gltf", 
+            0.5, new Vector3(Math.PI/2.0,0.0,Math.PI/4), new Vector3(0.0,0.0,0.0), 
+            NormalStrategy.GEOMETRIC,Channels.RG,
+            pink
+        )
+            */
+
+        
+        await this.addGLTFModel(
+            "models/gltf/wood_elephant/wood_elephant.gltf", 
+            10.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,-0.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            pink
+        )
+            
+
+        /*
+        await this.addGLTFModel(
+            "models/gltf/teapot.gltf", 
+            0.2, new Vector3(Math.PI/2.0,0.0,0.0), new Vector3(0.0,-1.0,0.0), 
+            NormalStrategy.GEOMETRIC,Channels.RG,
+            pink
+        )
+            */
+
+        /*
+        await this.addGLTFModel(
+            "models/gltf/fox/Fox.gltf", 
+            0.01, new Vector3(0.0,Math.PI/4.0,0.0), new Vector3(0.0,-1.0,0.0), 
+            NormalStrategy.GEOMETRIC,Channels.RG,
+        )
+            */
 
     }
+
+    private async bruce(){
+        this.camera = new Camera(new Vector3(0.0, 0.0, 2.0));
+
+        const white = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0)
+        }));
+        
+        const white_light = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            emission: 5.0
+        }));
+
+        const dirty_glass_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/earth8.png",Channels.RG);
+        const dirty_glass = this.addMaterial(new Material({
+            roughmetal_tex_info:dirty_glass_rm,
+            roughness:0.0,
+            reflectance: 0.5,
+            trs_weight:1.0,
+        })); 
+
+        const stripes_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/stripes.png");
+        const stripes = this.addMaterial(new Material({
+            albedo_tex_info:stripes_albedo,
+        })); 
+
+        const metal_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_diff_1k.jpg");
+        const metal_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_nor_gl_1k.jpg");
+        const metal_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_arm_1k.jpg");
+        const metal = this.addMaterial(new Material({
+            albedo_tex_info:metal_albedo,
+            normal_tex_info:metal_normal, 
+            roughmetal_tex_info:metal_rm,
+            reflectance: 0.5,
+        })); 
+
+        
+
+        const floor_height = -0.8;
+        const floor: Quad = new Quad(
+            new Vector3(-1.0, floor_height, -1.0),
+            new Vector3(-1.0, floor_height, 1.0),
+            new Vector3(1.0, floor_height, 1.0),
+            new Vector3(1.0, floor_height, -1.0),
+        );
+        this.addQuad(floor, white);
+
+        const back: Quad = new Quad(
+            new Vector3(-1.0, -1.0, -0.9999),
+            new Vector3(-1.0, 1.0, -1.0),
+            new Vector3(1.0, 1.0, -1.0),
+            new Vector3(1.0, -1.0, -0.9999),
+        );
+        //this.addQuad(back, metal);
+
+        const backp:Plane = new Plane(
+            new Vector3(0.0,0.001,1.0),
+            2.0,
+            0.4,new Vector2(0.46,0.0)
+        )
+        this.addPlane(backp, stripes)
+
+        const ceiling_light_size = 0.5
+        const ceiling_light: Quad = new Quad(
+            new Vector3(-ceiling_light_size, 0.995, -ceiling_light_size),
+            new Vector3(-ceiling_light_size, 0.995, ceiling_light_size),
+            new Vector3(ceiling_light_size, 0.995, ceiling_light_size),
+            new Vector3(ceiling_light_size, 0.995, -ceiling_light_size),
+        );
+        //this.addQuad(ceiling_light, white_light);
+
+        const s_light: Sphere = new Sphere(
+            new Vector3(0.0,1.75,0.0),
+            0.7,
+        );
+        this.addSphere(s_light,white_light)
+
+        const s3: Sphere = new Sphere(
+            new Vector3(0.0, -0.05, 0.0),
+            0.5,
+            new Vector2(1.0,1.0),new Vector2(0.05,0.0),
+            new Vector3(0.0,1.0,0.0), new Vector3(0.0,0.0,-1.0)
+        );
+        this.addSphere(s3, dirty_glass);
+
+    }
+
+    /*
 
     private cornellextra() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 3.5));
