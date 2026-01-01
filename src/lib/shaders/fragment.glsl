@@ -401,18 +401,17 @@ vec3 apply_kernel(vec3 color, float t){
     bool hit_sphere(const Sphere s, const Ray r, out float d){
         vec3 oc =  r.orig - s.center_radius.xyz;
         
-        float a = 1.0;
         float half_b = dot(r.dir,oc);
         float c = dot(oc,oc)-s.center_radius.a*s.center_radius.w;
 
-        float discriminant = half_b*half_b - a*c;
+        float discriminant = half_b*half_b - c;
         // If < 0.0 then no solution exists
         if(discriminant < 0.0) return false;
 
         float sq_disc = sqrt(discriminant);
-        d = (-half_b - sq_disc)/a;
+        d = -half_b - sq_disc;
         if (d < ray_min_distance || d > ray_max_distance){
-            d = (-half_b + sq_disc)/a;
+            d = -half_b + sq_disc;
             if (d < ray_min_distance || d > ray_max_distance)
                 return false;
         }
@@ -568,129 +567,18 @@ vec3 apply_kernel(vec3 color, float t){
 // Helper to fetch from 2D texture as if it were 1D
 // Assumes texture width is 2048
 #define TEX_WIDTH 2048
-
-ivec2 get_tex_coord(int index) {
-    return ivec2(index % TEX_WIDTH, index / TEX_WIDTH);
-}
-
-vec4 fetchTexelFloat(sampler2D tex, ivec2 tex_coord) {
-    return texelFetch(tex, tex_coord, 0);
-}
+#define TEX_WIDTH_BITS 11
 
 vec4 fetchTexelFloat(sampler2D tex, int index) {
-    int x = index % TEX_WIDTH;
-    int y = index / TEX_WIDTH;
-    return texelFetch(tex, ivec2(x,y), 0);
-}
-
-
-uvec4 fetchTexelUint(usampler2D tex, ivec2 tex_coord) {
+    ivec2 tex_coord = ivec2(index & (TEX_WIDTH-1), index >> 11);
     return texelFetch(tex, tex_coord, 0);
 }
 
 uvec4 fetchTexelUint(usampler2D tex, int index) {
-    int x = index % TEX_WIDTH;
-    int y = index / TEX_WIDTH;
-    return texelFetch(tex, ivec2(x,y), 0);
+    ivec2 tex_coord = ivec2(index & (TEX_WIDTH-1), index >> 11);
+    return texelFetch(tex, tex_coord, 0);
 }
 
-
-bool hit_mesh_triangle_old(int triIndex, const Ray r, int normalStrategy, int normalOffset, out Hit h){
-    
-    // Indices for postions and material
-    uvec4 indices = fetchTexelUint(u_sharedVertexMatIndices_tex,triIndex);
-
-    int idx0 = int(indices.r);
-    int idx1 = int(indices.g);
-    int idx2 = int(indices.b);
-
-    ivec2 coord0 = get_tex_coord(idx0);
-    ivec2 coord1 = get_tex_coord(idx1);
-    ivec2 coord2 = get_tex_coord(idx2);
-
-    // Reconstruct triangle vertices from positions texture (RGB32F)
-    vec3 v0 = fetchTexelFloat(u_positions_tex, coord0).xyz;
-    vec3 v1 = fetchTexelFloat(u_positions_tex, coord1).xyz;
-    vec3 v2 = fetchTexelFloat(u_positions_tex, coord2).xyz;
-
-    // Get the per vertex uvs
-    vec2 uv0 = fetchTexelFloat(u_uvs_tex,coord0).xy;
-    vec2 uv1 = fetchTexelFloat(u_uvs_tex,coord1).xy;
-    vec2 uv2 = fetchTexelFloat(u_uvs_tex,coord2).xy;
-
-    // Moller-Trumbore intersection
-    vec3 edge1 = v1 - v0;
-    vec3 edge2 = v2 - v0;
-    vec3 pvec = cross(r.dir, edge2);
-    float det = dot(edge1, pvec);
-    if(abs(det) < 1e-6) return false; // Parallel or nearly parallel
-
-    float invDet = 1.0 / det;
-    vec3 tvec = r.orig - v0;
-    float u = dot(tvec, pvec) * invDet;
-    if(u < 0.0 || u > 1.0) return false;
-
-    vec3 qvec = cross(tvec, edge1);
-    float v = dot(r.dir, qvec) * invDet;
-    if(v < 0.0 || u + v > 1.0) return false;
-
-    float t = dot(edge2, qvec) * invDet;
-    if(t < ray_min_distance || t > ray_max_distance) return false;
-
-    h.t = t;
-    h.p = r.orig + r.dir * t;
-
-    float w = 1.0 - u - v;
-    h.uv = uv0 * w + uv1 * u + uv2 * v;
-
-    // Triangle material index stored as R32UI texel per triangle
-    h.mat = materials[int(indices.w)];
-
-    // Calculate normal
-    if (normalStrategy == 1) {
-        // GEOMETRIC (Flat shading)
-        h.normal = normalize(cross(edge1, edge2));
-    } else {
-        // INTERPOLATED (Smooth shading)
-        // Fetch vertex normals from texture using normalOffset
-        vec3 n0 = fetchTexelFloat(u_normals_tex, idx0 - normalOffset).xyz;
-        vec3 n1 = fetchTexelFloat(u_normals_tex, idx1 - normalOffset).xyz;
-        vec3 n2 = fetchTexelFloat(u_normals_tex, idx2 - normalOffset).xyz;
-
-        // Interpolate normal using barycentric coordinates
-        h.normal = normalize(n0 * w + n1 * u + n2 * v);
-    }
-    set_front_face(h.normal, r.dir, h);
-
-    // Add normal mapping if aplicable
-    if(h.mat.albedoTA_normalTA.w > 0){
-        vec3 n_map = get_normal(h.mat, h.uv);
-
-        vec2 deltaUV1 = uv1 - uv0;
-        vec2 deltaUV2 = uv2 - uv0;
-        float f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-
-        vec3 tangent;
-        tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-        tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-        tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-
-        tangent = normalize(tangent);
-
-        tangent = normalize(tangent - dot(tangent, h.normal) * h.normal);
-
-        vec3 bitangent = normalize(cross(h.normal, tangent));
-
-        mat3 TBN = mat3(tangent,bitangent,h.normal);
-        h.normal = normalize(TBN * n_map); 
-    }
-
-    
-
-    set_mat_tex_params(h.mat,h.uv);
-
-    return true;
-}
 
 bool hit_mesh_triangle(int triIndex, const Ray r, out float t, out MeshTriangleInfo mti){
     // Indices for postions and material
@@ -1403,11 +1291,14 @@ void main() {
     // Frame acummulation
     if (frames_acummulated > 0u) {
         vec3 last_color = texture(last_frame_buffer, uv).rgb;
-        float f = float(frames_acummulated);
         // Linear mean
-        outColor.rgb = (last_color * (f - 1.0) + outColor.rgb) / f;
+        //float f = float(frames_acummulated);
+        //outColor.rgb = (last_color * (f - 1.0) + outColor.rgb) / f;
         // Exponetianl mean
         //outColor.rgb = mix(last_color, outColor.rgb, 1.0 / float(frames_acummulated + 1u));
+        // Mix
+        float inv_f = 1.0/float(frames_acummulated);
+        outColor.rgb = mix(last_color,outColor.rgb,inv_f);
     }
 
 }
