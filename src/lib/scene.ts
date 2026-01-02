@@ -42,7 +42,7 @@ export class Scene {
     public meshDataVec: EfficientMeshData[] = [];
     public tex_manager: TextureManager = new TextureManager();
 
-    constructor(type: SceneType = SceneType.TESTPLANE) {
+    constructor(type: SceneType = SceneType.CORNEL) {
         this.sceneType = type;
     }
 
@@ -385,7 +385,8 @@ export class Scene {
         }));
 
         const pink = this.addMaterial(new Material({
-            albedo: new Vector3(0.8, 0.6, 0.9)
+            albedo: new Vector3(0.8, 0.6, 0.9),
+            roughness: 0.3
         }));
 
         const white = this.addMaterial(new Material({
@@ -419,7 +420,7 @@ export class Scene {
             new Vector3(1.0, 1.0, 1.0),
             new Vector3(1.0, 1.0, -1.0),
         );
-        this.addQuad(ceiling, white_light);
+        this.addQuad(ceiling, white);
 
         const ceiling_light_size = 0.3
         const ceiling_light: Quad = new Quad(
@@ -461,9 +462,9 @@ export class Scene {
         const l1: PointLight = new PointLight(
             new Vector3(0, 0.95, 0.0),
             new Vector3(1.0, 1.0, 1.0),
-            5.0
+            1.0
         );
-        //this.addPointLight(l1);
+        this.addPointLight(l1);
 
         /*
         await this.addGLTFModel(
@@ -525,6 +526,57 @@ export class Scene {
         await this.addGLTFModel(
             "models/gltf/dragon/scene.gltf", 
             0.02, new Vector3(0.0,0.0,0.0), new Vector3(-0.5,-1.0,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            pink
+        )
+            */
+
+
+        // 356 tris
+        await this.addGLTFModel(
+            "models/gltf/stellated_regular_polyhedron/scene.gltf", 
+            0.01, new Vector3(Math.PI/8.0,0.0,Math.PI/8.0), new Vector3(0.0,0.0,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            pink
+        )
+
+        /*
+        // 120 tris
+        await this.addGLTFModel(
+            "models/gltf/120-faced_rhombic_polyhedron/scene.gltf", 
+            0.2, new Vector3(Math.PI/8.0,0.0,Math.PI/8.0), new Vector3(0.0,0.0,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            pink
+        )
+            */
+
+        
+        /*
+        // 48 tris
+        await this.addGLTFModel(
+            "models/gltf/cube-octahedron_compound_polyhedron/scene.gltf", 
+            0.1, new Vector3(Math.PI/5.0,0.0,Math.PI/8.0), new Vector3(0.0,0.0,-0.25), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            pink
+        )
+            */
+            
+
+        /*
+        // 12 tris
+        await this.addGLTFModel(
+            "models/gltf/largest_8-vertex_polyhedron_solid/scene.gltf", 
+            0.4, new Vector3(Math.PI/8.0,0.0,Math.PI/2.5), new Vector3(0.0,0.0,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            pink
+        )
+            */
+
+        /*
+        // 8 tris
+        await this.addGLTFModel(
+            "models/gltf/octahedron/scene.gltf", 
+            0.2, new Vector3(Math.PI/8.0,0.0,Math.PI/8.0), new Vector3(0.0,0.0,0.0), 
             NormalStrategy.INTERPOLATED,Channels.RG,
             pink
         )

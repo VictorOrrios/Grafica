@@ -804,8 +804,7 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
     return found;
 }
 
-// Legacy brute-force version (kept for debugging/comparison)
-// WARNING: Deprecated, needs to be updated with uvs and texture mapping
+// Brute-force version, check all tris 
 bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, out Hit h){
     bool has_hit = false;
     h.t = ray_max_distance;
