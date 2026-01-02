@@ -42,7 +42,7 @@ export class Scene {
     public meshDataVec: EfficientMeshData[] = [];
     public tex_manager: TextureManager = new TextureManager();
 
-    constructor(type: SceneType = SceneType.CORNEL) {
+    constructor(type: SceneType = SceneType.TESTPLANE) {
         this.sceneType = type;
     }
 
@@ -84,6 +84,11 @@ export class Scene {
 
         const white_matte = this.addMaterial(new Material({
             roughness: 0.8,
+        }));
+
+        const plastic = this.addMaterial(new Material({
+            albedo: new Vector3(0.3,0.5,0.3),
+            roughness: 0.3,
         }));
 
         const white_light = this.addMaterial(new Material({
@@ -249,7 +254,7 @@ export class Scene {
             new Vector3(-5.0, 7.0, -12.0),
             new Vector3(-5.0, -1.0, -12.0),
         );
-        this.addQuad(q1,brick);
+        //this.addQuad(q1,brick);
 
         const p1: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
@@ -263,14 +268,14 @@ export class Scene {
             new Vector3(1.0, 1.0, 1.0),
             50.0
         );
-        //this.addPointLight(l1);
+        this.addPointLight(l1);
 
         const l2: PointLight = new PointLight(
             new Vector3(0, 8.0, -11.5),
             new Vector3(1.0, 1.0, 1.0),
             100.0
         );
-        this.addPointLight(l2);
+        //this.addPointLight(l2);
 
         
         // Wood elephant
@@ -292,6 +297,36 @@ export class Scene {
             NormalStrategy.INTERPOLATED,Channels.GB
         )
         */
+
+        // Dragon 5k tris
+        await this.addGLTFModel(
+            "models/gltf/stenford_dragon_low/stenford_dragon_low.gltf", 
+            0.006, new Vector3(Math.PI/2.0,Math.PI,-Math.PI/2.0), new Vector3(0.0,-0.45,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            plastic
+        )
+
+        ///*
+        // Dragon 19k tris
+        await this.addGLTFModel(
+            "models/gltf/stanford_dragon_pbr/scene.gltf", 
+            0.0135, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            plastic
+        )
+        //*/
+            
+
+        /*
+        // Dragon 232k tris
+        await this.addGLTFModel(
+            "models/gltf/dragon/scene.gltf", 
+            0.03, new Vector3(0.0,0.0,0.0), new Vector3(-0.7,-1.0,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            plastic
+        )
+            */
+            
 
     }
 
@@ -439,13 +474,14 @@ export class Scene {
         )
             */
 
-        
+        /*
         await this.addGLTFModel(
             "models/gltf/wood_elephant/wood_elephant.gltf", 
             10.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,-0.0), 
             NormalStrategy.INTERPOLATED,Channels.RG,
             pink
         )
+            */
             
 
         /*
@@ -462,6 +498,35 @@ export class Scene {
             "models/gltf/fox/Fox.gltf", 
             0.01, new Vector3(0.0,Math.PI/4.0,0.0), new Vector3(0.0,-1.0,0.0), 
             NormalStrategy.GEOMETRIC,Channels.RG,
+        )
+            */
+
+        /*
+        await this.addGLTFModel(
+            "models/gltf/metallic_barrel_with_lod/scene.gltf", 
+            1.0, new Vector3(-Math.PI/2.0,0.0,0.0), new Vector3(0.0,-1.0,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            
+        )
+            */
+
+        /*
+        // Dragon 19k tris
+        await this.addGLTFModel(
+            "models/gltf/stanford_dragon_pbr/scene.gltf", 
+            0.01, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            pink
+        )
+            */
+
+        /*
+        // Dragon 232k tris
+        await this.addGLTFModel(
+            "models/gltf/dragon/scene.gltf", 
+            0.02, new Vector3(0.0,0.0,0.0), new Vector3(-0.5,-1.0,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.RG,
+            pink
         )
             */
 
