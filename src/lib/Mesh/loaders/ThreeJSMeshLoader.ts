@@ -78,7 +78,7 @@ export class ThreeJSMeshLoader {
         const matrix = new THREE.Matrix4();
 
         // 1. Scale
-        matrix.makeScale(scale, scale, scale);
+        matrix.makeScale(-scale, scale, scale);
 
         // 2. Rotate (Euler XYZ)
         const rotationMatrix = new THREE.Matrix4();

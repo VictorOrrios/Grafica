@@ -207,7 +207,7 @@
 <div class="main w-screem h-screen">
 
     <div class="w-full h-full flex gap-8 p-4">
-        <canvas id="canvas" width="500" height="500" bind:this={canvas}></canvas>
+        <canvas id="canvas" width="1000" height="1000" bind:this={canvas}></canvas>
 
         <Card class="max-w-md w-70">
             <CardHeader>
@@ -258,9 +258,9 @@
                     <Label>Thin lense</Label>
                     <div class="flex items-center gap-2">
                         <p class="text-md text-muted-foreground italic">f</p> 
-                        <Input id="aperture" class="w-30" type="number" min="0" step="0.001" bind:value={aperture_radius}/>
+                        <Input id="aperture" class="w-30" type="number" min="0" step="0.005" bind:value={aperture_radius}/>
                         <Slider type="single" bind:value={focal_distance} 
-                        max={20.0} min={0.1} step={0.1} />
+                        max={30.0} min={0.1} step={0.1} />
                     </div>
                 </div>
 

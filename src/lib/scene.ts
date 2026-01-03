@@ -42,7 +42,7 @@ export class Scene {
     public meshDataVec: EfficientMeshData[] = [];
     public tex_manager: TextureManager = new TextureManager();
 
-    constructor(type: SceneType = SceneType.CORNEL) {
+    constructor(type: SceneType = SceneType.TESTPLANE) {
         this.sceneType = type;
     }
 
@@ -75,7 +75,7 @@ export class Scene {
     
 
     private async testplane() {
-        this.camera = new Camera(new Vector3(0.0, 0.0, 7.0));
+        this.camera = new Camera(new Vector3(0.0, 0.0, 17.0));
         
         const debug_purple = this.addMaterial(new Material({
             albedo: new Vector3(1, 0.058, 0.933),
@@ -217,19 +217,24 @@ export class Scene {
         //this.addSphere(s2, white_matte);
 
         const s3 = new Sphere(
-            new Vector3(4.0, 1.0, -6.0),
+            new Vector3(3.0, 1.0, 6.0),
             2.0);
         this.addSphere(s3, wood2);
 
         const s4 = new Sphere(
-            new Vector3(-4.0, 1.0, -6.0),
+            new Vector3(-3.0, 1.0, -6.0),
             2.0);
-        this.addSphere(s4, mirror);
+        this.addSphere(s4, wood2);
 
         const s5 = new Sphere(
             new Vector3(0.0, 15.0, 0.0),
             8.0);
         //this.addSphere(s5, white_light);
+
+        const s6 = new Sphere(
+            new Vector3(-4.0, 1.0, -3.0),
+            0.2);
+        this.addSphere(s6, white_light);
 
         const t1: Triangle = new Triangle(
             new Vector3(4.0, -1.0, -9.0),
@@ -277,9 +282,8 @@ export class Scene {
         );
         //this.addPointLight(l2);
 
-        
-        // Wood elephant
         /*
+        // Wood elephant
         await this.addGLTFModel(
             "models/gltf/wood_elephant/wood_elephant.gltf", 
             20.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,-1.0), 
@@ -287,17 +291,18 @@ export class Scene {
             
         )
             */
-        
 
-        /*
+        
+        
         // Stone kitty ^.^
         await this.addGLTFModel(
             "models/gltf/concrete_kitty/scene.gltf", 
             7.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,0.0), 
             NormalStrategy.INTERPOLATED,Channels.GB
         )
-        */
+            
 
+        /*
         // Dragon 5k tris
         await this.addGLTFModel(
             "models/gltf/stenford_dragon_low/stenford_dragon_low.gltf", 
@@ -305,8 +310,9 @@ export class Scene {
             NormalStrategy.INTERPOLATED,Channels.RG,
             plastic
         )
+            */
 
-        ///*
+        /*
         // Dragon 19k tris
         await this.addGLTFModel(
             "models/gltf/stanford_dragon_pbr/scene.gltf", 
@@ -314,7 +320,7 @@ export class Scene {
             NormalStrategy.INTERPOLATED,Channels.RG,
             plastic
         )
-        //*/
+        */
             
 
         /*
@@ -326,7 +332,27 @@ export class Scene {
             plastic
         )
             */
+           
+
+        /*
+        // Chair
+        await this.addGLTFModel(
+            "models/gltf/mid_century_lounge_chair_2k/mid_century_lounge_chair_2k.gltf", 
+            3.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,-2.0), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
             
+        )
+            */
+            
+        /*
+        // TV
+        await this.addGLTFModel(
+            "models/gltf/Television_01_2k/Television_01_2k.gltf", 
+            3.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        ) 
+            */           
 
     }
 
@@ -474,6 +500,7 @@ export class Scene {
             pink
         )
             */
+            
 
         /*
         await this.addGLTFModel(
@@ -501,6 +528,7 @@ export class Scene {
             NormalStrategy.GEOMETRIC,Channels.RG,
         )
             */
+            
 
         /*
         await this.addGLTFModel(
@@ -532,6 +560,7 @@ export class Scene {
             */
 
 
+        /*
         // 356 tris
         await this.addGLTFModel(
             "models/gltf/stellated_regular_polyhedron/scene.gltf", 
@@ -539,6 +568,7 @@ export class Scene {
             NormalStrategy.INTERPOLATED,Channels.RG,
             pink
         )
+            */
 
         /*
         // 120 tris

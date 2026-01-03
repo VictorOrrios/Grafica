@@ -952,7 +952,7 @@ vec3 skybox_color_black(Ray r){
 }
 
 vec3 skybox_color(Ray r){
-    return skybox_color_black(r);
+    return skybox_color_image(r);
 }
 
 //===========================
@@ -1244,7 +1244,8 @@ Ray get_ray(vec2 uv){
     }else{
         ndc = 2.0*(uv) -1.0;
     }
-    vec2 aperture = sample_square()*cam.thin_lense.x;
+    //vec2 aperture = sample_square()*cam.thin_lense.x;
+    vec2 aperture = sample_disc()/2.0*cam.thin_lense.x;
 
     // Ray from 0,0,0 to +z + offsets
     vec3 rayDirCameraSpace = vec3(
