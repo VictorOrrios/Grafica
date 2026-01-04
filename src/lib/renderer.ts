@@ -1,6 +1,6 @@
 import { Matrix4, Vector3 } from "math.gl";
 import { loadEXRImage } from "./loader";
-import { Scene } from "./scene";
+import { Scene, SkyboxType } from "./scene";
 import vertexSource from "$lib/shaders/vertex.glsl"
 import fragmentSource from "$lib/shaders/fragment.glsl"
 
@@ -50,6 +50,7 @@ export class Renderer {
         fragmentModified = fragmentModified.replace("__NUM_TRIANGLES__", this.scene.triangleVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_POINT_LIGHTS__", this.scene.pointLightVec.length.toString())
         fragmentModified = fragmentModified.replace("__NUM_MESHES__", this.scene.meshDataVec.length.toString())
+        fragmentModified = fragmentModified.replace("__SKYBOX_TYPE__", this.scene.skybox.toFixed())
         // console.log("Num meshes: " + this.scene.meshDataVec.length)
 
         // Add mesh data constants
@@ -133,7 +134,8 @@ export class Renderer {
         this.initCamera();
         this.initUniforms();
         this.initFrameAcummulation();
-        this.initSkyboxBuffer();
+        if(this.scene.skybox == SkyboxType.IMAGE)
+            this.initSkyboxBuffer();
         this.initStorageBuffers();
         this.initStorageTextures();
         this.initMaterialTextures();

@@ -11,6 +11,7 @@ precision mediump sampler2DArray;
 #define NUM_TRIS __NUM_TRIANGLES__
 #define NUM_POINT_LIGHTS __NUM_POINT_LIGHTS__
 #define NUM_MESHES __NUM_MESHES__
+#define SKYBOX_TYPE __SKYBOX_TYPE__
 
 //===========================
 // Global constants
@@ -389,7 +390,7 @@ vec3 apply_gaussian_kernel(vec3 color, float t){
 
 vec3 apply_kernel(vec3 color, float t){
     if(kernel_sigma <= 0.0) return color;
-    return apply_kernel_clamped_triangle(color, t);
+    return apply_gaussian_kernel(color, t);
 }
 
 //===========================
@@ -952,7 +953,13 @@ vec3 skybox_color_black(Ray r){
 }
 
 vec3 skybox_color(Ray r){
-    return skybox_color_image(r);
+    #if SKYBOX_TYPE == 0
+        return skybox_color_image(r);
+    #elif SKYBOX_TYPE == 1
+        return skybox_color_black(r);
+    #else
+        return skybox_color_day(r);
+    #endif
 }
 
 //===========================
@@ -1178,19 +1185,21 @@ vec3 get_direct_light(Hit h, Ray r, float total_t){
 vec3 cast_ray(Ray r){
     vec3 color = vec3(0.0);
     Hit h;
-    float pdf;
     vec3 atenuation = vec3(1.0);
     vec3 new_direction;
     float rr_inv = 1.0 / rr_chance;
     float total_t = 0.0;
-
+    float prev_hit_ior = 1.0;
 
     bounce_count = 0;
     for(int i = 0; i < bounce_hard_limit; i++) {
         
         if(hit_scene(r,h)){
 
-            total_t += h.t;
+            // Add path length and adjust for ior of last hit
+            total_t += h.t * prev_hit_ior;
+            prev_hit_ior = h.mat.subsurface_color_ior.w;
+
             // Max distance check
             if(total_t > ray_range.y) break;
 

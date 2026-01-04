@@ -22,15 +22,22 @@ export enum SceneType {
     PALETTE = 'palette',
     CORNELEXTRA = 'cornellextra',
     CORNEL = 'cornell',
-    CORNELTRANSIENT = 'cornelltransient',
+    TRANSIENT = 'cornelltransient',
     SIMPLEMESH = 'simplem',
     BVHMESH = 'bvhmesh',
     GLTF_BVH = 'glbvh',
     BRUCE = 'bruce',
 }
 
+export enum SkyboxType {
+    IMAGE = 0,
+    BLACK = 1,
+    DAY = 2,
+}
+
 export class Scene {
     public camera: Camera = new Camera();
+    public skybox: SkyboxType = SkyboxType.BLACK;
     public materialVec: Material[] = [];
     public sphereVec: { sphere: Sphere, materialIndex: number }[] = [];
     public planeVec: { plane: Plane, materialIndex: number }[] = [];
@@ -42,7 +49,7 @@ export class Scene {
     public meshDataVec: EfficientMeshData[] = [];
     public tex_manager: TextureManager = new TextureManager();
 
-    constructor(type: SceneType = SceneType.TESTPLANE) {
+    constructor(type: SceneType = SceneType.TRANSIENT) {
         this.sceneType = type;
     }
 
@@ -56,20 +63,9 @@ export class Scene {
             await this.cornell();
         }else if (this.sceneType === SceneType.BRUCE) {
             await this.bruce();
+        }else if (this.sceneType === SceneType.TRANSIENT) {
+            await this.transient();
         }
-        /*
-        } else if (this.sceneType === SceneType.CORNELEXTRA) {
-            this.cornellextra();
-        } else if (this.sceneType === SceneType.CORNELTRANSIENT) {
-            this.cornelltransient();
-        } else if (this.sceneType === SceneType.SIMPLEMESH) {
-            await this.simpleMeshScene();
-        } else if (this.sceneType === SceneType.BVHMESH) {
-            await this.bvhMeshScene();
-        } else if (this.sceneType === SceneType.GLTF_BVH) {
-            await this.bhvGLTFScene();
-        }
-        */
     }
 
     
@@ -161,6 +157,19 @@ export class Scene {
             albedo_tex_info:metal2_albedo,
             normal_tex_info:metal2_normal, 
             roughmetal_tex_info:metal2_rm,
+            reflectance: 0.5,
+        })); 
+
+        const cloth_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/curly_teddy_checkered_2k.gltf/textures/curly_teddy_checkered_diff_2k.jpg");
+        const cloth_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/curly_teddy_checkered_2k.gltf/textures/curly_teddy_checkered_nor_gl_2k.jpg");
+        const cloth_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/curly_teddy_checkered_2k.gltf/textures/curly_teddy_checkered_arm_2k.jpg");
+        const cloth = this.addMaterial(new Material({
+            albedo_tex_info:cloth_albedo,
+            normal_tex_info:cloth_normal, 
+            roughmetal_tex_info:cloth_rm,
             reflectance: 0.5,
         })); 
 
@@ -412,7 +421,6 @@ export class Scene {
 
         const pink = this.addMaterial(new Material({
             albedo: new Vector3(0.8, 0.6, 0.9),
-            roughness: 0.3
         }));
 
         const white = this.addMaterial(new Material({
@@ -476,12 +484,12 @@ export class Scene {
         const s1: Sphere = new Sphere(
             new Vector3(0.5, -0.7, -0.25),
             0.3);
-        //this.addSphere(s1, pink);
+        this.addSphere(s1, pink);
 
         const s2: Sphere = new Sphere(
             new Vector3(-0.5, -0.7, 0.25),
             0.3);
-        //this.addSphere(s2, purple);
+        this.addSphere(s2, purple);
 
         
 
@@ -702,6 +710,85 @@ export class Scene {
             new Vector3(0.0,1.0,0.0), new Vector3(0.0,0.0,-1.0)
         );
         this.addSphere(s3, dirty_glass);
+
+    }
+
+    private async transient(){
+        this.camera = new Camera(new Vector3(0.0, 15.0, 0.0));
+
+        const red = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,0.0,0.0)
+        }));
+
+        const green = this.addMaterial(new Material({
+            albedo: new Vector3(0.0,1.0,0.0)
+        }));
+
+        const purple = this.addMaterial(new Material({
+            albedo: new Vector3(0.5, 0.9, 0.9)
+        }));
+
+        const pink = this.addMaterial(new Material({
+            albedo: new Vector3(0.8, 0.6, 0.9),
+        }));
+
+        const white = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0)
+        }));
+
+        const glass = this.addMaterial(new Material({
+            roughness:0.0,
+            trs_weight:1.0,
+            ior:2.0
+        }));
+        
+        const white_light = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            emission: 4.0
+        }));
+
+        const s1:Sphere = new Sphere(
+            new Vector3(3.0,0.0,-2.0),
+            1.0
+        )
+        this.addSphere(s1,red);
+
+        const s2:Sphere = new Sphere(
+            new Vector3(3.0,0.0,2.0),
+            1.0
+        )
+        this.addSphere(s2,red);
+
+        const sl:Sphere = new Sphere(
+            new Vector3(-3.0,1.0,0.0),
+            2.0
+        )
+        this.addSphere(sl,white_light);
+
+        const a = 3.0, b = 3.0, c =0.5;
+        const q1:Quad = new Quad(
+            new Vector3(0.0,-1.0,0.0),
+            new Vector3(0.0,-1.0,a),
+            new Vector3(0.0,b-1,a),
+            new Vector3(0.0,b-1,0.0),
+        )
+        this.addQuad(q1,glass)
+
+        const q2:Quad = new Quad(
+            new Vector3(c,-1.0,0.0),
+            new Vector3(c,b-1,0.0),
+            new Vector3(c,b-1,a),
+            new Vector3(c,-1.0,a),
+        )
+        this.addQuad(q2,glass)
+
+        
+
+        const p1: Plane = new Plane(
+            new Vector3(0.0, 1.0, 0.0),
+            1.0
+        );
+        this.addPlane(p1, white);
 
     }
 

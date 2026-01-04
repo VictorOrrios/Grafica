@@ -275,7 +275,7 @@
                         <Switch bind:checked={range_thing} /> 
                         <Slider type="single" bind:value={range_slider_ini} 
                         disabled={!range_thing}
-                        max={20.0} step={0.1} />
+                        max={40.0} step={0.1} />
                     </div>
                     <div class="flex items-center gap-2 text-sm {range_thing?'':'text-muted-foreground'}">
                         <p>Range</p> 
