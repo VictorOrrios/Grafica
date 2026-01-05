@@ -1152,6 +1152,7 @@ vec3 get_direct_light(Hit h, Ray r, float total_t){
                 vec3 H = normalize(V+r_pl.dir);
                 float NoV = dot(h.normal, V);
                 float NoH = dot(h.normal, H);
+                float NoVabs = abs(NoV);
                 float VoH = dot(V, H);
                 float LoN = dot(r_pl.dir, h.normal);
 
@@ -1159,18 +1160,18 @@ vec3 get_direct_light(Hit h, Ray r, float total_t){
                 float D = ggx_distribution(NoH,alpha2);
                 float G = G_Smith_Fast(NoV,LoN,alpha);
 
-                vec3 f_specular = (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
+                vec3 f_specular = h.mat.specular_color * (F*D*G) / (4.0 *  max(NoV * LoN, 1e-5));
 
                 vec3 radiance = h.mat.albedo_emission.xyz * l.color_power.xyz * l.color_power.w / d2;
 
                 vec3 rhoD = h.mat.albedo_emission.xyz;
                 rhoD *= vec3(1.0) - F;
-                rhoD *= (1.0 - h.mat.rou_met_trs_ref.y);
+                rhoD *= (1.0 - h.mat.rou_met_trs_ref.y) * (1.0 - h.mat.rou_met_trs_ref.z);
 
                 vec3 f_diffuse = rhoD * INV_PI;
 
                 vec3 fr = f_diffuse + f_specular;
-
+                
                 ret += apply_kernel(
                     radiance * fr * max(LoN,1e-5),
                     total_plus_pl);

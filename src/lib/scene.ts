@@ -49,7 +49,7 @@ export class Scene {
     public meshDataVec: EfficientMeshData[] = [];
     public tex_manager: TextureManager = new TextureManager();
 
-    constructor(type: SceneType = SceneType.TRANSIENT) {
+    constructor(type: SceneType = SceneType.TESTPLANE) {
         this.sceneType = type;
     }
 
@@ -72,6 +72,7 @@ export class Scene {
 
     private async testplane() {
         this.camera = new Camera(new Vector3(0.0, 0.0, 17.0));
+        this.skybox = SkyboxType.BLACK;
         
         const debug_purple = this.addMaterial(new Material({
             albedo: new Vector3(1, 0.058, 0.933),
@@ -191,7 +192,7 @@ export class Scene {
 
         const mirror = this.addMaterial(new Material({
             roughness: 0.0,
-            metalness: 1.0
+            metalness: 1.0,
         }));
 
         const blue_matte = this.addMaterial(new Material({
@@ -218,7 +219,7 @@ export class Scene {
             new Vector2(1.3,1.0),new Vector2(0.0,0.0),
             new Vector3(0.0,1.0,0.0), new Vector3(0.0,0.0,-1.0)
         );
-        //this.addSphere(s1, dirty_glass);
+        this.addSphere(s1, dirty_glass);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
@@ -226,14 +227,14 @@ export class Scene {
         //this.addSphere(s2, white_matte);
 
         const s3 = new Sphere(
-            new Vector3(3.0, 1.0, 6.0),
+            new Vector3(3.0, 1.0, -6.0),
             2.0);
         this.addSphere(s3, wood2);
 
         const s4 = new Sphere(
             new Vector3(-3.0, 1.0, -6.0),
             2.0);
-        this.addSphere(s4, wood2);
+        this.addSphere(s4, mirror);
 
         const s5 = new Sphere(
             new Vector3(0.0, 15.0, 0.0),
@@ -243,7 +244,7 @@ export class Scene {
         const s6 = new Sphere(
             new Vector3(-4.0, 1.0, -3.0),
             0.2);
-        this.addSphere(s6, white_light);
+        //this.addSphere(s6, white_light);
 
         const t1: Triangle = new Triangle(
             new Vector3(4.0, -1.0, -9.0),
@@ -280,7 +281,7 @@ export class Scene {
         const l1: PointLight = new PointLight(
             new Vector3(0, 3.0, 2.0),
             new Vector3(1.0, 1.0, 1.0),
-            50.0
+            100.0
         );
         this.addPointLight(l1);
 
@@ -291,24 +292,24 @@ export class Scene {
         );
         //this.addPointLight(l2);
 
+        
         /*
         // Wood elephant
         await this.addGLTFModel(
             "models/gltf/wood_elephant/wood_elephant.gltf", 
             20.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,-1.0), 
             NormalStrategy.INTERPOLATED,Channels.RG,
-            
-        )
+        )            
             */
-
         
-        
+        /*
         // Stone kitty ^.^
         await this.addGLTFModel(
             "models/gltf/concrete_kitty/scene.gltf", 
             7.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,0.0), 
             NormalStrategy.INTERPOLATED,Channels.GB
         )
+            */
             
 
         /*
@@ -405,7 +406,8 @@ export class Scene {
 
     
     private async cornell() {
-        this.camera = new Camera(new Vector3(0.0, 0.0, 3.5));
+        this.camera = new Camera(new Vector3(0.0, 2.0, 3.5));
+        this.skybox = SkyboxType.BLACK;
 
         const red = this.addMaterial(new Material({
             albedo: new Vector3(1.0,0.0,0.0)

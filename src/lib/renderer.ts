@@ -139,6 +139,7 @@ export class Renderer {
         this.initStorageBuffers();
         this.initStorageTextures();
         this.initMaterialTextures();
+        console.log("AAAAAAAAAAAAAAAAAA",this.scene.materialVec.length)
     }
 
     private initCamera() {
