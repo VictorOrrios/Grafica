@@ -139,7 +139,6 @@ export class Renderer {
         this.initStorageBuffers();
         this.initStorageTextures();
         this.initMaterialTextures();
-        console.log("AAAAAAAAAAAAAAAAAA",this.scene.materialVec.length)
     }
 
     private initCamera() {
@@ -443,7 +442,7 @@ export class Renderer {
     private async initSkyboxBuffer() {
         const gl = this.gl;
         // All images taken from: https://polyhaven.com
-        const image = await loadEXRImage("skyboxes/qwantani_noon_puresky_2k.exr", 1.0)
+        const image = await loadEXRImage("skyboxes/dikhololo_night_4k.exr", 0.2)
         const texBinding = this.nextTexBinding++;
         let tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0 + texBinding);

@@ -797,7 +797,7 @@ export class Scene {
     }
 
     private async final(){
-        this.camera = new Camera(new Vector3(0.0, 0.0, 17.0));
+        this.camera = new Camera(new Vector3(10.0, 0.0, -10.0));
         this.skybox = SkyboxType.BLACK;
         
         const debug_purple = this.addMaterial(new Material({
@@ -834,6 +834,33 @@ export class Scene {
             roughmetal_tex_info:brick_rm,
             reflectance: 0.5
         }));   
+
+        const brick2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/brushed_concrete_2k.gltf/textures/brushed_concrete_diff_2k.jpg");
+        const brick2_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/brushed_concrete_2k.gltf/textures/brushed_concrete_nor_gl_2k.jpg");
+        const brick2_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/brushed_concrete_2k.gltf/textures/brushed_concrete_rough_2k.jpg",
+            Channels.RG);
+        const brick2 = this.addMaterial(new Material({
+            albedo_tex_info:brick2_albedo,
+            normal_tex_info:brick2_normal, 
+            roughmetal_tex_info:brick2_rm,
+            reflectance: 0.5
+        }));   
+
+        const concrete_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/concrete_layers_1k.gltf/textures/concrete_layers_diff_1k.jpg");
+        const concrete_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/concrete_layers_1k.gltf/textures/concrete_layers_nor_gl_1k.jpg");
+        const concrete_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/concrete_layers_1k.gltf/textures/concrete_layers_arm_1k.jpg");
+        const concrete = this.addMaterial(new Material({
+            albedo_tex_info:concrete_albedo,
+            normal_tex_info:concrete_normal, 
+            roughmetal_tex_info:concrete_rm,
+            reflectance: 0.5
+        }));  
         
         const wood_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_diff_1k.jpg");
@@ -859,6 +886,18 @@ export class Scene {
             normal_tex_info:wood2_normal,
             roughmetal_tex_info:wood2_rm,
             reflectance: 0.5,
+        })); 
+         
+        const wood3_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/black_painted_planks_1k.gltf/textures/black_painted_planks_diff_1k.jpg");
+        const wood3_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/black_painted_planks_1k.gltf/textures/black_painted_planks_nor_gl_1k.jpg");
+        const wood3_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/black_painted_planks_1k.gltf/textures/black_painted_planks_arm_1k.jpg");
+        const wood3 = this.addMaterial(new Material({
+            albedo_tex_info:wood3_albedo,
+            normal_tex_info:wood3_normal,
+            roughmetal_tex_info:wood3_rm,
         })); 
 
         const metal_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
@@ -887,18 +926,6 @@ export class Scene {
             reflectance: 0.5,
         })); 
 
-        const cloth_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
-            "materials/gltf/curly_teddy_checkered_2k.gltf/textures/curly_teddy_checkered_diff_2k.jpg");
-        const cloth_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
-            "materials/gltf/curly_teddy_checkered_2k.gltf/textures/curly_teddy_checkered_nor_gl_2k.jpg");
-        const cloth_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
-            "materials/gltf/curly_teddy_checkered_2k.gltf/textures/curly_teddy_checkered_arm_2k.jpg");
-        const cloth = this.addMaterial(new Material({
-            albedo_tex_info:cloth_albedo,
-            normal_tex_info:cloth_normal, 
-            roughmetal_tex_info:cloth_rm,
-            reflectance: 0.5,
-        })); 
 
         const dirty_glass_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
             "materials/gltf/earth8.png",Channels.RG);
@@ -909,35 +936,51 @@ export class Scene {
             trs_weight:1.0,
         })); 
 
-        const earth_mirror_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
-            "materials/gltf/earth3.jpg",Channels.RG);
-        const earth_mirror = this.addMaterial(new Material({
-            roughmetal_tex_info:earth_mirror_rm,
-            reflectance: 0.5,
-        })); 
-
         const mirror = this.addMaterial(new Material({
             roughness: 0.0,
             metalness: 1.0,
         }));
 
-        const blue_matte = this.addMaterial(new Material({
-            albedo: new Vector3(0.271, 0.467, 0.78),
-            roughness: 1.0,
-            metalness: 0.0,
-            reflectance: 0.0
-        }));
+        const c_x = 4.0, c_y = 4.0, c_z = 4.0;
+        const floor: Quad = new Quad(
+            new Vector3(-c_x, -c_y, -c_z),
+            new Vector3(-c_x, -c_y, c_z),
+            new Vector3(c_x, -c_y, c_z),
+            new Vector3(c_x, -c_y, -c_z),
+        );
+        //this.addQuad(floor, wood);
 
-        const green_glass = this.addMaterial(new Material({
-            albedo: new Vector3(0.9,1.0,0.9),
-            subsurface_color: new Vector3(0.5,1.0,0.5),
-            roughness: 0.1,
-            metalness: 0.0,
-            reflectance: 0.5,
-            trs_weight: 1.0
-        }));
+        const back: Quad = new Quad(
+            new Vector3(-c_x, -c_y, -c_z+0.00001),
+            new Vector3(-c_x, c_y, -c_z),
+            new Vector3(c_x, c_y, -c_z),
+            new Vector3(c_x, -c_y, -c_z+0.0001),
+        );
+        //this.addQuad(back, concrete);
 
+        const ceiling: Quad = new Quad(
+            new Vector3(-c_x, c_y, -c_z),
+            new Vector3(-c_x, c_y, c_z),
+            new Vector3(c_x, c_y, c_z),
+            new Vector3(c_x, c_y, -c_z),
+        );
+        //this.addQuad(ceiling, concrete);
 
+        const right: Quad = new Quad(
+            new Vector3(-c_x, -c_y, c_z),
+            new Vector3(-c_x, c_y, c_z),
+            new Vector3(-c_x, c_y, -c_z),
+            new Vector3(-c_x, -c_y, -c_z),
+        );
+        //this.addQuad(right, concrete);
+
+        const left: Quad = new Quad(
+            new Vector3(c_x, -c_y, c_z),
+            new Vector3(c_x, c_y, c_z),
+            new Vector3(c_x, c_y, -c_z),
+            new Vector3(c_x, -c_y, -c_z),
+        );
+        //this.addQuad(left, concrete);
 
         const s1: Sphere = new Sphere(
             new Vector3(0.0, -0.05, 0.0),
@@ -945,41 +988,100 @@ export class Scene {
             new Vector2(1.0,1.0),new Vector2(0.05,0.0),
             new Vector3(0.0,1.0,0.0), new Vector3(0.0,0.0,-1.0)
         );
-        this.addSphere(s1, dirty_glass);
+        //this.addSphere(s1, dirty_glass);
 
-        const p1: Plane = new Plane(
+        const p_floor: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
-            1.0,
+            c_y,
             0.2
         );
-        this.addPlane(p1, wood);
+        this.addPlane(p_floor, wood3);
+
+        const p_back: Plane = new Plane(
+            new Vector3(0.0, 0.0, 1.0),
+            c_z,
+            0.2
+        );
+        //this.addPlane(p_back, concrete);
+
+        const p_right: Plane = new Plane(
+            new Vector3(1.0, 0.0, 0.0),
+            c_x,
+            0.1
+        );
+        //this.addPlane(p_right, metal2);
 
         const l1: PointLight = new PointLight(
-            new Vector3(0, 3.0, 2.0),
+            new Vector3(0, 3.0, 0.0),
             new Vector3(1.0, 1.0, 1.0),
             100.0
         );
         this.addPointLight(l1);
 
-
-        
-        // Chair
+        // Chair brown
         await this.addGLTFModel(
             "models/gltf/mid_century_lounge_chair_2k/mid_century_lounge_chair_2k.gltf", 
-            3.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-0.95,-2.0), 
+            3.0, new Vector3(0.0,2.0,0.0), new Vector3(-2.0,-c_y+0.1,-1.0), 
             NormalStrategy.INTERPOLATED,Channels.GB,
             
         )
             
-            
+
         
-        // TV
+        /*
+        // Chair black
+        await this.addGLTFModel(
+            "models/gltf/modern_arm_chair/modern_arm_chair_01_2k.gltf", 
+            3.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-c_y+0.1,-2.0), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        )
+            */
+
+        /*
+        // Coffe table
+        await this.addGLTFModel(
+            "models/gltf/coffee_table_round/coffee_table_round_01_2k.gltf", 
+            3.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-c_y+0.1,2.0), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        )
+            */
+        
+        
+        // TV VTech
         await this.addGLTFModel(
             "models/gltf/Television_01_2k/Television_01_2k.gltf", 
-            3.0, new Vector3(0.0,0.0,0.0), new Vector3(3.0,-0.95,0.0), 
+            3.0, new Vector3(0.0,Math.PI+0.1,0.0), new Vector3(1.0,-c_y+2.5,2.0), 
             NormalStrategy.INTERPOLATED,Channels.GB,
             
         )
+
+        // TV Bottom
+        await this.addGLTFModel(
+            "models/gltf/vintage_tv/scene.gltf", 
+            1.0, new Vector3(0.0,-Math.PI-0.15,0.0), new Vector3(-1.0,-c_y+3.5,2.1), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        )
+
+        // TV Simple
+        await this.addGLTFModel(
+            "models/gltf/simple_tv/scene.gltf", 
+            1.0, new Vector3(0.0,Math.PI,0.1), new Vector3(0.0,-c_y+4.8,2.1), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        )
+            
+
+        // MultiDesk
+        await this.addGLTFModel(
+            "models/gltf/desk_wooden_office_-_18mb/scene.gltf", 
+            0.03, new Vector3(0.0,-0.02,0.0), new Vector3(0.0,-c_y+1.3,2.0), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        )
+            
     }
 
 
