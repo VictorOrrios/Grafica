@@ -707,7 +707,7 @@ bool intersectsBounds(vec3 rayOrigin, vec3 rayDirection, vec3 boundsMin, vec3 bo
 }
 
 // Main BVH traversal function
-bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
+bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, const float min_t, out Hit h) {
     // Stack for traversal
     // Stack for BVH traversal (max depth 64)
     const int BVH_STACK_DEPTH = 64;
@@ -717,12 +717,12 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
     // The root node index for this mesh is mesh.bvhOffset
     stack[stackPtr++] = mesh.bvhOffset; // Push root node index
     
-    float triangleDistance = ray_max_distance;
+    float triangleDistance = min_t;
     bool found = false;
     MeshTriangleInfo mti;
     
     // Initialize hit record
-    h.t = ray_max_distance;
+    h.t = min_t;
     
     while (stackPtr > 0) {
         int currNodeIndex = stack[--stackPtr];
@@ -806,7 +806,7 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, out Hit h) {
 }
 
 // Brute-force version, check all tris 
-bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, out Hit h){
+bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, const float min_t, out Hit h){
     bool has_hit = false;
     h.t = ray_max_distance;
 
@@ -834,9 +834,9 @@ bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, out Hit h){
 }
 
 // Main hit_mesh function
-bool hit_mesh(MeshInfo mesh, const Ray r, out Hit h){
-    return hit_mesh_with_bvh(mesh, r, h);
-    //return hit_mesh_bruteforce(mesh, r, h);
+bool hit_mesh(MeshInfo mesh, const Ray r, const float min_t, out Hit h){
+    return hit_mesh_with_bvh(mesh, r, min_t, h);
+    //return hit_mesh_bruteforce(mesh, r, min_t, h);
 }
 
 //===========================
@@ -899,7 +899,7 @@ bool hit_scene(Ray r, out Hit h){
     #if NUM_MESHES > 0
         for(int m_i = 0; m_i < NUM_MESHES; m_i++) {
             MeshInfo mesh = meshInfos[m_i];
-            if(hit_mesh(mesh, r, h_aux)){
+            if(hit_mesh(mesh, r, h.t, h_aux)){
                 if(h_aux.t < h.t){
                     h = h_aux;
                     primitive_type = 4;

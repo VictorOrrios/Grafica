@@ -27,6 +27,7 @@ export enum SceneType {
     BVHMESH = 'bvhmesh',
     GLTF_BVH = 'glbvh',
     BRUCE = 'bruce',
+    FINAL = 'final'
 }
 
 export enum SkyboxType {
@@ -49,7 +50,7 @@ export class Scene {
     public meshDataVec: EfficientMeshData[] = [];
     public tex_manager: TextureManager = new TextureManager();
 
-    constructor(type: SceneType = SceneType.TESTPLANE) {
+    constructor(type: SceneType = SceneType.FINAL) {
         this.sceneType = type;
     }
 
@@ -58,13 +59,14 @@ export class Scene {
             await this.testplane();
         }else if(this.sceneType === SceneType.PALETTE) {
             await this.palette();
-        }
-        else if (this.sceneType === SceneType.CORNEL) {
+        }else if (this.sceneType === SceneType.CORNEL) {
             await this.cornell();
         }else if (this.sceneType === SceneType.BRUCE) {
             await this.bruce();
         }else if (this.sceneType === SceneType.TRANSIENT) {
             await this.transient();
+        }else if (this.sceneType === SceneType.FINAL) {
+            await this.final();
         }
     }
 
@@ -794,589 +796,192 @@ export class Scene {
 
     }
 
-    /*
+    private async final(){
+        this.camera = new Camera(new Vector3(0.0, 0.0, 17.0));
+        this.skybox = SkyboxType.BLACK;
+        
+        const debug_purple = this.addMaterial(new Material({
+            albedo: new Vector3(1, 0.058, 0.933),
+            roughness: 0.8,
+        }));
 
-    private cornellextra() {
-        this.camera = new Camera(new Vector3(0.0, 0.0, 3.5));
+        const white_matte = this.addMaterial(new Material({
+            roughness: 0.8,
+        }));
 
-        const red = this.addMaterial(new Material(
-            new Vector3(1.0, 0.0, 0.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const plastic = this.addMaterial(new Material({
+            albedo: new Vector3(0.3,0.5,0.3),
+            roughness: 0.3,
+        }));
 
-        const green = this.addMaterial(new Material(
-            new Vector3(0.0, 1.0, 0.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const white_light = this.addMaterial(new Material({
+            albedo: new Vector3(1.0,1.0,1.0),
+            emission: 10.0
+        }));
 
-        const red_mirror = this.addMaterial(new Material(
-            new Vector3(1.0, 0.0, 0.0),
-            0,
-            new Vector3(0.0, 1.0, 1.0),
-            new Vector3(0),
-            1.0
-        ));
+        const test_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/rmTest.jpg");
 
-        const green_mirror = this.addMaterial(new Material(
-            new Vector3(0.0, 1.0, 0.0),
-            0,
-            new Vector3(1.0, 0.0, 1.0),
-            new Vector3(0),
-            1.0
-        ));
+        const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
+        const brick_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_nor_gl_1k.jpg");
+        const brick_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_arm_1k.jpg");
+        const brick = this.addMaterial(new Material({
+            albedo_tex_info:brick_albedo,
+            normal_tex_info:brick_normal, 
+            roughmetal_tex_info:brick_rm,
+            reflectance: 0.5
+        }));   
+        
+        const wood_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_diff_1k.jpg");
+        const wood_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_nor_gl_1k.jpg");
+        const wood_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_arm_1k.jpg");
+        const wood = this.addMaterial(new Material({
+            albedo_tex_info:wood_albedo,
+            normal_tex_info:wood_normal,
+            roughmetal_tex_info:wood_rm,
+            reflectance: 0.5,
+        })); 
+        
+        const wood2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/wood_table_001_1k.gltf/textures/wood_table_001_diff_1k.jpg");
+        const wood2_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/wood_table_001_1k.gltf/textures/wood_table_001_nor_gl_1k.jpg");
+        const wood2_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/wood_table_001_1k.gltf/textures/wood_table_001_rough_1k.jpg",Channels.RG);
+        const wood2 = this.addMaterial(new Material({
+            albedo_tex_info:wood2_albedo,
+            normal_tex_info:wood2_normal,
+            roughmetal_tex_info:wood2_rm,
+            reflectance: 0.5,
+        })); 
 
-        const blue = this.addMaterial(new Material(
-            new Vector3(0.0, 0.0, 1.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const metal_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_diff_1k.jpg");
+        const metal_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_nor_gl_1k.jpg");
+        const metal_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_arm_1k.jpg");
+        const metal = this.addMaterial(new Material({
+            albedo_tex_info:metal_albedo,
+            normal_tex_info:metal_normal, 
+            roughmetal_tex_info:metal_rm,
+            reflectance: 0.5,
+        })); 
 
-        const blue_metal = this.addMaterial(new Material(
-            new Vector3(0.0, 0.0, 0.9),
-            0,
-            new Vector3(0.1, 0.1, 0.1),
-            new Vector3(0),
-            1.0
-        ));
+        const metal2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/rusty_metal_04_1k.gltf/textures/rusty_metal_04_diff_1k.jpg");
+        const metal2_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/rusty_metal_04_1k.gltf/textures/rusty_metal_04_nor_gl_1k.jpg");
+        const metal2_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/rusty_metal_04_1k.gltf/textures/rusty_metal_04_arm_1k.jpg");
+        const metal2 = this.addMaterial(new Material({
+            albedo_tex_info:metal2_albedo,
+            normal_tex_info:metal2_normal, 
+            roughmetal_tex_info:metal2_rm,
+            reflectance: 0.5,
+        })); 
 
-        const yellow = this.addMaterial(new Material(
-            new Vector3(1.0, 1.0, 0.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const cloth_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "materials/gltf/curly_teddy_checkered_2k.gltf/textures/curly_teddy_checkered_diff_2k.jpg");
+        const cloth_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "materials/gltf/curly_teddy_checkered_2k.gltf/textures/curly_teddy_checkered_nor_gl_2k.jpg");
+        const cloth_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/curly_teddy_checkered_2k.gltf/textures/curly_teddy_checkered_arm_2k.jpg");
+        const cloth = this.addMaterial(new Material({
+            albedo_tex_info:cloth_albedo,
+            normal_tex_info:cloth_normal, 
+            roughmetal_tex_info:cloth_rm,
+            reflectance: 0.5,
+        })); 
 
-        const half_half = this.addMaterial(new Material(
-            new Vector3(0.5, 0.5, 0.5),
-            0,
-            new Vector3(0.5, 0.5, 0.5),
-            new Vector3(0),
-            1.0
-        ));
+        const dirty_glass_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/earth8.png",Channels.RG);
+        const dirty_glass = this.addMaterial(new Material({
+            roughmetal_tex_info:dirty_glass_rm,
+            roughness:0.0,
+            reflectance: 0.5,
+            trs_weight:1.0,
+        })); 
 
-        const mirror = this.addMaterial(new Material(
-            new Vector3(0),
-            0,
-            new Vector3(1.0, 1.0, 1.0),
-            new Vector3(0),
-            1.0
-        ));
+        const earth_mirror_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "materials/gltf/earth3.jpg",Channels.RG);
+        const earth_mirror = this.addMaterial(new Material({
+            roughmetal_tex_info:earth_mirror_rm,
+            reflectance: 0.5,
+        })); 
 
-        const white = this.addMaterial(new Material(
-            new Vector3(1.0, 1.0, 1.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const mirror = this.addMaterial(new Material({
+            roughness: 0.0,
+            metalness: 1.0,
+        }));
 
-        const white_light = this.addMaterial(new Material(
-            new Vector3(1.0, 1.0, 1.0),
-            1.0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const blue_matte = this.addMaterial(new Material({
+            albedo: new Vector3(0.271, 0.467, 0.78),
+            roughness: 1.0,
+            metalness: 0.0,
+            reflectance: 0.0
+        }));
 
-        const blue_light = this.addMaterial(new Material(
-            new Vector3(0.0, 0.85, 1.0),
-            1.0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
+        const green_glass = this.addMaterial(new Material({
+            albedo: new Vector3(0.9,1.0,0.9),
+            subsurface_color: new Vector3(0.5,1.0,0.5),
+            roughness: 0.1,
+            metalness: 0.0,
+            reflectance: 0.5,
+            trs_weight: 1.0
+        }));
 
-        const glass99 = this.addMaterial(new Material(
-            new Vector3(0.0),
-            0.0,
-            new Vector3(0.01, 0.01, 0.01),
-            new Vector3(0.99, 0.99, 0.99),
-            1.52
-        ));
 
-        const glass95 = this.addMaterial(new Material(
-            new Vector3(0.0),
-            0.0,
-            new Vector3(0.05, 0.05, 0.05),
-            new Vector3(0.95, 0.95, 0.95),
-            1.52
-        ));
-
-        const glass90 = this.addMaterial(new Material(
-            new Vector3(0.0),
-            0.0,
-            new Vector3(0.1, 0.1, 0.1),
-            new Vector3(0.9, 0.9, 0.9),
-            1.52
-        ));
-
-        const glass50 = this.addMaterial(new Material(
-            new Vector3(0.0),
-            0.0,
-            new Vector3(0.5, 0.5, 0.5),
-            new Vector3(0.5, 0.5, 0.5),
-            1.52
-        ));
-
-        const floor: Quad = new Quad(
-            new Vector3(-1.0, -1.0, -1.0),
-            new Vector3(-1.0, -1.0, 1.0),
-            new Vector3(1.0, -1.0, 1.0),
-            new Vector3(1.0, -1.0, -1.0),
-        );
-        this.addQuad(floor, white);
-
-        const back: Quad = new Quad(
-            new Vector3(-1.0, -1.0, -1.0),
-            new Vector3(-1.0, 1.0, -1.0),
-            new Vector3(1.0, 1.0, -1.0),
-            new Vector3(1.0, -1.0, -1.0),
-        );
-        this.addQuad(back, white);
-
-        const ceiling: Quad = new Quad(
-            new Vector3(-1.0, 1.0, -1.0),
-            new Vector3(-1.0, 1.0, 1.0),
-            new Vector3(1.0, 1.0, 1.0),
-            new Vector3(1.0, 1.0, -1.0),
-        );
-        this.addQuad(ceiling, white);
-
-        const left: Quad = new Quad(
-            new Vector3(-1.0, -1.0, 1.0),
-            new Vector3(-1.0, 1.0, 1.0),
-            new Vector3(-1.0, 1.0, -1.0),
-            new Vector3(-1.0, -1.0, -1.0),
-        );
-        this.addQuad(left, red);
-
-        const right: Quad = new Quad(
-            new Vector3(1.0, -1.0, 1.0),
-            new Vector3(1.0, 1.0, 1.0),
-            new Vector3(1.0, 1.0, -1.0),
-            new Vector3(1.0, -1.0, -1.0),
-        );
-        this.addQuad(right, green);
 
         const s1: Sphere = new Sphere(
-            new Vector3(0.5, -0.7, -0.25),
-            0.3);
-        this.addSphere(s1, yellow);
-
-        const s2: Sphere = new Sphere(
-            new Vector3(-0.5, -0.7, 0.25),
-            0.3);
-        this.addSphere(s2, blue_metal);
-
-        const s3: Sphere = new Sphere(
-            new Vector3(0.0, -0.75, 0.5),
-            0.25);
-        this.addSphere(s3, glass95);
-
-        const s4: Sphere = new Sphere(
-            new Vector3(-0.8, -0.9, 0.4),
-            0.1);
-        this.addSphere(s4, blue_light);
-
-        const s5: Sphere = new Sphere(
-            new Vector3(0.8, -0.8, 0.4),
-            0.2);
-        this.addSphere(s5, mirror);
-
-        const s6: Sphere = new Sphere(
-            new Vector3(0.7, 0.5, 0.5),
-            0.2);
-        this.addSphere(s6, glass50);
-
-        const s7: Sphere = new Sphere(
-            new Vector3(-0.7, 0.5, 0.5),
-            0.2);
-        this.addSphere(s7, half_half);
-
-        const cool_factor: number = 0.5;
-
-        const q1: Quad = new Quad(
-            new Vector3(-cool_factor, -1.0, -1.0),
-            new Vector3(-cool_factor, 1.0, -1.0),
-            new Vector3(-1.0, 1.0, -cool_factor),
-            new Vector3(-1.0, -1.0, -cool_factor),
+            new Vector3(0.0, -0.05, 0.0),
+            0.5,
+            new Vector2(1.0,1.0),new Vector2(0.05,0.0),
+            new Vector3(0.0,1.0,0.0), new Vector3(0.0,0.0,-1.0)
         );
-        this.addQuad(q1, mirror);
+        this.addSphere(s1, dirty_glass);
 
-        const q2: Quad = new Quad(
-            new Vector3(cool_factor, -1.0, -1.0),
-            new Vector3(cool_factor, 1.0, -1.0),
-            new Vector3(1.0, 1.0, -cool_factor),
-            new Vector3(1.0, -1.0, -cool_factor),
+        const p1: Plane = new Plane(
+            new Vector3(0.0, 1.0, 0.0),
+            1.0,
+            0.2
         );
-        this.addQuad(q2, mirror);
-
-        const q3: Quad = new Quad(
-            new Vector3(-1.0, -1.0, -cool_factor),
-            new Vector3(-1.0, -cool_factor, -1.0),
-            new Vector3(1.0, -cool_factor, -1.0),
-            new Vector3(1.0, -1.0, -cool_factor),
-        );
-        //this.addQuad(q3,mirror);
-
-        const q4: Quad = new Quad(
-            new Vector3(-1.0, 1.0, -cool_factor),
-            new Vector3(-1.0, cool_factor, -1.0),
-            new Vector3(1.0, cool_factor, -1.0),
-            new Vector3(1.0, 1.0, -cool_factor),
-        );
-        //this.addQuad(q4,mirror);
-
-        // Mirror cube as skybox
-        if (false) {
-            const mirror_cube_d = 5.0
-
-            const pback: Plane = new Plane(
-                new Vector3(0.0, 0.0, 1.0),
-                mirror_cube_d
-            );
-            this.addPlane(pback, mirror)
-
-            const pfront: Plane = new Plane(
-                new Vector3(0.0, 0.0, -1.0),
-                mirror_cube_d
-            );
-            this.addPlane(pfront, mirror)
-
-            const pleft: Plane = new Plane(
-                new Vector3(-1.0, 0.0, 0.0),
-                mirror_cube_d
-            );
-            this.addPlane(pleft, mirror)
-
-            const pright: Plane = new Plane(
-                new Vector3(1.0, 0.0, 0.0),
-                mirror_cube_d
-            );
-            this.addPlane(pright, mirror)
-
-            const pdown: Plane = new Plane(
-                new Vector3(0.0, -1.0, 0.0),
-                mirror_cube_d
-            );
-            this.addPlane(pdown, mirror)
-
-            const pup: Plane = new Plane(
-                new Vector3(0.0, 1.0, 0.0),
-                mirror_cube_d
-            );
-            this.addPlane(pup, mirror)
-        }
-
+        this.addPlane(p1, wood);
 
         const l1: PointLight = new PointLight(
-            new Vector3(0, 0.95, 0.0),
+            new Vector3(0, 3.0, 2.0),
             new Vector3(1.0, 1.0, 1.0),
-            0.1
+            100.0
         );
         this.addPointLight(l1);
 
-        const l2: PointLight = new PointLight(
-            new Vector3(0, 0.0, -0.95),
-            new Vector3(1, 0.019, 0.878),
-            0.1
-        );
-        //this.addPointLight(l2);
 
-
+        
+        // Chair
+        await this.addGLTFModel(
+            "models/gltf/mid_century_lounge_chair_2k/mid_century_lounge_chair_2k.gltf", 
+            3.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-0.95,-2.0), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        )
+            
+            
+        
+        // TV
+        await this.addGLTFModel(
+            "models/gltf/Television_01_2k/Television_01_2k.gltf", 
+            3.0, new Vector3(0.0,0.0,0.0), new Vector3(3.0,-0.95,0.0), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        )
     }
 
-    private cornelltransient() {
-        this.camera = new Camera(new Vector3(0.0, 0.0, 3.5));
-
-        const red = this.addMaterial(new Material(
-            new Vector3(1.0, 0.0, 0.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
-
-        const green = this.addMaterial(new Material(
-            new Vector3(0.0, 1.0, 0.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
-
-        const purple = this.addMaterial(new Material(
-            new Vector3(0.5, 0.9, 0.9),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
-
-        const pink = this.addMaterial(new Material(
-            new Vector3(0.8, 0.6, 0.9),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
-
-        const white = this.addMaterial(new Material(
-            new Vector3(1.0, 1.0, 1.0),
-            0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
-
-        const white_light = this.addMaterial(new Material(
-            new Vector3(1.0, 1.0, 1.0),
-            1.0,
-            new Vector3(0),
-            new Vector3(0),
-            1.0
-        ));
-
-        const glass95 = this.addMaterial(new Material(
-            new Vector3(0.0),
-            0.0,
-            new Vector3(0.05, 0.05, 0.05),
-            new Vector3(0.95, 0.95, 0.95),
-            1.52
-        ));
-
-        const floor: Quad = new Quad(
-            new Vector3(-1.0, -1.0, -1.0),
-            new Vector3(-1.0, -1.0, 1.0),
-            new Vector3(1.0, -1.0, 1.0),
-            new Vector3(1.0, -1.0, -1.0),
-        );
-        //this.addQuad(floor,white);
-
-        const back: Quad = new Quad(
-            new Vector3(-1.0, -1.0, -1.0),
-            new Vector3(-1.0, 1.0, -1.0),
-            new Vector3(1.0, 1.0, -1.0),
-            new Vector3(1.0, -1.0, -1.0),
-        );
-        //this.addQuad(back,white);
-
-
-        const right: Quad = new Quad(
-            new Vector3(-1.0, -1.0, 1.0),
-            new Vector3(-1.0, 1.0, 1.0),
-            new Vector3(-1.0, 1.0, -1.0),
-            new Vector3(-1.0, -1.0, -1.0),
-        );
-        //this.addQuad(right,red);
-
-        const floor_panel: Plane = new Plane(
-            new Vector3(0.0, 1.0, 0.0),
-            1.0
-        );
-        this.addPlane(floor_panel, white);
-
-        const s1: Sphere = new Sphere(
-            new Vector3(0.5, -0.7, -0.25),
-            0.3);
-        this.addSphere(s1, red);
-
-        const s2: Sphere = new Sphere(
-            new Vector3(-0.5, -0.7, 0.25),
-            0.3);
-        this.addSphere(s2, glass95);
-
-        const glass_panel: Quad = new Quad(
-            new Vector3(-1.0, -1.0, -1.0),
-            new Vector3(-1.0, 1.0, -1.0),
-            new Vector3(1.0, 1.0, -1.0),
-            new Vector3(1.0, -1.0, -1.0),
-        );
-        this.addQuad(glass_panel, glass95);
-
-        const x = 0.5;
-        const glass_panel_2: Quad = new Quad(
-            new Vector3(1.0, -1.0, -1.0 + x),
-            new Vector3(1.0, 1.0, -1.0 + x),
-            new Vector3(-1.0, 1.0, -1.0 + x),
-            new Vector3(-1.0, -1.0, -1.0 + x),
-        );
-        this.addQuad(glass_panel_2, glass95);
-
-        const wall: Quad = new Quad(
-            new Vector3(-1.0, -1.0, 3.0),
-            new Vector3(-1.0, 1.0, 3.0),
-            new Vector3(-1.0, 1.0, 1.0),
-            new Vector3(-1.0, -1.0, 1.0),
-        );
-        this.addQuad(wall, red);
-
-        const s3: Sphere = new Sphere(
-            new Vector3(-4.0, 0.0, 2.0),
-            1.0);
-        this.addSphere(s3, white_light);
-
-        const l1: PointLight = new PointLight(
-            new Vector3(2.0, 0.0, 2.0),
-            new Vector3(1.0, 1.0, 1.0),
-            5.0
-        );
-        this.addPointLight(l1);
-    }
-
-    private async simpleMeshScene() {
-        this.camera = new Camera(new Vector3(0.0, -13.0, -10.0));
-        const yellow = this.addMaterial(
-            new Material(
-                new Vector3(1, 1, 0),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-        const lightBlue = this.addMaterial(
-            new Material(new Vector3(0.0, 0.5, 1.0),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-        const p1: Plane = new Plane(
-            new Vector3(0.0, 1.0, 0.0),
-            1.0
-        );
-        this.addPlane(p1, lightBlue);
-
-        // Load mesh
-        try {
-            const simpleMesh = await MeshLoader.load("/models/obj/icosahedron/icosahedron.obj", "Icosahedron");
-            simpleMesh.scale(new Vector3(4.0, 4.0, 4.0));
-            this.addSimpleMesh(simpleMesh, yellow);
-            console.log("Simple mesh loaded successfully");
-        } catch (error) {
-            console.warn("Could not load simple mesh:", error);
-        }
-    }
-
-    private async bvhMeshScene() {
-        this.camera = new Camera(new Vector3(0.0, -6.0, -4.0));
-        const yellow = this.addMaterial(
-            new Material(
-                new Vector3(1, 1, 0),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-        const salmon = this.addMaterial(
-            new Material(new Vector3(1.0, 0.5, 0.4),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-        const p1: Plane = new Plane(
-            new Vector3(0.0, 1.0, 0.0),
-            3.0
-        );
-        // this.addPlane(p1, salmon);
-
-        const magenta = this.addMaterial(
-            new Material(new Vector3(1.0, 0.0, 1.0),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-
-        const cyan = this.addMaterial(
-            new Material(new Vector3(0.0, 0.5, 1.0),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-
-        // Load mesh
-        try {
-            const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-detailed/craneo.obj", 1.0, new Vector3(0.8, 0.2, 0.0), new Vector3(1.0, 1.0, 1.0), NormalStrategy.GEOMETRIC);
-            // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/skull-salazar/scene.obj");
-            // const bvhMesh = await ThreeJSOBJLoader.load("models/obj/glowfish/Glowfish.obj", 0.085, new Vector3(0.0, 0.0, 0.0), new Vector3(2.0, 2.0, 2.0), NormalStrategy.GEOMETRIC);
-            this.addEfficientMeshData(bvhMesh);
-            console.log("BVH mesh loaded successfully");
-        } catch (error) {
-            console.warn("Could not load BVH mesh:", error);
-        }
-    }
-
-    private async bhvGLTFScene() {
-
-        const salmon = this.addMaterial(
-            new Material(new Vector3(1.0, 0.5, 0.4),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-
-        const greenish = this.addMaterial(
-            new Material(new Vector3(0.6, 0.99, 0.25),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-
-        const magenta = this.addMaterial(
-            new Material(new Vector3(1.0, 0.0, 1.0),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-
-        const lemonchiffon = this.addMaterial(
-            new Material(new Vector3(1.0, 0.99, 0.25),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-
-        const cyan = this.addMaterial(
-            new Material(new Vector3(0.0, 0.5, 1.0),
-                0,
-                new Vector3(0),
-                new Vector3(0),
-                1.0
-            ));
-        const p1: Plane = new Plane(
-            new Vector3(0.0, 1.0, 0.0),
-            3.0
-        );
-        this.addPlane(p1, salmon);
-
-        try {
-            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon/scene.gltf", 0.012, new Vector3(0.0, 0.0, 0.0), new Vector3(0.0, 0.0, 0.0), NormalStrategy.GEOMETRIC);
-            // NOTE, KEY: ~230K vertices, only used for material loading, USE ONLY WITH RENDER DISABLED (Stop)
-            // const bvhMesh = await GLTFLoader.load("models/gltf/dragon_glass/scene.gltf", 0.012);
-            const bvhMesh = await GLTFLoader.load("models/gltf/skull_salazar/scene.gltf", 0.2, new Vector3(0.1, 4.0, 0.7), new Vector3(0.8, 0.2, 0.4));
-            this.addEfficientMeshData(bvhMesh);
-            console.log("BVH mesh loaded successfully");
-        } catch (error) {
-            console.warn("Could not load BVH mesh:", error);
-        }
-    }
-        */
 
     private addMaterial(material: Material): number {
         this.materialVec.push(material);
