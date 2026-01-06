@@ -710,7 +710,7 @@ bool intersectsBounds(vec3 rayOrigin, vec3 rayDirection, vec3 boundsMin, vec3 bo
 }
 
 // Main BVH traversal function
-bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, const float min_t, out Hit h) {
+bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, const float min_t, out Hit h, out MeshTriangleInfo mti) {
     // Stack for traversal
     // Stack for BVH traversal (max depth 64)
     const int BVH_STACK_DEPTH = 64;
@@ -722,7 +722,6 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, const float min_t, out Hit h)
     
     float triangleDistance = min_t;
     bool found = false;
-    MeshTriangleInfo mti;
     
     // Initialize hit record
     h.t = min_t;
@@ -770,8 +769,6 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, const float min_t, out Hit h)
                 }
             }
 
-            
-
         } else {
             // Internal node - child indices are LOCAL to this mesh (in nodes)
             int leftIndex = int(data1);
@@ -800,21 +797,23 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, const float min_t, out Hit h)
         }
     }
 
-    if(found){
+    h.t = triangleDistance;
+
+    /* if(found){
         h = fill_tri_mesh_record(mti,r,triangleDistance,
                 mesh.normalStrategy,mesh.normalOffset);
-    }
+    } */
     
     return found;
 }
 
 // Brute-force version, check all tris 
-bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, const float min_t, out Hit h){
+bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, const float min_t, out Hit h, out MeshTriangleInfo mti){
     bool has_hit = false;
     h.t = ray_max_distance;
 
     float t;
-    MeshTriangleInfo mti, mti_aux;
+    MeshTriangleInfo mti_aux;
 
 
     for(int i = 0; i < mesh.triangleCount; i++){
@@ -828,30 +827,30 @@ bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, const float min_t, out Hit 
         }
     }
 
-    if(has_hit) {
+    /* if(has_hit) {
         h = fill_tri_mesh_record(mti,r,h.t,
                 mesh.normalStrategy,mesh.normalOffset);
-    }
+    } */
 
     return has_hit;
 }
 
 // Main hit_mesh function
-bool hit_mesh(MeshInfo mesh, const Ray r, const float min_t, out Hit h){
-    return hit_mesh_with_bvh(mesh, r, min_t, h);
-    //return hit_mesh_bruteforce(mesh, r, min_t, h);
+bool hit_mesh(MeshInfo mesh, const Ray r, const float min_t, out Hit h, out MeshTriangleInfo mti){
+    return hit_mesh_with_bvh(mesh, r, min_t, h, mti);
+    //return hit_mesh_bruteforce(mesh, r, min_t, h, mti);
 }
 
 //===========================
 // Scene functions
 //===========================
-
 bool hit_scene(Ray r, out Hit h){
     Hit h_aux;
     float aux_t;
     int primitive_type = 0;
     int primitive_index = 0;
     vec2 aux_uv, uv;
+    MeshTriangleInfo mti, mti_aux;
 
     h.t = ray_max_distance;
 
@@ -902,10 +901,12 @@ bool hit_scene(Ray r, out Hit h){
     #if NUM_MESHES > 0
         for(int m_i = 0; m_i < NUM_MESHES; m_i++) {
             MeshInfo mesh = meshInfos[m_i];
-            if(hit_mesh(mesh, r, h.t, h_aux)){
+            if(hit_mesh(mesh, r, h.t, h_aux, mti_aux)){
                 if(h_aux.t < h.t){
                     h = h_aux;
+                    mti = mti_aux;
                     primitive_type = 4;
+                    primitive_index = m_i;
                 }
             }
         }
@@ -924,10 +925,18 @@ bool hit_scene(Ray r, out Hit h){
             case 3:
                 h = fill_tri_record(primitive_index,r,h.t,uv);break;
         #endif
+        #if NUM_MESHES > 0
+            case 4:
+                MeshInfo mesh = meshInfos[primitive_index];
+                h = fill_tri_mesh_record(mti,r,h.t,
+                        mesh.normalStrategy,mesh.normalOffset);break;
+        #endif
     }
 
     return primitive_type != 0;
 }
+
+
 
 //===========================
 // Skybox functions

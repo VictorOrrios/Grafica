@@ -1014,7 +1014,7 @@ export class Scene {
         const l1: PointLight = new PointLight(
             new Vector3(0.0, 3.0, 0.0),
             new Vector3(1.0, 1.0, 1.0),
-            50.0
+            150.0
         );
         this.addPointLight(l1);
 
@@ -1029,7 +1029,7 @@ export class Scene {
         const l_warm: PointLight = new PointLight(
             new Vector3(-1.1,-c_y+3.5,1.5),
             new Vector3(1, 0.713, 0.305),
-            150.0
+            30.0
         );
         this.addPointLight(l_warm);
 
@@ -1042,12 +1042,12 @@ export class Scene {
 
 
         // Chair brown
-        await this.addGLTFModel(
+        /* await this.addGLTFModel(
             "models/gltf/mid_century_lounge_chair_2k/mid_century_lounge_chair_2k.gltf", 
             3.0, new Vector3(0.0,2.0,0.0), new Vector3(-2.0,-c_y,-1.0), 
             NormalStrategy.INTERPOLATED,Channels.GB,
             
-        )
+        ) */
             
         /*
         // Chair black
@@ -1112,20 +1112,28 @@ export class Scene {
         ) */
 
         // Desk gov
-        await this.addGLTFModel(
+        /* await this.addGLTFModel(
             "models/gltf/bureau_desk/scene.gltf", 
             0.035, new Vector3(0.0,Math.PI,0.0), new Vector3(0.0,-c_y,2.0), 
             NormalStrategy.INTERPOLATED,Channels.GB,
             
-        )
+        ) */
 
         // Scifi lamp
-        await this.addGLTFModel(
+        /* await this.addGLTFModel(
             "models/gltf/simple_retro_desk_lamp/scene.gltf", 
             0.15, new Vector3(-Math.PI/2.0,0.0,0.3), new Vector3(-1.5,-c_y+2.4,1.6), 
             NormalStrategy.INTERPOLATED,Channels.GB,
             
-        )
+        ) */
+
+        // Scifi desk
+        await this.addGLTFModel(
+            "models/gltf/retro_sci-fi_computer_desk/scene.gltf", 
+            0.045, new Vector3(-Math.PI/2.0,0,Math.PI), new Vector3(0,-c_y+0.0,0.7), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        ) 
             
     }
 
