@@ -90,6 +90,7 @@ export class TextureManager{
     public albedo_block:TextureBlock;
     public normal_block:TextureBlock;
     public roughmetal_block:TextureBlock;
+    public emission_block:TextureBlock;
 
     constructor(){
         this.albedo_block = {
@@ -99,6 +100,9 @@ export class TextureManager{
             data_512:[],data_1024:[],data_2048:[],
         };
         this.roughmetal_block = {
+            data_512:[],data_1024:[],data_2048:[],
+        };
+        this.emission_block = {
             data_512:[],data_1024:[],data_2048:[],
         };
     }
@@ -113,6 +117,7 @@ export class TextureManager{
         fillEmpty(this.albedo_block,4);
         fillEmpty(this.normal_block,4);
         fillEmpty(this.roughmetal_block,2);
+        fillEmpty(this.emission_block,4);
     }
 
     public async addAlbedo(path:string):Promise<LoadedTextureInfo>{
@@ -138,6 +143,11 @@ export class TextureManager{
         }
         */
         return await this.addImage(path,this.roughmetal_block,width,height,data);
+    }
+
+    public async addEmission(path:string):Promise<LoadedTextureInfo>{
+        let {width,height,data} = await loadImageUNORM8(path,Channels.RGBA);
+        return await this.addImage(path,this.emission_block,width,height,data);
     }
 
     private async addImage(path:string,block:TextureBlock,width:number,height:number,data:Uint8Array):Promise<LoadedTextureInfo> {

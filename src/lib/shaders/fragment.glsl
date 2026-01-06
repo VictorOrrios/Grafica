@@ -51,7 +51,7 @@ struct Material {
     vec4 F0_alpha;                          // xyz = precomputed F0 = mix(0.16*reflectance²,albedo,metalness)
                                             // w = precomputed alpha = roughness*roughness
     ivec4 albedoTA_normalTA;                // Values for albedo tex, normal map and roughness/metalness map
-    ivec2 rmTA;                             // T value indicates which texture index on the array
+    ivec4 rmTA_emissionTA;                  // T value indicates which texture index on the array
                                             // A value indicates which texture array to use: 1=512, 2=1024, 3=2048
                                             // If A = 0 then theres is no texture attached
 };
@@ -112,12 +112,13 @@ struct PointLight {
 
 // Hit information record
 struct Hit {
-    vec3 p;             // Where it happend
-    vec3 normal;        // The normal where it hit
-    Material mat;       // Material of the object it hit
-    float t;            // The distance from the ray origin to the hit
-    bool front_face;    // True if hit is to a front facing surface
-    vec2 uv;            // Texture uv where it hit. (-1,-1) = It doesn't have uvs
+    vec3 p;                 // Where it happend
+    vec3 normal;            // The normal where it hit
+    Material mat;           // Material of the object it hit
+    float t;                // The distance from the ray origin to the hit
+    bool front_face;        // True if hit is to a front facing surface
+    vec2 uv;                // Texture uv where it hit. (-1,-1) = It doesn't have uvs
+    vec3 emission_color;    // Color of the emission, if the point has one
 };
 
 
@@ -196,6 +197,11 @@ uniform sampler2DArray normal_2048;
 uniform sampler2DArray rm_512;
 uniform sampler2DArray rm_1024;
 uniform sampler2DArray rm_2048;
+
+// Emission
+uniform sampler2DArray emission_512;
+uniform sampler2DArray emission_1024;
+uniform sampler2DArray emission_2048;
 
 
 //===========================
@@ -311,16 +317,16 @@ vec3 get_normal(Material mat, vec2 uv){
     }
 }
 
-void set_mat_tex_params(inout Material mat, vec2 uv){
+void set_mat_tex_params(inout Material mat, vec2 uv, out vec3 emission_color){
     bool calculate_F0 = false;
 
-    if (mat.rmTA.y != 0) {
+    if (mat.rmTA_emissionTA.y != 0) {
         calculate_F0 = true;
         vec2 data;
-        switch(mat.rmTA.y){
-            case 1: data = texture(rm_512, vec3(uv, mat.rmTA.x)).rg; break;
-            case 2: data = texture(rm_1024, vec3(uv, mat.rmTA.x)).rg; break;
-            case 3: data = texture(rm_2048, vec3(uv, mat.rmTA.x)).rg; break;
+        switch(mat.rmTA_emissionTA.y){
+            case 1: data = texture(rm_512, vec3(uv, mat.rmTA_emissionTA.x)).rg; break;
+            case 2: data = texture(rm_1024, vec3(uv, mat.rmTA_emissionTA.x)).rg; break;
+            case 3: data = texture(rm_2048, vec3(uv, mat.rmTA_emissionTA.x)).rg; break;
         }
         mat.F0_alpha.w = data.x * data.x;
         mat.rou_met_trs_ref.y = data.y;
@@ -339,6 +345,16 @@ void set_mat_tex_params(inout Material mat, vec2 uv){
         mat.F0_alpha.xyz = mix(vec3(mat.rou_met_trs_ref.w),
                                     mat.albedo_emission.xyz,
                                     mat.rou_met_trs_ref.y);
+    }
+
+    if(mat.albedo_emission.a > 0.0 && mat.rmTA_emissionTA.w != 0){
+        switch(mat.rmTA_emissionTA.y){
+            case 1: emission_color = texture(emission_512, vec3(uv, mat.rmTA_emissionTA.z)).rgb; break;
+            case 2: emission_color = texture(emission_1024, vec3(uv, mat.rmTA_emissionTA.z)).rgb; break;
+            case 3: emission_color = texture(emission_2048, vec3(uv, mat.rmTA_emissionTA.z)).rgb; break;
+        }
+    }else{
+        emission_color = mat.albedo_emission.xyz;
     }
 
 }
@@ -453,7 +469,7 @@ vec3 apply_kernel(vec3 color, float t){
             h.normal = normalize(TBN * n_map); 
         }
 
-        set_mat_tex_params(h.mat,h.uv);
+        set_mat_tex_params(h.mat,h.uv,h.emission_color);
 
         return h;
     }
@@ -497,7 +513,7 @@ vec3 apply_kernel(vec3 color, float t){
             h.normal = normalize(TBN * n_map); 
         }
 
-        set_mat_tex_params(h.mat,h.uv);
+        set_mat_tex_params(h.mat,h.uv,h.emission_color);
 
         return h;
     }
@@ -557,7 +573,7 @@ vec3 apply_kernel(vec3 color, float t){
             h.normal = normalize(TBN * n_map); 
         }
 
-        set_mat_tex_params(h.mat,h.uv);
+        set_mat_tex_params(h.mat,h.uv,h.emission_color);
 
         return h;
     }
@@ -672,7 +688,7 @@ Hit fill_tri_mesh_record(const MeshTriangleInfo mti, const Ray r, const float t,
         h.normal = normalize(TBN * n_map); 
     }
 
-    set_mat_tex_params(h.mat,h.uv);
+    set_mat_tex_params(h.mat,h.uv,h.emission_color);
 
     return h;
 }
@@ -1266,12 +1282,13 @@ vec3 cast_ray(Ray r){
             if(total_t > ray_range.y) break;
 
             // Emissive material & Min distance check
-            if(h.mat.albedo_emission.a > 0.0){
+            if(h.mat.albedo_emission.a > 0.0 && 
+                any(greaterThan(h.emission_color, vec3(0.0)))){
                 // Min distance check
                 if(total_t < ray_range.x) break;
 
                 color += apply_kernel(
-                    atenuation * h.mat.albedo_emission.rgb*h.mat.albedo_emission.a,
+                    atenuation * h.emission_color.rgb*h.mat.albedo_emission.a,
                     total_t);
                 break; 
             }

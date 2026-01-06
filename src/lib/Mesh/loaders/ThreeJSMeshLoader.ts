@@ -12,6 +12,7 @@ export interface ExtractedMaterial {
     albedoMap?: string;
     normalMap?: string;
     rmMap?: string;
+    emissionMap?: string;
 }
 
 export interface EfficientMeshData {

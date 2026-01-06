@@ -306,7 +306,10 @@ export class Renderer {
         this.initSampler2DArray("rm_512",this.scene.tex_manager.roughmetal_block.data_512,512,512,gl.RG);
         this.initSampler2DArray("rm_1024",this.scene.tex_manager.roughmetal_block.data_1024,1024,1024,gl.RG);
         this.initSampler2DArray("rm_2048",this.scene.tex_manager.roughmetal_block.data_2048,2048,2048,gl.RG);
-    
+        this.initSampler2DArray("emission_512",this.scene.tex_manager.emission_block.data_512,512,512,gl.RGBA);
+        this.initSampler2DArray("emission_1024",this.scene.tex_manager.emission_block.data_1024,1024,1024,gl.RGBA);
+        this.initSampler2DArray("emission_2048",this.scene.tex_manager.emission_block.data_2048,2048,2048,gl.RGBA);
+        
     }
 
 

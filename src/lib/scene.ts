@@ -822,7 +822,7 @@ export class Scene {
         const test_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
             "materials/rmTest.jpg");
 
-        const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
         const brick_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_nor_gl_1k.jpg");
@@ -833,9 +833,9 @@ export class Scene {
             normal_tex_info:brick_normal, 
             roughmetal_tex_info:brick_rm,
             reflectance: 0.5
-        }));   
+        })); */   
 
-        const brick2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const brick2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/brushed_concrete_2k.gltf/textures/brushed_concrete_diff_2k.jpg");
         const brick2_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/brushed_concrete_2k.gltf/textures/brushed_concrete_nor_gl_2k.jpg");
@@ -847,9 +847,9 @@ export class Scene {
             normal_tex_info:brick2_normal, 
             roughmetal_tex_info:brick2_rm,
             reflectance: 0.5
-        }));   
+        }));   */ 
 
-        const concrete_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const concrete_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/concrete_layers_1k.gltf/textures/concrete_layers_diff_1k.jpg");
         const concrete_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/concrete_layers_1k.gltf/textures/concrete_layers_nor_gl_1k.jpg");
@@ -860,9 +860,9 @@ export class Scene {
             normal_tex_info:concrete_normal, 
             roughmetal_tex_info:concrete_rm,
             reflectance: 0.5
-        }));  
+        }));   */
         
-        const wood_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const wood_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_diff_1k.jpg");
         const wood_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_nor_gl_1k.jpg");
@@ -873,9 +873,9 @@ export class Scene {
             normal_tex_info:wood_normal,
             roughmetal_tex_info:wood_rm,
             reflectance: 0.5,
-        })); 
+        }));  */
         
-        const wood2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const wood2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/wood_table_001_1k.gltf/textures/wood_table_001_diff_1k.jpg");
         const wood2_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/wood_table_001_1k.gltf/textures/wood_table_001_nor_gl_1k.jpg");
@@ -886,7 +886,7 @@ export class Scene {
             normal_tex_info:wood2_normal,
             roughmetal_tex_info:wood2_rm,
             reflectance: 0.5,
-        })); 
+        }));  */
          
         const wood3_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/black_painted_planks_1k.gltf/textures/black_painted_planks_diff_1k.jpg");
@@ -900,7 +900,7 @@ export class Scene {
             roughmetal_tex_info:wood3_rm,
         })); 
 
-        const metal_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const metal_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_diff_1k.jpg");
         const metal_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_nor_gl_1k.jpg");
@@ -911,9 +911,9 @@ export class Scene {
             normal_tex_info:metal_normal, 
             roughmetal_tex_info:metal_rm,
             reflectance: 0.5,
-        })); 
+        }));  */
 
-        const metal2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const metal2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/rusty_metal_04_1k.gltf/textures/rusty_metal_04_diff_1k.jpg");
         const metal2_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/rusty_metal_04_1k.gltf/textures/rusty_metal_04_nor_gl_1k.jpg");
@@ -924,17 +924,17 @@ export class Scene {
             normal_tex_info:metal2_normal, 
             roughmetal_tex_info:metal2_rm,
             reflectance: 0.5,
-        })); 
+        }));  */
 
 
-        const dirty_glass_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+        /* const dirty_glass_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
             "materials/gltf/earth8.png",Channels.RG);
         const dirty_glass = this.addMaterial(new Material({
             roughmetal_tex_info:dirty_glass_rm,
             roughness:0.0,
             reflectance: 0.5,
             trs_weight:1.0,
-        })); 
+        }));  */
 
         const mirror = this.addMaterial(new Material({
             roughness: 0.0,
@@ -1016,7 +1016,7 @@ export class Scene {
             new Vector3(1.0, 1.0, 1.0),
             150.0
         );
-        this.addPointLight(l1);
+        //this.addPointLight(l1);
 
         // 5500K 0.972, 1, 0.717
         // 5100K 1, 0.972, 0.654
@@ -1031,7 +1031,7 @@ export class Scene {
             new Vector3(1, 0.713, 0.305),
             30.0
         );
-        this.addPointLight(l_warm);
+        //this.addPointLight(l_warm);
 
         const stest: Sphere = new Sphere(
             new Vector3(-1.1,-c_y+3.5,1.5),
@@ -1190,6 +1190,7 @@ export class Scene {
                 const albedoURL = data.materials[i].albedoMap;
                 const normalURL = data.materials[i].normalMap;
                 const rmURL = data.materials[i].rmMap;
+                const emissionURL = data.materials[i].emissionMap;
                 if(albedoURL !== undefined){
                     data.materials[i].material.albedo_tex_info = await this.tex_manager.addAlbedo(albedoURL);
                 }
@@ -1198,6 +1199,9 @@ export class Scene {
                 }
                 if(rmURL !== undefined){
                     data.materials[i].material.roughmetal_tex_info = await this.tex_manager.addRoughMetal(rmURL,rmChannel);
+                }
+                if(emissionURL !== undefined){
+                    data.materials[i].material.emission_tex_info = await this.tex_manager.addEmission(emissionURL);
                 }
                 const matIdx = this.addMaterial(data.materials[i].material); 
                 console.log("Added mesh material to scene:",matIdx,data.materials[i].material)

@@ -15,6 +15,7 @@ export type Params = {
     albedo_tex_info?:LoadedTextureInfo
     normal_tex_info?:LoadedTextureInfo
     roughmetal_tex_info?:LoadedTextureInfo
+    emission_tex_info?:LoadedTextureInfo
 }
 
 export class Material{
@@ -30,6 +31,7 @@ export class Material{
     public albedo_tex_info:LoadedTextureInfo = {array:0,index:-1};
     public normal_tex_info:LoadedTextureInfo = {array:0,index:-1};
     public roughmetal_tex_info:LoadedTextureInfo = {array:0,index:-1};
+    public emission_tex_info:LoadedTextureInfo = {array:0,index:-1};
 
     constructor(p:Params){
         console.log("MATERIAL",p)
@@ -63,6 +65,7 @@ export class Material{
         if(p.albedo_tex_info !== undefined) this.albedo_tex_info = p.albedo_tex_info;
         if(p.normal_tex_info !== undefined) this.normal_tex_info = p.normal_tex_info;
         if(p.roughmetal_tex_info !== undefined) this.roughmetal_tex_info = p.roughmetal_tex_info;
+        if(p.emission_tex_info !== undefined) this.emission_tex_info = p.emission_tex_info;
     }
 
     private static getMaxComponent(v:Vector3):number{
@@ -99,6 +102,8 @@ export class Material{
         (new Int32Array(data.buffer))[23] = this.normal_tex_info.array;
         (new Int32Array(data.buffer))[24] = this.roughmetal_tex_info.index;
         (new Int32Array(data.buffer))[25] = this.roughmetal_tex_info.array;
+        (new Int32Array(data.buffer))[26] = this.emission_tex_info.index;
+        (new Int32Array(data.buffer))[27] = this.emission_tex_info.array;
         return data;
     }
 
