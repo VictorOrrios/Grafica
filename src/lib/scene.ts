@@ -797,7 +797,7 @@ export class Scene {
     }
 
     private async final(){
-        this.camera = new Camera(new Vector3(10.0, 0.0, -10.0));
+        this.camera = new Camera(new Vector3(7.0, 0.0, -7.0));
         this.skybox = SkyboxType.BLACK;
         
         const debug_purple = this.addMaterial(new Material({
@@ -1012,22 +1012,43 @@ export class Scene {
         //this.addPlane(p_right, metal2);
 
         const l1: PointLight = new PointLight(
-            new Vector3(0, 3.0, 0.0),
+            new Vector3(0.0, 3.0, 0.0),
             new Vector3(1.0, 1.0, 1.0),
-            100.0
+            50.0
         );
         this.addPointLight(l1);
+
+        // 5500K 0.972, 1, 0.717
+        // 5100K 1, 0.972, 0.654
+        // 4700K 1, 0.917, 0.564
+        // 4300K 1, 0.854, 0.478
+        // 3900K 1, 0.713, 0.305
+        // 2700K 1, 0.545, 0.152
+        // 1900K 1, 0.349, 0.043
+        // 1500K 1, 0.239, 0.043
+        const l_warm: PointLight = new PointLight(
+            new Vector3(-1.1,-c_y+3.5,1.5),
+            new Vector3(1, 0.713, 0.305),
+            150.0
+        );
+        this.addPointLight(l_warm);
+
+        const stest: Sphere = new Sphere(
+            new Vector3(-1.1,-c_y+3.5,1.5),
+            0.1
+        );
+        //this.addSphere(stest,white_light)
+
+
 
         // Chair brown
         await this.addGLTFModel(
             "models/gltf/mid_century_lounge_chair_2k/mid_century_lounge_chair_2k.gltf", 
-            3.0, new Vector3(0.0,2.0,0.0), new Vector3(-2.0,-c_y+0.1,-1.0), 
+            3.0, new Vector3(0.0,2.0,0.0), new Vector3(-2.0,-c_y,-1.0), 
             NormalStrategy.INTERPOLATED,Channels.GB,
             
         )
             
-
-        
         /*
         // Chair black
         await this.addGLTFModel(
@@ -1050,34 +1071,58 @@ export class Scene {
         
         
         // TV VTech
-        await this.addGLTFModel(
+        /* await this.addGLTFModel(
             "models/gltf/Television_01_2k/Television_01_2k.gltf", 
             3.0, new Vector3(0.0,Math.PI+0.1,0.0), new Vector3(1.0,-c_y+2.5,2.0), 
             NormalStrategy.INTERPOLATED,Channels.GB,
             
-        )
+        ) */
 
         // TV Bottom
-        await this.addGLTFModel(
+        /* await this.addGLTFModel(
             "models/gltf/vintage_tv/scene.gltf", 
             1.0, new Vector3(0.0,-Math.PI-0.15,0.0), new Vector3(-1.0,-c_y+3.5,2.1), 
             NormalStrategy.INTERPOLATED,Channels.GB,
             
-        )
+        ) */
 
         // TV Simple
-        await this.addGLTFModel(
+        /* await this.addGLTFModel(
             "models/gltf/simple_tv/scene.gltf", 
             1.0, new Vector3(0.0,Math.PI,0.1), new Vector3(0.0,-c_y+4.8,2.1), 
             NormalStrategy.INTERPOLATED,Channels.GB,
             
-        )
+        ) */
             
 
         // MultiDesk
-        await this.addGLTFModel(
+        /* await this.addGLTFModel(
             "models/gltf/desk_wooden_office_-_18mb/scene.gltf", 
             0.03, new Vector3(0.0,-0.02,0.0), new Vector3(0.0,-c_y+1.3,2.0), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        ) */
+
+        // Coffe cart
+        /* await this.addGLTFModel(
+            "models/gltf/CoffeeCart/CoffeeCart_01_2k.gltf", 
+            2.0, new Vector3(0.0,Math.PI-0.4,0.0), new Vector3(0.0,-c_y,2.0), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        ) */
+
+        // Desk gov
+        await this.addGLTFModel(
+            "models/gltf/bureau_desk/scene.gltf", 
+            0.035, new Vector3(0.0,Math.PI,0.0), new Vector3(0.0,-c_y,2.0), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            
+        )
+
+        // Scifi lamp
+        await this.addGLTFModel(
+            "models/gltf/simple_retro_desk_lamp/scene.gltf", 
+            0.15, new Vector3(-Math.PI/2.0,0.0,0.3), new Vector3(-1.5,-c_y+2.4,1.6), 
             NormalStrategy.INTERPOLATED,Channels.GB,
             
         )

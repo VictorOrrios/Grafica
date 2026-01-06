@@ -126,6 +126,8 @@ struct Hit {
 //===========================
 uint seed;
 int bounce_count;
+int spp_real;
+float rr_chance_real;
 
 //===========================
 // External variable definitions
@@ -147,6 +149,7 @@ uniform vec3 resolution;        // x,y,z = width,height,aspect_ratio
 uniform float rr_chance;
 uniform vec3 ray_range;         // x = min, y = max, z = (min+max)/2
 uniform float kernel_sigma;
+uniform uint fast_mode;         // Render with minimal setting when frame_count == 0
 
 uniform uint frames_acummulated;
 uniform sampler2D last_frame_buffer;
@@ -1037,7 +1040,7 @@ vec3 sample_ggx(float alpha, vec3 V, vec3 N){
 
 vec3 eval_mat(Hit h, vec3 Vin, out vec3 Vout){
 
-    if(rr_chance < random()) return vec3(0.0);
+    if(rr_chance_real < random()) return vec3(0.0);
 
     // Uv check
     //if(h.uv.x >= 0.0) return vec3(h.uv.x,h.uv.y,0.0);
@@ -1188,7 +1191,7 @@ vec3 cast_ray(Ray r){
     Hit h;
     vec3 atenuation = vec3(1.0);
     vec3 new_direction;
-    float rr_inv = 1.0 / rr_chance;
+    float rr_inv = 1.0 / rr_chance_real;
     float total_t = 0.0;
     float prev_hit_ior = 1.0;
 
@@ -1280,14 +1283,18 @@ void main() {
     // Generate a random enough seed
     init_seed();
 
+    // Check for fast mode
+    spp_real = (fast_mode == 1u && frames_acummulated == 0u)? 1 : int(spp);
+    rr_chance_real = (fast_mode == 1u && frames_acummulated == 0u)? 0.0 : rr_chance ;
+
     // Calculate mean color of pixel
     vec2 uv = (gl_FragCoord.xy)/resolution.xy;
     vec3 samples_sum = vec3(0.0);
-    for(int i = 0; i<int(spp); i++){
+    for(int i = 0; i<spp_real; i++){
         Ray r = get_ray(uv);
         samples_sum += cast_ray(r);
     }
-    outColor = vec4(samples_sum/float(spp),1.0);
+    outColor = vec4(samples_sum/float(spp_real),1.0);
 
     // Post processing
     outColor.xyz = gamma_correct(clamp_color(aces_film(outColor.xyz)));

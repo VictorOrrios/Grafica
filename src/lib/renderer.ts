@@ -18,6 +18,8 @@ export class Renderer {
     public frame_acummulation_on: boolean = true;
     private num_frames_rendered: number = 0;
 
+    public fast_mode_on: boolean = true;
+
     private num_frames_acummulated: number = 0;
     private last_frame!: WebGLTexture;
 
@@ -167,7 +169,7 @@ export class Renderer {
         this.initUniform("rr_chance", 1)
         this.initUniform("ray_range", 3)
         this.initUniform("kernel_sigma", 1)
-
+        this.initUniform("fast_mode", 2)
     }
 
     private initUniform(name: string, type: number, value: any[] = [0]): WebGLUniformLocation {
@@ -491,6 +493,8 @@ export class Renderer {
         // Kernel sigma
         gl.uniform1f(this.getLocation("kernel_sigma"), this.kernel_sigma);
 
+        // Fast mode
+        gl.uniform1ui(this.getLocation("fast_mode"), this.fast_mode_on? 1 : 0);
 
     }
 

@@ -44,6 +44,7 @@
     let meanBounces = $state(5);
     let russianRoulette = $derived(1 - 1 / meanBounces);
     let frame_acummulation: boolean = $state(true);
+    let fast_mode: boolean = $state(true);
 
     let range_thing: boolean = $state(false);
     let range_slider_ini: number = $state(0.0);
@@ -72,6 +73,7 @@
             || renderer.kernel_sigma !== kernel_sigma
             || renderer.aperture_radius !== aperture_radius
             || renderer.focal_distance !== focal_distance
+            || renderer.fast_mode_on !== fast_mode
         ) {
             renderer.resetFrameAcummulation();
         }
@@ -84,6 +86,7 @@
         renderer.kernel_sigma = kernel_sigma;
         renderer.aperture_radius = aperture_radius;
         renderer.focal_distance = focal_distance;
+        renderer.fast_mode_on = fast_mode;
     });
 
     function mousedown(event: any) {
@@ -251,6 +254,12 @@
                 <div class="space-y-2 flex gap-4">
                     <Label>Frame acummulation</Label>
                     <Switch bind:checked={frame_acummulation} />
+                </div>
+
+                <!-- Frame acummulation toggle -->
+                <div class="space-y-2 flex gap-4">
+                    <Label>Fast mode</Label>
+                    <Switch bind:checked={fast_mode} />
                 </div>
 
                 <!-- Thin lense -->
