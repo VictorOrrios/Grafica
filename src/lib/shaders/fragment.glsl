@@ -710,7 +710,7 @@ bool intersectsBounds(vec3 rayOrigin, vec3 rayDirection, vec3 boundsMin, vec3 bo
 }
 
 // Main BVH traversal function
-bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, const float min_t, out Hit h, out MeshTriangleInfo mti) {
+bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, const float min_t, out float t, out MeshTriangleInfo mti) {
     // Stack for traversal
     // Stack for BVH traversal (max depth 64)
     const int BVH_STACK_DEPTH = 64;
@@ -722,9 +722,7 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, const float min_t, out Hit h,
     
     float triangleDistance = min_t;
     bool found = false;
-    
-    // Initialize hit record
-    h.t = min_t;
+    t = min_t;
     
     while (stackPtr > 0) {
         int currNodeIndex = stack[--stackPtr];
@@ -797,7 +795,7 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, const float min_t, out Hit h,
         }
     }
 
-    h.t = triangleDistance;
+    t = triangleDistance;
 
     /* if(found){
         h = fill_tri_mesh_record(mti,r,triangleDistance,
@@ -808,44 +806,38 @@ bool hit_mesh_with_bvh(MeshInfo mesh, const Ray r, const float min_t, out Hit h,
 }
 
 // Brute-force version, check all tris 
-bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, const float min_t, out Hit h, out MeshTriangleInfo mti){
+bool hit_mesh_bruteforce(MeshInfo mesh, const Ray r, const float min_t, out float t, out MeshTriangleInfo mti){
     bool has_hit = false;
-    h.t = ray_max_distance;
 
-    float t;
+    float t_aux = ray_max_distance;
     MeshTriangleInfo mti_aux;
 
 
     for(int i = 0; i < mesh.triangleCount; i++){
         int triIdx = mesh.startTriangle + i;
-        if(hit_mesh_triangle(triIdx,r,t,mti_aux)){
-            if(t < h.t){
-                h.t = t;
+        if(hit_mesh_triangle(triIdx,r,t_aux,mti_aux)){
+            if(t_aux < t){
+                t = t_aux;
                 mti = mti_aux;
                 has_hit = true;
             }
         }
     }
 
-    /* if(has_hit) {
-        h = fill_tri_mesh_record(mti,r,h.t,
-                mesh.normalStrategy,mesh.normalOffset);
-    } */
 
     return has_hit;
 }
 
 // Main hit_mesh function
-bool hit_mesh(MeshInfo mesh, const Ray r, const float min_t, out Hit h, out MeshTriangleInfo mti){
-    return hit_mesh_with_bvh(mesh, r, min_t, h, mti);
-    //return hit_mesh_bruteforce(mesh, r, min_t, h, mti);
+bool hit_mesh(MeshInfo mesh, const Ray r, const float min_t, out float t, out MeshTriangleInfo mti){
+    return hit_mesh_with_bvh(mesh, r, min_t, t, mti);
+    //return hit_mesh_bruteforce(mesh, r, min_t, t, mti);
 }
 
 //===========================
 // Scene functions
 //===========================
 bool hit_scene(Ray r, out Hit h){
-    Hit h_aux;
     float aux_t;
     int primitive_type = 0;
     int primitive_index = 0;
@@ -901,9 +893,9 @@ bool hit_scene(Ray r, out Hit h){
     #if NUM_MESHES > 0
         for(int m_i = 0; m_i < NUM_MESHES; m_i++) {
             MeshInfo mesh = meshInfos[m_i];
-            if(hit_mesh(mesh, r, h.t, h_aux, mti_aux)){
-                if(h_aux.t < h.t){
-                    h = h_aux;
+            if(hit_mesh(mesh, r, h.t, aux_t, mti_aux)){
+                if(aux_t < h.t){
+                    h.t = aux_t;
                     mti = mti_aux;
                     primitive_type = 4;
                     primitive_index = m_i;
@@ -935,6 +927,62 @@ bool hit_scene(Ray r, out Hit h){
 
     return primitive_type != 0;
 }
+
+// Check if ray hits anything before reaching max_t
+bool shadow_ray(Ray r, const float d){
+    float aux_t;
+    vec2 aux_uv;
+    MeshTriangleInfo mti_aux;
+
+    // Check for sphere hits
+    #if NUM_SPHERES > 0
+        for(int s_i = 0; s_i < NUM_SPHERES; s_i++){
+            Sphere s = spheres[s_i];
+            if(hit_sphere(s,r,aux_t)){
+                if(aux_t <= d){
+                    return true;
+                }
+            }
+        }
+    #endif
+
+    // Check for plane hits
+    #if NUM_PLANES > 0
+        for(int p_i = 0; p_i < NUM_PLANES; p_i++) {
+            Plane p = planes[p_i];
+            if(hit_plane(p,r,aux_t)){
+                if(aux_t <= d){
+                    return true;
+                }
+            }
+        }
+    #endif
+
+    // Check for UBO triangle hits
+    #if NUM_TRIS > 0
+        for(int t_i = 0; t_i < NUM_TRIS; t_i++) {
+            Triangle tri = triangles[t_i];
+            if(hit_triangle(tri, r, aux_t, aux_uv)){
+                if(aux_t <= d){
+                    return true;
+                }
+            }
+        }
+    #endif
+
+    #if NUM_MESHES > 0
+        for(int m_i = 0; m_i < NUM_MESHES; m_i++) {
+            MeshInfo mesh = meshInfos[m_i];
+            if(hit_mesh(mesh, r, d, aux_t, mti_aux)){
+                if(aux_t <= d){
+                    return true;
+                }
+            }
+        }
+    #endif
+
+    return false;
+} 
 
 
 
@@ -1156,7 +1204,8 @@ vec3 get_direct_light(Hit h, Ray r, float total_t){
             float d2 = d*d;
             // Cast a ray from the light source to the hit position
             Ray r_pl = Ray(h.p,normalize(l.position-h.p));
-            if(!hit_scene(r_pl,aux) || aux.t >= d){
+            //if(!hit_scene(r_pl,aux) || aux.t >= d){
+            if(!shadow_ray(r_pl,d)){
                 vec3 F0 = h.mat.F0_alpha.rgb;
                 float alpha = h.mat.F0_alpha.w;
                 float alpha2 = alpha*alpha;
