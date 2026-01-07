@@ -97,14 +97,6 @@ export class GLTFLoader extends ThreeJSMeshLoader {
             if ( mat instanceof THREE.MeshPhysicalMaterial || mat instanceof THREE.MeshStandardMaterial) {
 
                 if(mat.color !== undefined) mat_params.albedo = new Vector3(mat.color.r, mat.color.g, mat.color.b);
-                /*
-                if (mat.emissive !== undefined) {
-                    mat_params.emission =
-                    Math.max(mat.emissive.r, mat.emissive.g, mat.emissive.g) *
-                    (mat.emissiveIntensity ?? 1);
-                }
-                */
-                mat_params.emission = 0.0;
                 if(mat.roughness !== undefined) mat_params.roughness = mat.roughness;
                 if(mat.metalness !== undefined) mat_params.metalness = mat.metalness;
                 

@@ -210,7 +210,7 @@
 <div class="main w-screem h-screen">
 
     <div class="w-full h-full flex gap-8 p-4">
-        <canvas id="canvas" width="1000" height="1000" bind:this={canvas}></canvas>
+        <canvas id="canvas" width="1280" height="720" bind:this={canvas}></canvas>
 
         <Card class="max-w-md w-70">
             <CardHeader>

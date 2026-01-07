@@ -1359,8 +1359,8 @@ void main() {
     init_seed();
 
     // Check for fast mode
-    spp_real = (fast_mode == 1u && frames_acummulated == 0u)? 1 : int(spp);
-    rr_chance_real = (fast_mode == 1u && frames_acummulated == 0u)? 0.0 : rr_chance ;
+    spp_real = (fast_mode == 1u && frames_acummulated >= 0u)? 3 : int(spp);
+    rr_chance_real = (fast_mode == 1u && frames_acummulated == 0u)? 0.0 : rr_chance;
 
     // Calculate mean color of pixel
     vec2 uv = (gl_FragCoord.xy)/resolution.xy;

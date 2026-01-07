@@ -27,7 +27,8 @@ export enum SceneType {
     BVHMESH = 'bvhmesh',
     GLTF_BVH = 'glbvh',
     BRUCE = 'bruce',
-    FINAL = 'final'
+    FINAL = 'final',
+    MODEL = 'modelViewer',
 }
 
 export enum SkyboxType {
@@ -67,6 +68,8 @@ export class Scene {
             await this.transient();
         }else if (this.sceneType === SceneType.FINAL) {
             await this.final();
+        }else if (this.sceneType === SceneType.MODEL) {
+            await this.modelViewer();
         }
     }
 
@@ -797,7 +800,8 @@ export class Scene {
     }
 
     private async final(){
-        this.camera = new Camera(new Vector3(7.0, 0.0, -7.0));
+        const ini_zoom = 3.5;
+        this.camera = new Camera(new Vector3(1.0, 0.1, -1.0).multiplyByScalar(ini_zoom));
         this.skybox = SkyboxType.BLACK;
         
         const debug_purple = this.addMaterial(new Material({
@@ -807,6 +811,12 @@ export class Scene {
 
         const white_matte = this.addMaterial(new Material({
             roughness: 0.8,
+        }));
+
+        const white_transparent = this.addMaterial(new Material({
+            roughness: 0.0,
+            ior:1.001,
+            trs_weight:1.0
         }));
 
         const plastic = this.addMaterial(new Material({
@@ -941,7 +951,7 @@ export class Scene {
             metalness: 1.0,
         }));
 
-        const c_x = 4.0, c_y = 4.0, c_z = 4.0;
+        const c_x = 4.0, c_y = 3.0, c_z = 4.0;
         const floor: Quad = new Quad(
             new Vector3(-c_x, -c_y, -c_z),
             new Vector3(-c_x, -c_y, c_z),
@@ -982,13 +992,13 @@ export class Scene {
         );
         //this.addQuad(left, concrete);
 
-        const s1: Sphere = new Sphere(
-            new Vector3(0.0, -0.05, 0.0),
-            0.5,
+        /* const s1: Sphere = new Sphere(
+            new Vector3(0.0,-c_y+3.18,1.46),
+            0.1,
             new Vector2(1.0,1.0),new Vector2(0.05,0.0),
             new Vector3(0.0,1.0,0.0), new Vector3(0.0,0.0,-1.0)
         );
-        //this.addSphere(s1, dirty_glass);
+        this.addSphere(s1, dirty_glass); */
 
         const p_floor: Plane = new Plane(
             new Vector3(0.0, 1.0, 0.0),
@@ -1011,10 +1021,11 @@ export class Scene {
         );
         //this.addPlane(p_right, metal2);
 
+        const window_x_off = 0.0;
         const l1: PointLight = new PointLight(
-            new Vector3(0.0, 3.0, 0.0),
+            new Vector3(window_x_off, 5.0, 0.0),
             new Vector3(1.0, 1.0, 1.0),
-            50.0
+            100.0
         );
         this.addPointLight(l1);
 
@@ -1029,17 +1040,33 @@ export class Scene {
         const l_warm: PointLight = new PointLight(
             new Vector3(-1.1,-c_y+3.5,1.5),
             new Vector3(1, 0.713, 0.305),
-            150.0
+            50.0
         );
         this.addPointLight(l_warm);
 
         const stest: Sphere = new Sphere(
-            new Vector3(-1.1,-c_y+3.5,1.5),
+            new Vector3(0.0, 5.0, -7.5),
             0.1
         );
         //this.addSphere(stest,white_light)
 
+        const w1x = 0.05, w1z = -6.0
+        const qw1:Quad = new Quad(
+            new Vector3(-w1x+window_x_off, 0.0-c_y, w1z),
+            new Vector3(-w1x+window_x_off, 20.0-c_y, w1z),
+            new Vector3(w1x+window_x_off, 20.0-c_y, w1z),
+            new Vector3(w1x+window_x_off, 0.0-c_y, w1z),
+        )
+        //this.addQuad(qw1,white_transparent)
 
+        const w2y = 0.05, w2z = -6.0, w2yoff = 3.0
+        const qw2:Quad = new Quad(
+            new Vector3(-20.0, w2yoff-w2y-c_y, w2z),
+            new Vector3(-20.0, w2yoff+w2y-c_y, w2z),
+            new Vector3(20.0, w2yoff+w2y-c_y, w2z),
+            new Vector3(20.0, w2yoff-w2y-c_y, w2z),
+        )
+        //this.addQuad(qw2,white_transparent)
 
         // Chair brown
         await this.addGLTFModel(
@@ -1069,14 +1096,28 @@ export class Scene {
         )
             */
         
-        
+        const tv_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "models/gltf/Television_01_2k/textures/Television_01_diff_2k.jpg");
+        const tv_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "models/gltf/Television_01_2k/textures/Television_01_nor_gl_2k.jpg");
+        const tv_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "models/gltf/Television_01_2k/textures/Television_01_arm_2k.jpg", Channels.GB);
+        const tv_emission:LoadedTextureInfo = await this.tex_manager.addEmission(
+            "models/gltf/Television_01_2k/textures/Television_01_emissive_2k.jpg");
+        const tv = this.addMaterial(new Material({
+            albedo_tex_info:tv_albedo,
+            normal_tex_info:tv_normal, 
+            roughmetal_tex_info:tv_rm,
+            emission_tex_info:tv_emission,
+            emission: 1.0
+        }));
         // TV VTech
-        /* await this.addGLTFModel(
+        await this.addGLTFModel(
             "models/gltf/Television_01_2k/Television_01_2k.gltf", 
-            3.0, new Vector3(0.0,Math.PI+0.1,0.0), new Vector3(1.0,-c_y+2.5,2.0), 
+            2.12, new Vector3(0.0,Math.PI+0.0,0.0), new Vector3(0.0,-c_y+2.45,2.3), 
             NormalStrategy.INTERPOLATED,Channels.GB,
-            
-        ) */
+            tv
+        )
 
         // TV Bottom
         /* await this.addGLTFModel(
@@ -1122,7 +1163,7 @@ export class Scene {
         // Scifi lamp
         await this.addGLTFModel(
             "models/gltf/simple_retro_desk_lamp/scene.gltf", 
-            0.15, new Vector3(-Math.PI/2.0,0.0,0.3), new Vector3(-1.5,-c_y+2.4,1.6), 
+            0.15, new Vector3(-Math.PI/2.0,0.0,0.3), new Vector3(-1.5,-c_y+2.45,1.6), 
             NormalStrategy.INTERPOLATED,Channels.GB,
             
         )
@@ -1134,7 +1175,125 @@ export class Scene {
             NormalStrategy.INTERPOLATED,Channels.GB,
             
         )  */
+       
+        // Dragon 19k tris
+        /* const dragon_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "models/gltf/stanford_dragon_pbr/textures/DefaultMaterial_baseColor.jpeg"); */
+        const dragon_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "models/gltf/stanford_dragon_pbr/textures/DefaultMaterial_normal.png");
+        /* const dragon_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "models/gltf/stanford_dragon_pbr/textures/DefaultMaterial_metallicRoughness.png", Channels.GB);
+         */
+        const dragon = this.addMaterial(new Material({
+            //albedo_tex_info:dragon_albedo,
+            normal_tex_info:dragon_normal, 
+            //roughmetal_tex_info:dragon_rm,
+            albedo: new Vector3(0.9,1.0,0.9),
+            subsurface_color: new Vector3(0.7,1.0,0.7),
+            roughness:0.15,
+            metalness:0.0,
+            ior: 1.52,
+            trs_weight: 1.0
+        }));
+        await this.addGLTFModel(
+            "models/gltf/stanford_dragon_pbr/scene.gltf", 
+            0.005, new Vector3(0.0,Math.PI,0.0), new Vector3(-0.15,-c_y+2.65,1.65), 
+            NormalStrategy.INTERPOLATED,Channels.GB,
+            dragon
+        )
+
+        // Book1
+        /* const book1_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "models/gltf/book/textures/Standardmaterial_baseColor.jpeg");
+        const book1_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "models/gltf/book/textures/Standardmaterial_normal.jpeg");
+        const book1 = this.addMaterial(new Material({
+            albedo_tex_info: book1_albedo,
+            normal_tex_info: book1_normal, 
+            roughness:0.8,
+            metalness:0.0,
+        }));
+        await this.addGLTFModel(
+            "models/gltf/book/scene.gltf", 
+            0.26, new Vector3(-Math.PI/2.0,0.0,Math.PI/2.0-0.25), new Vector3(-0.15,-c_y+2.45,1.55), 
+            NormalStrategy.INTERPOLATED,
+            book1
+        ) */
+
+        // Book2
+        /* await this.addGLTFModel(
+            "models/gltf/book_-_encyclopedia/scene.gltf", 
+            0.65, new Vector3(0.0,Math.PI/2.0-0.1,0.0), new Vector3(-0.15,-c_y+2.55,1.5), 
+            NormalStrategy.INTERPOLATED
+        ) */
+
+        // Book3
+        /* await this.addGLTFModel(
+            "models/gltf/old_book/scene.gltf", 
+            0.035, new Vector3(-Math.PI/2.0,0.0,Math.PI/2.0+0.25), new Vector3(-0.13,-c_y+2.57,1.6), 
+            NormalStrategy.INTERPOLATED
+        ) */
+
+        // Book$
+        await this.addGLTFModel(
+            "models/gltf/leather_book/scene.gltf", 
+            0.2, new Vector3(-Math.PI/2.0,0.0,Math.PI/2.0+0.25), new Vector3(-0.13,-c_y+2.57,1.6), 
+            NormalStrategy.INTERPOLATED
+        )
+
+        // Venus
+        /* await this.addGLTFModel(
+            "models/gltf/venus_statue/scene.gltf", 
+            0.07, new Vector3(0.0,Math.PI,0.0), new Vector3(1.35,-c_y+2.85,1.6), 
+            NormalStrategy.INTERPOLATED
+        ) */
+
+        // Table mirror
+        /* await this.addGLTFModel(
+            "models/gltf/table_mirror/scene.gltf", 
+            0.008, new Vector3(0.0,-Math.PI/2.0-0.5,Math.PI/2.0), new Vector3(1.0,-c_y+2.45,2.0), 
+            NormalStrategy.INTERPOLATED
+        ) */
+
+        // Skull
+        await this.addGLTFModel(
+            "models/gltf/skull_salazar/scene.gltf", 
+            0.4, new Vector3(0.0,Math.PI/2.0+0.4,0.0), new Vector3(-1.0,-c_y+4.15,2.6), 
+            NormalStrategy.INTERPOLATED
+        )
+
+        // Mirror ball
+        await this.addGLTFModel(
+            "models/gltf/sphere-mirror-4k-materialtest/scene.gltf", 
+            0.3, new Vector3(0.0,Math.PI+0.2,0.0), new Vector3(1.2,-c_y+4.15,2.5), 
+            NormalStrategy.INTERPOLATED
+        )
+
+        // Book open
+        /* await this.addGLTFModel(
+            "models/gltf/book_open/scene.gltf", 
+            0.02, new Vector3(-Math.PI/2.0,0.0,Math.PI/2.0), new Vector3(1.3,-c_y+2.45,1.6), 
+            NormalStrategy.INTERPOLATED
+        ) */
+
+        // Monitor
+        await this.addGLTFModel(
+            "models/gltf/monitor_iii_mod/Sketchfab_Scene.gltf", 
+            0.075, new Vector3(-Math.PI/2.0,0.0,-Math.PI/2.0-0.8), new Vector3(1.5,-c_y+2.45,1.8), 
+            NormalStrategy.INTERPOLATED
+        )
             
+    }
+
+    private async modelViewer(){
+        this.camera = new Camera(new Vector3(0.0,0.0,1.0));
+        this.skybox = SkyboxType.DAY;
+        
+        await this.addGLTFModel(
+            "models/gltf/stargazing_through_the_attic_window/scene.gltf", 
+            1.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,0.0,0.0), 
+            NormalStrategy.INTERPOLATED
+        )
     }
 
 
