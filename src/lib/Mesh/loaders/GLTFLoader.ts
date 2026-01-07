@@ -107,7 +107,7 @@ export class GLTFLoader extends ThreeJSMeshLoader {
                 mat_params.emission = 0.0;
                 if(mat.roughness !== undefined) mat_params.roughness = mat.roughness;
                 if(mat.metalness !== undefined) mat_params.metalness = mat.metalness;
-                if(mat.emissiveIntensity !== undefined) mat_params.emission = mat.emissiveIntensity;
+                
 
                 // PBR Extra params
                 if(mat instanceof THREE.MeshPhysicalMaterial){
@@ -121,8 +121,10 @@ export class GLTFLoader extends ThreeJSMeshLoader {
                     albedoMap = basePath + this.getTextureURL(mat.map);
                 if(mat.normalMap !== undefined && mat.normalMap !== null) 
                     normalMap = basePath + this.getTextureURL(mat.normalMap);
-                if(mat.emissiveMap !== undefined && mat.emissiveMap !== null) 
+                if(mat.emissiveMap !== undefined && mat.emissiveMap !== null){ 
                     emissionMap = basePath + this.getTextureURL(mat.emissiveMap);
+                    if(mat.emissiveIntensity !== undefined) mat_params.emission = mat.emissiveIntensity;
+                }
 
                 const roughTex = mat.roughnessMap;
                 const metalTex = mat.metalnessMap;
