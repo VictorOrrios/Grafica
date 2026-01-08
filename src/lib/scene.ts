@@ -37,6 +37,21 @@ export enum SkyboxType {
     DAY = 2,
 }
 
+export type initialParams = {
+    canvas_width:number,
+    canvas_height:number,
+    ssp:number,
+    meanBounces:number,
+    frame_acummulation:boolean,
+    fast_mode:boolean,
+    range_thing: boolean,
+    range_slider_ini: number,
+    range_input: number,
+    kernel_sigma_input:number,
+    focal_distance:number,
+    aperture_radius:number,
+};
+
 export class Scene {
     public camera: Camera = new Camera();
     public skybox: SkyboxType = SkyboxType.BLACK;
@@ -50,9 +65,36 @@ export class Scene {
     public pointLightVec: PointLight[] = [];
     public meshDataVec: EfficientMeshData[] = [];
     public tex_manager: TextureManager = new TextureManager();
+    public iniP:initialParams = {
+        canvas_width:500,
+        canvas_height:500,
+        ssp:1,
+        meanBounces:5,
+        frame_acummulation:true,
+        fast_mode:true,
+        range_thing: false,
+        range_slider_ini: 0.0,
+        range_input: 0.1,
+        kernel_sigma_input:0.0,
+        focal_distance:1.0,
+        aperture_radius:0.0,
+    }
 
     constructor(type: SceneType = SceneType.FINAL) {
         this.sceneType = type;
+        this.setupVariables();
+    }
+
+    public setupVariables(){
+        if (this.sceneType === SceneType.FINAL) {
+            this.iniP.canvas_width = 1280;
+            this.iniP.canvas_height = 720;
+            this.iniP.ssp = 1;
+            this.iniP.meanBounces = 7;
+            this.iniP.range_input = 0.35;
+            this.iniP.range_slider_ini = 4.9;
+            this.iniP.kernel_sigma_input = 0.06;
+        }
     }
 
     public async setupScene() {
@@ -800,9 +842,10 @@ export class Scene {
     }
 
     private async final(){
-        const ini_zoom = 3.5;
-        this.camera = new Camera(new Vector3(1.0, 0.1, -1.0).multiplyByScalar(ini_zoom));
+        const ini_zoom = 4.0;
+        this.camera = new Camera(new Vector3(0.5, 0.1, -1.0).multiplyByScalar(ini_zoom));
         this.skybox = SkyboxType.BLACK;
+
         
         const debug_purple = this.addMaterial(new Material({
             albedo: new Vector3(1, 0.058, 0.933),
@@ -1067,6 +1110,15 @@ export class Scene {
             new Vector3(20.0, w2yoff-w2y-c_y, w2z),
         )
         //this.addQuad(qw2,white_transparent)
+
+        /* const qmz = 2.8;
+        const qm:Quad = new Quad(
+            new Vector3(-2.0, 3.0-c_y, qmz),
+            new Vector3(-2.0, 7.0-c_y, qmz),
+            new Vector3(2.0, 7.0-c_y, qmz),
+            new Vector3(2.0, 3.0-c_y, qmz),
+        )
+        this.addQuad(qm,mirror) */
 
         // Chair brown
         await this.addGLTFModel(

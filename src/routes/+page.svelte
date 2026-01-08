@@ -40,22 +40,24 @@
 
     let fps = $state(0);
 
-    let samplesPerPixel = $state(5);
-    let meanBounces = $state(5);
+    let samplesPerPixel = $state(scene.iniP.ssp);
+    let meanBounces = $state(scene.iniP.meanBounces);
     let russianRoulette = $derived(1 - 1 / meanBounces);
-    let frame_acummulation: boolean = $state(true);
-    let fast_mode: boolean = $state(true);
+    let frame_acummulation: boolean = $state(scene.iniP.frame_acummulation);
+    let fast_mode: boolean = $state(scene.iniP.fast_mode);
 
-    let range_thing: boolean = $state(false);
-    let range_slider_ini: number = $state(0.0);
-    let range_numbers_ini: number = $derived(range_thing? range_slider_ini : 0.0);
-    let range_input: number = $state(0.1);
+    let range_thing: boolean = $state(scene.iniP.range_thing);
+    let range_slider_ini: number = $state(scene.iniP.range_slider_ini);
+    let range_animation_ini: number = $state(scene.iniP.range_slider_ini);
+    let range_animated:boolean = $state(false);
+    let range_numbers_ini: number = $derived(range_thing? (range_animated? range_animation_ini: range_slider_ini) : 0.0);
+    let range_input: number = $state(scene.iniP.range_input);
     let range_size: number = $derived(range_thing? range_input : 100000.0);
-    let kernel_sigma_input:number = $state(0.0);
+    let kernel_sigma_input:number = $state(scene.iniP.kernel_sigma_input);
     let kernel_sigma:number = $derived(range_thing? kernel_sigma_input : 0.0);
 
-    let focal_distance:number = $state(1.0);
-    let aperture_radius:number = $state(0.0);
+    let focal_distance:number = $state(scene.iniP.focal_distance);
+    let aperture_radius:number = $state(scene.iniP.aperture_radius);
 
     $effect(() => {
         samplesPerPixel;russianRoulette;frame_acummulation;
@@ -78,6 +80,24 @@
             renderer.resetFrameAcummulation();
         }
 
+        updateRendererVariables();
+    });
+
+    function updatePageVariables(){
+        samplesPerPixel = scene.iniP.ssp;
+        meanBounces = scene.iniP.meanBounces;
+        frame_acummulation = scene.iniP.frame_acummulation;
+        fast_mode = scene.iniP.fast_mode;
+        range_thing = scene.iniP.range_thing;
+        range_slider_ini = scene.iniP.range_slider_ini;
+        range_input = scene.iniP.range_input;
+        kernel_sigma_input = scene.iniP.kernel_sigma_input;
+        focal_distance = scene.iniP.focal_distance;
+        aperture_radius = scene.iniP.aperture_radius;
+    }
+
+    function updateRendererVariables(){
+        let range_numbers_fix = [range_numbers_ini,range_size+range_numbers_ini];
         renderer.spp = Math.max(samplesPerPixel,1);
         renderer.rr_chance = Math.max(russianRoulette,0.0);
         renderer.frame_acummulation_on = frame_acummulation;
@@ -87,7 +107,7 @@
         renderer.aperture_radius = aperture_radius;
         renderer.focal_distance = focal_distance;
         renderer.fast_mode_on = fast_mode;
-    });
+    }
 
     function mousedown(event: any) {
         const rect = canvas.getBoundingClientRect();
@@ -172,10 +192,11 @@
         if (!gl) throw new Error("WebGL2 not supported");
         const ext = gl.getExtension("EXT_color_buffer_float");
         if (!ext) throw new Error("EXT_color_buffer_float not supported");
-
+        
         await scene.setupScene();
         
         renderer = new Renderer(gl, scene);
+        updateRendererVariables();
 
         await renderer.initialize();
         rendererStarted = true;
@@ -192,9 +213,14 @@
         requestAnimationFrame(loop);
     }
 
-    function animateRange(time:number){
-        range_slider_ini += 0.01;
-        if(range_slider_ini<5.0 || range_slider_ini>15.0) range_slider_ini = 5.0;
+    function animateRange(){
+        console.log("ANIMATED")
+        range_animation_ini += 0.01;
+        if(range_animation_ini>30.0){
+            range_animation_ini = scene.iniP.range_slider_ini;
+            range_animated = false;
+            return;
+        }
         requestAnimationFrame(animateRange)
     }
 
@@ -210,7 +236,7 @@
 <div class="main w-screem h-screen">
 
     <div class="w-full h-full flex gap-8 p-4">
-        <canvas id="canvas" width="1280" height="720" bind:this={canvas}></canvas>
+        <canvas id="canvas" width={scene.iniP.canvas_width} height={scene.iniP.canvas_height} bind:this={canvas}></canvas>
 
         <Card class="max-w-md w-70">
             <CardHeader>
@@ -284,7 +310,11 @@
                         <Switch bind:checked={range_thing} /> 
                         <Slider type="single" bind:value={range_slider_ini} 
                         disabled={!range_thing}
-                        max={40.0} step={0.1} />
+                        max={30.0} step={0.1} />
+                        <Button onclick={() => {
+                            range_animated = true;
+                            animateRange();
+                        }}>Animate</Button>
                     </div>
                     <div class="flex items-center gap-2 text-sm {range_thing?'':'text-muted-foreground'}">
                         <p>Range</p> 
