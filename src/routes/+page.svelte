@@ -28,7 +28,7 @@
 
     let canvas!: HTMLCanvasElement;
 
-    let mousePos = new Tween({ x: 2.0*Math.PI, y: 0.5*Math.PI }, { duration: 0, easing: cubicOut });
+    let mousePos = new Tween({ x: 2.0*Math.PI, y: 0.5*Math.PI }, { duration: 200, easing: cubicOut });
     let needCapture: boolean = false;
 
     let listenToMove: boolean = true;
@@ -215,8 +215,8 @@
 
     function animateRange(){
         console.log("ANIMATED")
-        range_animation_ini += 0.01;
-        if(range_animation_ini>30.0){
+        range_animation_ini += 0.02;
+        if(range_animation_ini>15.0){
             range_animation_ini = scene.iniP.range_slider_ini;
             range_animated = false;
             return;
