@@ -20,7 +20,7 @@ precision mediump sampler2DArray;
 #define ray_min_distance 0.001
 #define ray_max_distance 10000.0
 #define bounce_hard_limit 200
-#define minimun_atenuation 0.0
+#define minimun_atenuation 0.001
 #define PI 3.14159265359
 #define TWO_PI 6.28318530718
 #define INV_PI 0.31830988618
