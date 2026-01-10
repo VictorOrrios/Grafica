@@ -38,11 +38,11 @@ try {
     );
 
     const testStation1: Station = new Station(
-        Math.PI/4,  // 45 degrees
-        Math.PI/4,  // 45 degrees
+        Math.PI / 4,  // 45 degrees
+        Math.PI / 4,  // 45 degrees
         testPlanetStation1
     );
-    
+
 
     console.log('Test station planet (1):', testPlanetStation1.toString());
     console.log('Test station (1):', testStation1.toString());
@@ -56,7 +56,7 @@ try {
 
     const testStation2: Station = new Station(
         0,
-        -Math.PI/2,  // -90 degrees
+        -Math.PI / 2,  // -90 degrees
         testPlanetStation2
     );
 
@@ -64,6 +64,6 @@ try {
     console.log('Test station (2):', testStation2.toString());
 
     testStation1.establishLink(testStation2);
-} catch(err: any) {
+} catch (err: any) {
     console.error(err);
 }

@@ -1,13 +1,13 @@
-# Path Tracing and Transient Rendering Engine
+# Path Tracing Engine
 
-This project is a high-performance web-based rendering engine implemented using WebGL 2.0. It features a Physically Based Rendering (PBR) pipeline with support for both standard path tracing and advanced transient rendering, allowing for the visualization of light propagation over time.
+This project is a high-performance web-based rendering engine implemented using WebGL 2.0. It features a standard path tracing pipeline.
 
 ## Main Dependencies
 
 The core functionality of the project relies on the following libraries:
 
 - **Svelte 5 & Vite**: Frontend framework and build tool for the user interface and development environment.
-- **Three.js**: Used for utility functions, math operations, and as a foundation for complex geometry loaders (OBJ, GLTF).
+- **Three.js**: Used for utility functions and math operations.
 - **math.gl**: High-performance math library for vector and matrix operations.
 - **GLSL (WebGL 2.0)**: The core rendering logic is implemented in fragment shaders for GPU-accelerated computing.
 - **Jimp**: Used for image processing and texture preparation on the CPU.
@@ -41,10 +41,10 @@ The engine allows for complex scene configurations, including geometry, material
 
 To modify a scene or create a new one:
 
-1.  **Define Materials**: Use the `Material` class to specify albedo, roughness, metalness, and emission properties.
-2.  **Add Geometry**: Utilize methods like `addSphere`, `addPlane`, or `addGLTFModel` to populate the 3D environment.
+1.  **Define Materials**: Use the `Material` class to specify surface properties.
+2.  **Add Geometry**: Utilize methods like `addSphere` or `addPlane` to populate the 3D environment.
 3.  **Configure Lighting**: Add point lights via `PointLight` or create area lights by assigning emissive materials to geometric primitives.
-4.  **Set Initial Parameters**: Adjust camera position, FOV, and rendering settings (such as sample count or transient ranges) in the `initialParams` object.
+4.  **Set Initial Parameters**: Adjust camera position, FOV, and rendering settings (such as sample count) in the `initialParams` object.
 
 ## Credits
 
