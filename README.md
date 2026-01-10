@@ -1,38 +1,59 @@
-# sv
+# Path Tracing and Transient Rendering Engine
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+This project is a high-performance web-based rendering engine implemented using WebGL 2.0. It features a Physically Based Rendering (PBR) pipeline with support for both standard path tracing and advanced transient rendering, allowing for the visualization of light propagation over time.
 
-## Creating a project
+## Main Dependencies
 
-If you're seeing this, you've probably already done this step. Congrats!
+The core functionality of the project relies on the following libraries:
 
-```sh
-# create a new project in the current directory
-npx sv create
+- **Svelte 5 & Vite**: Frontend framework and build tool for the user interface and development environment.
+- **Three.js**: Used for utility functions, math operations, and as a foundation for complex geometry loaders (OBJ, GLTF).
+- **math.gl**: High-performance math library for vector and matrix operations.
+- **GLSL (WebGL 2.0)**: The core rendering logic is implemented in fragment shaders for GPU-accelerated computing.
+- **Jimp**: Used for image processing and texture preparation on the CPU.
 
-# create a new project in my-app
-npx sv create my-app
-```
+## Getting Started
 
-## Developing
+### Compilation and Execution
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+To run the project locally, ensure you have Node.js installed on your system. Follow these steps:
 
-```sh
-npm run dev
+1.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+2.  **Start the development server**:
+    ```bash
+    npm run dev
+    ```
 
-## Building
+3.  **Build for production**:
+    ```bash
+    npm run build
+    ```
 
-To create a production version of your app:
+Once the development server is running, the application will be accessible at `http://localhost:5173`.
 
-```sh
-npm run build
-```
+## Scene Modification
 
-You can preview the production build with `npm run preview`.
+The engine allows for complex scene configurations, including geometry, materials, and lighting. Scene definitions are managed within `src/lib/scene.ts`.
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+To modify a scene or create a new one:
+
+1.  **Define Materials**: Use the `Material` class to specify albedo, roughness, metalness, and emission properties.
+2.  **Add Geometry**: Utilize methods like `addSphere`, `addPlane`, or `addGLTFModel` to populate the 3D environment.
+3.  **Configure Lighting**: Add point lights via `PointLight` or create area lights by assigning emissive materials to geometric primitives.
+4.  **Set Initial Parameters**: Adjust camera position, FOV, and rendering settings (such as sample count or transient ranges) in the `initialParams` object.
+
+## Credits
+
+### Authors
+- **Víctor Orrios Barón**
+- **José Miguel Quílez Vergara**
+
+## License
+
+This work is licensed under a [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
+
+Individual components and libraries integrated into this project remain under their respective original licenses.
