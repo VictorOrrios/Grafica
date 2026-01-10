@@ -1265,7 +1265,7 @@ vec3 cast_ray(Ray r){
     Hit h;
     vec3 atenuation = vec3(1.0);
     vec3 new_direction;
-    float rr_inv = 1.0 / rr_chance_real;
+    float rr_inv = rr_chance_real > 0.0 ? 1.0 / rr_chance_real : 1.0;
     float total_t = 0.0;
     float prev_hit_ior = 1.0;
 
@@ -1302,7 +1302,7 @@ vec3 cast_ray(Ray r){
 
             atenuation *= eval_mat(h,r.dir,new_direction) * rr_inv;
             //return atenuation;
-            
+
             // 0 atennuation check for termination
             if(length(atenuation) <= minimun_atenuation) break;
 

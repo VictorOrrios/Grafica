@@ -18,7 +18,7 @@ export class Renderer {
     public frame_acummulation_on: boolean = true;
     private num_frames_rendered: number = 0;
 
-    public fast_mode_on: boolean = true;
+    public fast_mode_on: boolean = false;
 
     private num_frames_acummulated: number = 0;
     private last_frame!: WebGLTexture;
