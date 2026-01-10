@@ -99,7 +99,7 @@
     function updateRendererVariables(){
         let range_numbers_fix = [range_numbers_ini,range_size+range_numbers_ini];
         renderer.spp = Math.max(samplesPerPixel,1);
-        renderer.rr_chance = Math.max(russianRoulette,0.0);
+        renderer.rr_chance = Math.min(Math.max(russianRoulette,0.0),1.0);
         renderer.frame_acummulation_on = frame_acummulation;
         renderer.range_numbers[0] = range_numbers_fix[0];
         renderer.range_numbers[1] = range_numbers_fix[1];

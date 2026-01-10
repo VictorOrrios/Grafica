@@ -18,7 +18,7 @@ export class Renderer {
     public frame_acummulation_on: boolean = true;
     private num_frames_rendered: number = 0;
 
-    public fast_mode_on: boolean = true;
+    public fast_mode_on: boolean = false;
 
     private num_frames_acummulated: number = 0;
     private last_frame!: WebGLTexture;
@@ -447,7 +447,7 @@ export class Renderer {
     private async initSkyboxBuffer() {
         const gl = this.gl;
         // All images taken from: https://polyhaven.com
-        const image = await loadEXRImage("skyboxes/NightSkyHDRI008_4K_HDR.exr", 0.2)
+        const image = await loadEXRImage("skyboxes/NightSkyHDRI008_1K_HDR.exr", 0.2)
         const texBinding = this.nextTexBinding++;
         let tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0 + texBinding);
