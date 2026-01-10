@@ -27,7 +27,7 @@ export class Camera {
     }
 
     private generateViewMatrix(){
-        let target = new Vector3(0, -0.5, 0);
+        let target = new Vector3(0, 0.0, 0);
         let w = this.position.clone().subtract(target).normalize();
         let posY = new Vector3(0.0,1.0,0.0);
         if (Math.abs(w.dot(posY)) > 0.999) { // Gimbal lock prevention

@@ -1,4 +1,4 @@
-import { Vector2, Vector3 } from "math.gl";
+import { vec2, Vector2, Vector3 } from "@math.gl/core";
 import { Sphere } from "./Primitives/Sphere"
 import { Camera } from "./camera";
 import { Material } from "./Primitives/Material";
@@ -68,7 +68,7 @@ export class Scene {
     public iniP:initialParams = {
         canvas_width:500,
         canvas_height:500,
-        ssp:1,
+        ssp:5,
         meanBounces:5,
         frame_acummulation:true,
         fast_mode:true,
@@ -94,6 +94,24 @@ export class Scene {
             this.iniP.range_input = 0.35;
             this.iniP.range_slider_ini = 4.9;
             this.iniP.kernel_sigma_input = 0.06;
+        }else if(this.sceneType === SceneType.CORNEL){
+            this.iniP.ssp = 20;
+            this.iniP.meanBounces = 3;
+            this.iniP.canvas_width = 720;
+            this.iniP.canvas_height = 720;
+            this.iniP.fast_mode = false;
+        }else if(this.sceneType === SceneType.BRUCE){
+            this.iniP.ssp = 150;
+            this.iniP.meanBounces = 10;
+        }else if(this.sceneType === SceneType.TRANSIENT){
+            this.iniP.ssp = 100;
+            this.iniP.meanBounces = 3;
+            this.iniP.range_slider_ini = 16;
+            this.iniP.range_input = 0.3;
+            this.iniP.kernel_sigma_input = 0.09;
+        }else if(this.sceneType === SceneType.TESTPLANE){
+            this.iniP.aperture_radius = 0.15;
+            this.iniP.focal_distance = 10.0;
         }
     }
 
@@ -118,8 +136,8 @@ export class Scene {
     
 
     private async testplane() {
-        this.camera = new Camera(new Vector3(0.0, 0.0, 17.0));
-        this.skybox = SkyboxType.BLACK;
+        this.camera = new Camera(new Vector3(0.0, 0.0, 10.0));
+        this.skybox = SkyboxType.IMAGE;
         
         const debug_purple = this.addMaterial(new Material({
             albedo: new Vector3(1, 0.058, 0.933),
@@ -140,10 +158,8 @@ export class Scene {
             emission: 10.0
         }));
 
-        const test_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
-            "materials/rmTest.jpg");
 
-        const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
         const brick_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_nor_gl_1k.jpg");
@@ -154,7 +170,7 @@ export class Scene {
             normal_tex_info:brick_normal, 
             roughmetal_tex_info:brick_rm,
             reflectance: 0.5
-        }));   
+        }));    */
         
         const wood_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_diff_1k.jpg");
@@ -182,7 +198,7 @@ export class Scene {
             reflectance: 0.5,
         })); 
 
-        const metal_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const metal_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_diff_1k.jpg");
         const metal_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_nor_gl_1k.jpg");
@@ -193,9 +209,9 @@ export class Scene {
             normal_tex_info:metal_normal, 
             roughmetal_tex_info:metal_rm,
             reflectance: 0.5,
-        })); 
+        }));  */
 
-        const metal2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const metal2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/rusty_metal_04_1k.gltf/textures/rusty_metal_04_diff_1k.jpg");
         const metal2_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/rusty_metal_04_1k.gltf/textures/rusty_metal_04_nor_gl_1k.jpg");
@@ -206,9 +222,9 @@ export class Scene {
             normal_tex_info:metal2_normal, 
             roughmetal_tex_info:metal2_rm,
             reflectance: 0.5,
-        })); 
+        }));  */
 
-        const cloth_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const cloth_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/curly_teddy_checkered_2k.gltf/textures/curly_teddy_checkered_diff_2k.jpg");
         const cloth_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/curly_teddy_checkered_2k.gltf/textures/curly_teddy_checkered_nor_gl_2k.jpg");
@@ -220,22 +236,22 @@ export class Scene {
             roughmetal_tex_info:cloth_rm,
             reflectance: 0.5,
         })); 
-
-        const dirty_glass_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            */
+        /* const dirty_glass_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
             "materials/gltf/earth.jpg",Channels.RG);
         const dirty_glass = this.addMaterial(new Material({
             roughmetal_tex_info:dirty_glass_rm,
             roughness:0.0,
             reflectance: 0.5,
             trs_weight:1.0,
-        })); 
+        }));  */
 
-        const earth_mirror_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+        /* const earth_mirror_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
             "materials/gltf/earth3.jpg",Channels.RG);
         const earth_mirror = this.addMaterial(new Material({
             roughmetal_tex_info:earth_mirror_rm,
             reflectance: 0.5,
-        })); 
+        }));  */
 
         const mirror = this.addMaterial(new Material({
             roughness: 0.0,
@@ -266,7 +282,7 @@ export class Scene {
             new Vector2(1.3,1.0),new Vector2(0.0,0.0),
             new Vector3(0.0,1.0,0.0), new Vector3(0.0,0.0,-1.0)
         );
-        this.addSphere(s1, dirty_glass);
+        //this.addSphere(s1, dirty_glass);
 
         const s2 = new Sphere(
             new Vector3(4.0, 1.0, 3.0),
@@ -340,14 +356,14 @@ export class Scene {
         //this.addPointLight(l2);
 
         
-        /*
+        
         // Wood elephant
         await this.addGLTFModel(
             "models/gltf/wood_elephant/wood_elephant.gltf", 
             20.0, new Vector3(0.0,0.0,0.0), new Vector3(0.0,-1.0,-1.0), 
             NormalStrategy.INTERPOLATED,Channels.RG,
         )            
-            */
+           
         
         /*
         // Stone kitty ^.^
@@ -453,7 +469,7 @@ export class Scene {
 
     
     private async cornell() {
-        this.camera = new Camera(new Vector3(0.0, 2.0, 3.5));
+        this.camera = new Camera(new Vector3(0.0, 0.0, 3.5));
         this.skybox = SkyboxType.BLACK;
 
         const red = this.addMaterial(new Material({
@@ -465,7 +481,13 @@ export class Scene {
         }));
 
         const purple = this.addMaterial(new Material({
-            albedo: new Vector3(0.5, 0.9, 0.9)
+            albedo: new Vector3(0.5, 0.9, 0.9),
+            roughness: 0.3
+        }));
+
+        const mirror = this.addMaterial(new Material({
+            roughness: 0.0,
+            metalness: 1.0
         }));
 
         const pink = this.addMaterial(new Material({
@@ -479,6 +501,13 @@ export class Scene {
         const white_light = this.addMaterial(new Material({
             albedo: new Vector3(1.0,1.0,1.0),
             emission: 1.0
+        }));
+
+        const glass = this.addMaterial(new Material({
+            roughness:0.0,
+            metalness:0.0,
+            ior:1.52,
+            trs_weight:1.0,
         }));
 
         const floor: Quad = new Quad(
@@ -503,9 +532,9 @@ export class Scene {
             new Vector3(1.0, 1.0, 1.0),
             new Vector3(1.0, 1.0, -1.0),
         );
-        this.addQuad(ceiling, white);
+        this.addQuad(ceiling, white_light);
 
-        const ceiling_light_size = 0.3
+        const ceiling_light_size = 0.5
         const ceiling_light: Quad = new Quad(
             new Vector3(-ceiling_light_size, 0.995, -ceiling_light_size),
             new Vector3(-ceiling_light_size, 0.995, ceiling_light_size),
@@ -533,12 +562,13 @@ export class Scene {
         const s1: Sphere = new Sphere(
             new Vector3(0.5, -0.7, -0.25),
             0.3);
-        this.addSphere(s1, pink);
+        this.addSphere(s1, purple);
 
         const s2: Sphere = new Sphere(
             new Vector3(-0.5, -0.7, 0.25),
             0.3);
-        this.addSphere(s2, purple);
+        this.addSphere(s2, glass);
+
 
         
 
@@ -547,7 +577,7 @@ export class Scene {
             new Vector3(1.0, 1.0, 1.0),
             1.0
         );
-        this.addPointLight(l1);
+        //this.addPointLight(l1);
 
         /*
         await this.addGLTFModel(
@@ -698,7 +728,7 @@ export class Scene {
             albedo_tex_info:stripes_albedo,
         })); 
 
-        const metal_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        /* const metal_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_diff_1k.jpg");
         const metal_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "materials/gltf/corrugated_iron_1k.gltf/textures/corrugated_iron_nor_gl_1k.jpg");
@@ -709,7 +739,7 @@ export class Scene {
             normal_tex_info:metal_normal, 
             roughmetal_tex_info:metal_rm,
             reflectance: 0.5,
-        })); 
+        }));  */
 
         
 
@@ -814,6 +844,13 @@ export class Scene {
         )
         this.addSphere(sl,white_light);
 
+        const l1 = new PointLight(
+            new Vector3(-3.0,1.0,0.0),
+            new Vector3(1.0,1.0,1.0),
+            10.0
+        )
+        //this.addPointLight(l1);
+
         const a = 3.0, b = 3.0, c =0.5;
         const q1:Quad = new Quad(
             new Vector3(0.0,-1.0,0.0),
@@ -872,8 +909,6 @@ export class Scene {
             emission: 10.0
         }));
 
-        const test_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
-            "materials/rmTest.jpg");
 
         /* const brick_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
@@ -1229,17 +1264,10 @@ export class Scene {
         )  */
        
         // Dragon 19k tris
-        /* const dragon_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
-            "models/gltf/stanford_dragon_pbr/textures/DefaultMaterial_baseColor.jpeg"); */
         const dragon_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
             "models/gltf/stanford_dragon_pbr/textures/DefaultMaterial_normal.png");
-        /* const dragon_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
-            "models/gltf/stanford_dragon_pbr/textures/DefaultMaterial_metallicRoughness.png", Channels.GB);
-         */
         const dragon = this.addMaterial(new Material({
-            //albedo_tex_info:dragon_albedo,
             normal_tex_info:dragon_normal, 
-            //roughmetal_tex_info:dragon_rm,
             albedo: new Vector3(0.9,1.0,0.9),
             subsurface_color: new Vector3(0.7,1.0,0.7),
             roughness:0.15,
@@ -1308,17 +1336,38 @@ export class Scene {
         ) */
 
         // Skull
+        /* const skull_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "models/gltf/skull_salazar/textures/Rosa_material_baseColor.jpeg");
+        const skull_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+            "models/gltf/skull_salazar/textures/Rosa_material_normal.png");
+        const skull_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "models/gltf/skull_salazar/textures/Rosa_material_metallicRoughness.png", Channels.RG);
+        const skull = this.addMaterial(new Material({ 
+            albedo_tex_info:skull_albedo,
+            normal_tex_info:skull_normal, 
+            roughmetal_tex_info:skull_rm,
+        })); */
         await this.addGLTFModel(
             "models/gltf/skull_salazar/scene.gltf", 
             0.4, new Vector3(0.0,Math.PI/2.0+0.4,0.0), new Vector3(-1.0,-c_y+4.15,2.6), 
-            NormalStrategy.INTERPOLATED
+            NormalStrategy.INTERPOLATED, Channels.GB,
+            
         )
 
         // Mirror ball
+        const ball_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+            "models/gltf/sphere-mirror-4k-materialtest/textures/sanjiaodisikeqiu_t_baseColor.png");
+        const ball_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+            "models/gltf/sphere-mirror-4k-materialtest/textures/sanjiaodisikeqiu_t_metallicRoughness.png", Channels.GB);
+        const ball = this.addMaterial(new Material({
+            albedo_tex_info:ball_albedo,
+            roughmetal_tex_info:ball_rm,
+        }));
         await this.addGLTFModel(
             "models/gltf/sphere-mirror-4k-materialtest/scene.gltf", 
             0.3, new Vector3(0.0,Math.PI+0.2,0.0), new Vector3(1.2,-c_y+4.15,2.5), 
-            NormalStrategy.INTERPOLATED
+            NormalStrategy.INTERPOLATED, Channels.GB,
+            ball
         )
 
         // Book open
