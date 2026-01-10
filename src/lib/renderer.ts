@@ -447,7 +447,7 @@ export class Renderer {
     private async initSkyboxBuffer() {
         const gl = this.gl;
         // All images taken from: https://polyhaven.com
-        const image = await loadEXRImage("skyboxes/NightSkyHDRI008_4K_HDR.exr", 0.2)
+        const image = await loadEXRImage("skyboxes/NightSkyHDRI008_1K_HDR.exr", 0.2)
         const texBinding = this.nextTexBinding++;
         let tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0 + texBinding);

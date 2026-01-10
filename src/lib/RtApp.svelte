@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Renderer } from "$lib/renderer";
-    import { Scene } from "$lib/scene";
+    import { Scene, SceneType } from "$lib/scene";
     
     import { onMount } from "svelte";
     import { Input } from "$lib/components/ui/input";
@@ -246,7 +246,12 @@
     <div class="w-full h-full flex gap-8 p-4">
         {#if fps <= 0}
             <div class="absolute m-20 text-4xl">
-                LOADING...
+                {#if preset === SceneType.FINAL}
+                    <p>Assets not aviable</p>
+                    <p>Contest scene can be seen at <a href="https://victorr.me/uni-rt">victorr.me/uni-rt</a></p>
+                {:else}
+                    LOADING...
+                {/if}
             </div>
         {/if}
 
