@@ -297,19 +297,9 @@ export class Renderer {
 
         this.scene.tex_manager.fillEmptyTextures();
 
-        this.initSampler2DArray("albedo_512",this.scene.tex_manager.albedo_block.data_512,512,512,gl.RGBA);
-        this.initSampler2DArray("albedo_1024",this.scene.tex_manager.albedo_block.data_1024,1024,1024,gl.RGBA);
-        this.initSampler2DArray("albedo_2048",this.scene.tex_manager.albedo_block.data_2048,2048,2048,gl.RGBA);
-        this.initSampler2DArray("normal_512",this.scene.tex_manager.normal_block.data_512,512,512,gl.RGBA);
-        this.initSampler2DArray("normal_1024",this.scene.tex_manager.normal_block.data_1024,1024,1024,gl.RGBA);
-        this.initSampler2DArray("normal_2048",this.scene.tex_manager.normal_block.data_2048,2048,2048,gl.RGBA);
-        this.initSampler2DArray("rm_512",this.scene.tex_manager.roughmetal_block.data_512,512,512,gl.RG);
-        this.initSampler2DArray("rm_1024",this.scene.tex_manager.roughmetal_block.data_1024,1024,1024,gl.RG);
-        this.initSampler2DArray("rm_2048",this.scene.tex_manager.roughmetal_block.data_2048,2048,2048,gl.RG);
-        this.initSampler2DArray("emission_512",this.scene.tex_manager.emission_block.data_512,512,512,gl.RGBA);
-        this.initSampler2DArray("emission_1024",this.scene.tex_manager.emission_block.data_1024,1024,1024,gl.RGBA);
-        this.initSampler2DArray("emission_2048",this.scene.tex_manager.emission_block.data_2048,2048,2048,gl.RGBA);
-        
+        this.initSampler2DArray("mat_tex_512",this.scene.tex_manager.tex_block.data_512,512,512,gl.RGBA);
+        this.initSampler2DArray("mat_tex_1024",this.scene.tex_manager.tex_block.data_1024,1024,1024,gl.RGBA);
+        this.initSampler2DArray("mat_tex_2048",this.scene.tex_manager.tex_block.data_2048,2048,2048,gl.RGBA);
     }
 
 

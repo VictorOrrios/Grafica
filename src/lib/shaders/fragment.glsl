@@ -183,26 +183,9 @@ uniform sampler2D u_uvs_tex;
 uniform sampler2D u_bvh_tex;    // RGBA32F: BVH nodes (minX, minY, minZ, maxX, maxY, maxZ, left, right)
 uniform int u_vertex_count;
 
-// Albedo
-uniform sampler2DArray albedo_512;
-uniform sampler2DArray albedo_1024;
-uniform sampler2DArray albedo_2048;
-
-// Normal
-uniform sampler2DArray normal_512;
-uniform sampler2DArray normal_1024;
-uniform sampler2DArray normal_2048;
-
-// Roughness metalness
-uniform sampler2DArray rm_512;
-uniform sampler2DArray rm_1024;
-uniform sampler2DArray rm_2048;
-
-// Emission
-uniform sampler2DArray emission_512;
-uniform sampler2DArray emission_1024;
-uniform sampler2DArray emission_2048;
-
+uniform sampler2DArray mat_tex_512;
+uniform sampler2DArray mat_tex_1024;
+uniform sampler2DArray mat_tex_2048;
 
 //===========================
 // RNG Functions
@@ -309,11 +292,11 @@ void set_front_face(vec3 normal, vec3 dir, inout Hit h){
 vec3 get_normal(Material mat, vec2 uv){
     switch(mat.albedoTA_normalTA.w){
         case 1:
-            return texture(normal_512, vec3(uv.x, uv.y, mat.albedoTA_normalTA.z)).rgb * 2.0 - vec3(1.0);
+            return texture(mat_tex_512, vec3(uv.x, uv.y, mat.albedoTA_normalTA.z)).rgb * 2.0 - vec3(1.0);
         case 2:
-            return texture(normal_1024, vec3(uv.x, uv.y, mat.albedoTA_normalTA.z)).rgb * 2.0 - vec3(1.0);
+            return texture(mat_tex_1024, vec3(uv.x, uv.y, mat.albedoTA_normalTA.z)).rgb * 2.0 - vec3(1.0);
         case 3:
-            return texture(normal_2048, vec3(uv.x, uv.y, mat.albedoTA_normalTA.z)).rgb * 2.0 - vec3(1.0);
+            return texture(mat_tex_2048, vec3(uv.x, uv.y, mat.albedoTA_normalTA.z)).rgb * 2.0 - vec3(1.0);
     }
 }
 
@@ -324,9 +307,9 @@ void set_mat_tex_params(inout Material mat, vec2 uv, out vec3 emission_color){
         calculate_F0 = true;
         vec2 data;
         switch(mat.rmTA_emissionTA.y){
-            case 1: data = texture(rm_512, vec3(uv, mat.rmTA_emissionTA.x)).rg; break;
-            case 2: data = texture(rm_1024, vec3(uv, mat.rmTA_emissionTA.x)).rg; break;
-            case 3: data = texture(rm_2048, vec3(uv, mat.rmTA_emissionTA.x)).rg; break;
+            case 1: data = texture(mat_tex_512, vec3(uv, mat.rmTA_emissionTA.x)).rg; break;
+            case 2: data = texture(mat_tex_1024, vec3(uv, mat.rmTA_emissionTA.x)).rg; break;
+            case 3: data = texture(mat_tex_2048, vec3(uv, mat.rmTA_emissionTA.x)).rg; break;
         }
         mat.F0_alpha.w = data.x * data.x;
         mat.rou_met_trs_ref.y = data.y;
@@ -335,9 +318,9 @@ void set_mat_tex_params(inout Material mat, vec2 uv, out vec3 emission_color){
     if(mat.albedoTA_normalTA.y != 0){
         calculate_F0 = true;
         switch(mat.albedoTA_normalTA.y){
-            case 1: mat.albedo_emission.rgb = texture(albedo_512, vec3(uv, mat.albedoTA_normalTA.x)).rgb; break;
-            case 2: mat.albedo_emission.rgb = texture(albedo_1024, vec3(uv, mat.albedoTA_normalTA.x)).rgb; break;
-            case 3: mat.albedo_emission.rgb = texture(albedo_2048, vec3(uv, mat.albedoTA_normalTA.x)).rgb; break;
+            case 1: mat.albedo_emission.rgb = texture(mat_tex_512, vec3(uv, mat.albedoTA_normalTA.x)).rgb; break;
+            case 2: mat.albedo_emission.rgb = texture(mat_tex_1024, vec3(uv, mat.albedoTA_normalTA.x)).rgb; break;
+            case 3: mat.albedo_emission.rgb = texture(mat_tex_2048, vec3(uv, mat.albedoTA_normalTA.x)).rgb; break;
         }
     }
 
@@ -349,14 +332,13 @@ void set_mat_tex_params(inout Material mat, vec2 uv, out vec3 emission_color){
 
     if(mat.albedo_emission.a > 0.0 && mat.rmTA_emissionTA.w != 0){
         switch(mat.rmTA_emissionTA.y){
-            case 1: emission_color = texture(emission_512, vec3(uv, mat.rmTA_emissionTA.z)).rgb; break;
-            case 2: emission_color = texture(emission_1024, vec3(uv, mat.rmTA_emissionTA.z)).rgb; break;
-            case 3: emission_color = texture(emission_2048, vec3(uv, mat.rmTA_emissionTA.z)).rgb; break;
+            case 1: emission_color = texture(mat_tex_512, vec3(uv, mat.rmTA_emissionTA.z)).rgb; break;
+            case 2: emission_color = texture(mat_tex_1024, vec3(uv, mat.rmTA_emissionTA.z)).rgb; break;
+            case 3: emission_color = texture(mat_tex_2048, vec3(uv, mat.rmTA_emissionTA.z)).rgb; break;
         }
     }else{
         emission_color = mat.albedo_emission.xyz;
     }
-
 }
 
 //===========================
@@ -1265,7 +1247,7 @@ vec3 cast_ray(Ray r){
     Hit h;
     vec3 atenuation = vec3(1.0);
     vec3 new_direction;
-    float rr_inv = rr_chance_real > 0.0 ? 1.0 / rr_chance_real : 1.0;
+    float rr_inv = rr_chance_real > 0.0? 1.0 / rr_chance_real : 1.0;
     float total_t = 0.0;
     float prev_hit_ior = 1.0;
 
@@ -1302,7 +1284,7 @@ vec3 cast_ray(Ray r){
 
             atenuation *= eval_mat(h,r.dir,new_direction) * rr_inv;
             //return atenuation;
-
+            
             // 0 atennuation check for termination
             if(length(atenuation) <= minimun_atenuation) break;
 

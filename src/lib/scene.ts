@@ -103,12 +103,14 @@ export class Scene {
         }else if(this.sceneType === SceneType.BRUCE){
             this.iniP.ssp = 150;
             this.iniP.meanBounces = 10;
+            this.iniP.fast_mode = false;
         }else if(this.sceneType === SceneType.TRANSIENT){
             this.iniP.ssp = 100;
             this.iniP.meanBounces = 3;
             this.iniP.range_slider_ini = 16;
             this.iniP.range_input = 0.3;
             this.iniP.kernel_sigma_input = 0.09;
+            this.iniP.fast_mode = false;
         }else if(this.sceneType === SceneType.TESTPLANE){
             this.iniP.aperture_radius = 0.15;
             this.iniP.focal_distance = 10.0;
@@ -172,12 +174,12 @@ export class Scene {
             reflectance: 0.5
         }));    */
         
-        const wood_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        const wood_albedo:LoadedTextureInfo = await this.tex_manager.addImage(
             "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_diff_1k.jpg");
-        const wood_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+        const wood_normal:LoadedTextureInfo = await this.tex_manager.addImage(
             "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_nor_gl_1k.jpg");
-        const wood_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
-            "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_arm_1k.jpg");
+        const wood_rm:LoadedTextureInfo = await this.tex_manager.addRMImage(
+            "materials/gltf/rough_pine_door_1k.gltf/textures/rough_pine_door_arm_1k.jpg", Channels.GB);
         const wood = this.addMaterial(new Material({
             albedo_tex_info:wood_albedo,
             normal_tex_info:wood_normal,
@@ -185,11 +187,11 @@ export class Scene {
             reflectance: 0.5,
         })); 
         
-        const wood2_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        const wood2_albedo:LoadedTextureInfo = await this.tex_manager.addImage(
             "materials/gltf/wood_table_001_1k.gltf/textures/wood_table_001_diff_1k.jpg");
-        const wood2_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+        const wood2_normal:LoadedTextureInfo = await this.tex_manager.addImage(
             "materials/gltf/wood_table_001_1k.gltf/textures/wood_table_001_nor_gl_1k.jpg");
-        const wood2_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+        const wood2_rm:LoadedTextureInfo = await this.tex_manager.addRMImage(
             "materials/gltf/wood_table_001_1k.gltf/textures/wood_table_001_rough_1k.jpg",Channels.RG);
         const wood2 = this.addMaterial(new Material({
             albedo_tex_info:wood2_albedo,
@@ -432,9 +434,9 @@ export class Scene {
     private async palette(){
         this.camera = new Camera(new Vector3(0.0, 0.0, 30.0));
 
-        const test_tex_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        const test_tex_albedo:LoadedTextureInfo = await this.tex_manager.addImage(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_diff_1k.jpg");
-        const test_tex_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+        const test_tex_normal:LoadedTextureInfo = await this.tex_manager.addImage(
             "materials/gltf/stacked_stone_wall_1k.gltf/textures/stacked_stone_wall_nor_gl_1k.jpg");
         const samples = 7;
         const offset = (samples-1.0)*2.5/2;
@@ -713,7 +715,7 @@ export class Scene {
             emission: 5.0
         }));
 
-        const dirty_glass_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+        const dirty_glass_rm:LoadedTextureInfo = await this.tex_manager.addRMImage(
             "materials/gltf/earth8.png",Channels.RG);
         const dirty_glass = this.addMaterial(new Material({
             roughmetal_tex_info:dirty_glass_rm,
@@ -722,7 +724,7 @@ export class Scene {
             trs_weight:1.0,
         })); 
 
-        const stripes_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        const stripes_albedo:LoadedTextureInfo = await this.tex_manager.addImage(
             "materials/gltf/stripes.png");
         const stripes = this.addMaterial(new Material({
             albedo_tex_info:stripes_albedo,
@@ -976,12 +978,12 @@ export class Scene {
             reflectance: 0.5,
         }));  */
          
-        const wood3_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        const wood3_albedo:LoadedTextureInfo = await this.tex_manager.addImage(
             "materials/gltf/black_painted_planks_1k.gltf/textures/black_painted_planks_diff_1k.jpg");
-        const wood3_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+        const wood3_normal:LoadedTextureInfo = await this.tex_manager.addImage(
             "materials/gltf/black_painted_planks_1k.gltf/textures/black_painted_planks_nor_gl_1k.jpg");
-        const wood3_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
-            "materials/gltf/black_painted_planks_1k.gltf/textures/black_painted_planks_arm_1k.jpg");
+        const wood3_rm:LoadedTextureInfo = await this.tex_manager.addRMImage(
+            "materials/gltf/black_painted_planks_1k.gltf/textures/black_painted_planks_arm_1k.jpg", Channels.GB);
         const wood3 = this.addMaterial(new Material({
             albedo_tex_info:wood3_albedo,
             normal_tex_info:wood3_normal,
@@ -1183,13 +1185,13 @@ export class Scene {
         )
             */
         
-        const tv_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        const tv_albedo:LoadedTextureInfo = await this.tex_manager.addImage(
             "models/gltf/Television_01_2k/textures/Television_01_diff_2k.jpg");
-        const tv_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+        const tv_normal:LoadedTextureInfo = await this.tex_manager.addImage(
             "models/gltf/Television_01_2k/textures/Television_01_nor_gl_2k.jpg");
-        const tv_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+        const tv_rm:LoadedTextureInfo = await this.tex_manager.addRMImage(
             "models/gltf/Television_01_2k/textures/Television_01_arm_2k.jpg", Channels.GB);
-        const tv_emission:LoadedTextureInfo = await this.tex_manager.addEmission(
+        const tv_emission:LoadedTextureInfo = await this.tex_manager.addImage(
             "models/gltf/Television_01_2k/textures/Television_01_emissive_2k.jpg");
         const tv = this.addMaterial(new Material({
             albedo_tex_info:tv_albedo,
@@ -1264,7 +1266,7 @@ export class Scene {
         )  */
        
         // Dragon 19k tris
-        const dragon_normal:LoadedTextureInfo = await this.tex_manager.addNormal(
+        const dragon_normal:LoadedTextureInfo = await this.tex_manager.addImage(
             "models/gltf/stanford_dragon_pbr/textures/DefaultMaterial_normal.png");
         const dragon = this.addMaterial(new Material({
             normal_tex_info:dragon_normal, 
@@ -1314,7 +1316,7 @@ export class Scene {
             NormalStrategy.INTERPOLATED
         ) */
 
-        // Book$
+        // Book
         await this.addGLTFModel(
             "models/gltf/leather_book/scene.gltf", 
             0.2, new Vector3(-Math.PI/2.0,0.0,Math.PI/2.0+0.25), new Vector3(-0.13,-c_y+2.57,1.6), 
@@ -1355,9 +1357,9 @@ export class Scene {
         )
 
         // Mirror ball
-        const ball_albedo:LoadedTextureInfo = await this.tex_manager.addAlbedo(
+        const ball_albedo:LoadedTextureInfo = await this.tex_manager.addImage(
             "models/gltf/sphere-mirror-4k-materialtest/textures/sanjiaodisikeqiu_t_baseColor.png");
-        const ball_rm:LoadedTextureInfo = await this.tex_manager.addRoughMetal(
+        const ball_rm:LoadedTextureInfo = await this.tex_manager.addRMImage(
             "models/gltf/sphere-mirror-4k-materialtest/textures/sanjiaodisikeqiu_t_metallicRoughness.png", Channels.GB);
         const ball = this.addMaterial(new Material({
             albedo_tex_info:ball_albedo,
@@ -1452,16 +1454,16 @@ export class Scene {
                 const rmURL = data.materials[i].rmMap;
                 const emissionURL = data.materials[i].emissionMap;
                 if(albedoURL !== undefined){
-                    data.materials[i].material.albedo_tex_info = await this.tex_manager.addAlbedo(albedoURL);
+                    data.materials[i].material.albedo_tex_info = await this.tex_manager.addImage(albedoURL);
                 }
                 if(normalURL !== undefined){
-                    data.materials[i].material.normal_tex_info = await this.tex_manager.addNormal(normalURL);
+                    data.materials[i].material.normal_tex_info = await this.tex_manager.addImage(normalURL);
                 }
                 if(rmURL !== undefined){
-                    data.materials[i].material.roughmetal_tex_info = await this.tex_manager.addRoughMetal(rmURL,rmChannel);
+                    data.materials[i].material.roughmetal_tex_info = await this.tex_manager.addRMImage(rmURL,rmChannel);
                 }
                 if(emissionURL !== undefined){
-                    data.materials[i].material.emission_tex_info = await this.tex_manager.addEmission(emissionURL);
+                    data.materials[i].material.emission_tex_info = await this.tex_manager.addImage(emissionURL);
                 }
                 const matIdx = this.addMaterial(data.materials[i].material); 
                 console.log("Added mesh material to scene:",matIdx,data.materials[i].material)
